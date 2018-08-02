@@ -5,7 +5,7 @@ import numpy as np
 class PolyAStep:
 
     def __init__(self):
-        self.history_filename = "polyA_selection_history.txt"
+        self.history_filename = "../../data/polyA_selection_history.txt"
         print("Poly A selection step instantiated")
 
     def execute(self, sample):
@@ -14,17 +14,17 @@ class PolyAStep:
         with open(self.history_filename, "w+") as history_file:
             for molecule in sample:
                 tail_length = molecule.poly_a_tail_length()
-                retention_odds = min(0.02 + 0.01 * tail_length, 0.99)
+                retention_odds = min([0.02 + 0.04 * tail_length, 0.99])
                 retained = np.random.choice([1, 0], 1, p=[retention_odds, 1 - retention_odds])[0]
                 note = ''
                 if retained:
                     retained_sample.append(molecule)
                     note += 'retained'
-                    breakage_frequency = min(0.01 * len(molecule.sequence) - tail_length, 0.99)
-                    breakage = np.random.choice([1,0], 1, p=[breakage_frequency, 1 - breakage_frequency])
+                    breakage_likelihood = min([0.005 * (len(molecule.sequence) - tail_length), 0.98])
+                    breakage = np.random.choice([1,0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
                     if breakage:
-                        break_distribution = np.random.geometric(0.01, len(molecule.sequence) - tail_length)
-                        break_distribution
+                        breakpoint = min(np.random.geometric(0.05), len(molecule.sequence) - tail_length - 1)
+                        #TODO break moleule at breakpoint and adjust start and cigar as needed.  Break fn in molecule.
                 else:
                     note += 'removed'
                 #print(tail_length, retention_odds, note)
@@ -40,7 +40,7 @@ class PolyAStep:
 if __name__ == "__main__":
     molecules = []
     i = 0
-    with open("molecules.txt", 'r') as sample_file:
+    with open("../../data/molecules.txt", 'r') as sample_file:
         sequences = sample_file.readlines()
         for sequence in sequences:
             cigar = str(len(sequence)) + 'M'
@@ -49,6 +49,6 @@ if __name__ == "__main__":
             i += 1
     step = PolyAStep()
     new_sample = step.execute(molecules)
-    with open("polyASelectionStepTest.txt", "w+") as results:
+    with open("../../data/polyASelectionStepTest.txt", "w+") as results:
         for molecule in new_sample:
             results.write(molecule.sequence)

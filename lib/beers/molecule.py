@@ -11,8 +11,8 @@ class Molecule:
         self.strand = strand
 
     def poly_a_tail_length(self):
-        tail_length = re.search(r'A+$', self.sequence)
-        return 0 if not tail_length else len(str(tail_length))
+        match = re.search(r'(A+$)', self.sequence)
+        return 0 if not match else len(match.group())
 
     def substitute(self, nucleotide, position):
         original_length = len(self.sequence)

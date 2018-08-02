@@ -17,7 +17,7 @@ def generate(filename, percent_mrna, count, mean_length, std_length, a_tail_mean
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Starter RNA Generator')
-    parser.add_argument('-f', '--filename', default='molecules.txt',
+    parser.add_argument('-f', '--filename', default='../../data/molecules.txt',
             help = 'Provide the name of the file where the sequences are stored.')
     parser.add_argument('-s', '--seed', default=None, type=int,
             help = 'Provide a random seed - default is none.')
