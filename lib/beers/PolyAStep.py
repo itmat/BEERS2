@@ -27,7 +27,8 @@ class PolyAStep:
                     breakage = np.random.choice([1,0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
                     if breakage:
                         breakpoint = min(np.random.geometric(0.05), len(molecule.sequence) - tail_length - 1)
-                        #TODO break moleule at breakpoint and adjust start and cigar as needed.  Break fn in molecule.
+                        molecule.break_sequence(breakpoint)
+                        note += ' broken'
                 else:
                     note += 'removed'
                 #print(tail_length, retention_odds, note)
@@ -43,6 +44,8 @@ class PolyAStep:
         if self.max_retention_prob < 0 or self.max_retention_prob > 1:
             print("The maximum retention probability parameter must be between 0 and 1 inclusive", file=sys.stderr)
             return False
+        if self.max_retention_prob < self.min_retention_prob:
+            print("The maximum retention probability parameter must be greater than or equal to the minimum retention probability.", file=sys.stderr)
         return True
 
 
@@ -53,7 +56,7 @@ if __name__ == "__main__":
         sequences = sample_file.readlines()
         for sequence in sequences:
             cigar = str(len(sequence)) + 'M'
-            molecule = Molecule(i, sequence, '1', cigar)
+            molecule = Molecule(i, sequence, 1, cigar)
             molecules.append(molecule)
             i += 1
     log_file =  "../../data/polyA_selection_step_log.txt"

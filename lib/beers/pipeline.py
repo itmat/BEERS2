@@ -37,7 +37,7 @@ class Pipeline:
             sequences = sample_file.readlines()
             for sequence in sequences:
                 cigar = str(len(sequence)) + 'M'
-                molecule = Molecule(i, sequence, '1', cigar)
+                molecule = Molecule(i, sequence, 1, cigar)
                 molecules.append(molecule)
                 i += 1
         return molecules
