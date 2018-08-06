@@ -57,6 +57,16 @@ class Molecule:
             self.cigar = f"{lead_length}M{deletion_length}D{trail_length}M"
             self.sequence = self.sequence[:position+1] + self.sequence[position + 1 + deletion_length:]
 
+    def break_sequence(self, position, retain_3prime=True):
+        # Position after which to break the molecule
+        # For the present, assume that the 3 prime end is always the end retained.
+        if self.strand == "+":
+            self.start = self.start + position + 1
+            self.sequence = self.sequence[position + 1:]
+        else:
+            self.sequence = self.sequence[:position + 1]
+        self.cigar = f"{len(self.sequence)}M"
+
     def __str__(self):
         return(
             str({"id": self.molecule_id,

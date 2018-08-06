@@ -1,3 +1,23 @@
 {
-  "pipeline_steps": ["PolyAStep","SonicateStep","HexamerPrimeStep"]
+  "pipeline": [
+    {
+      "step_name":"PolyAStep",
+      "log_file": "../../data/polyA_selection_step_log.txt",
+      "parameters": {
+        "min_retention_prob": 0.02,
+        "max_retention_prob": 0.98
+      }
+    },
+    {
+      "step_name":"SonicateStep",
+      "log_file": "",
+      "parameters":{}
+    },
+    {
+      "step_name":"HexamerPrimeStep",
+      "log_file": "",
+      "parameters":{}
+    }
+  ],
+  "sample_file": "../../data/molecules.txt"
 }
