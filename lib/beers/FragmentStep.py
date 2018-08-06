@@ -44,7 +44,7 @@ def fragment(molecules, lambda_, runtime):
     """fragment molecules with varying lambas
 
     molecules -- a list of molecules
-    lambda_ -- a function mapping (j, (start,end), molecule) to the rate of breakage of 
+    lambda_ -- a function mapping (j, (start,end), molecule) to the rate of breakage of
             the bond at position j of the molecule if it is in a fragment (start,end) of molecule
     runtime -- length of this process, longer times means more breakage
 
@@ -65,7 +65,7 @@ def fragment(molecules, lambda_, runtime):
 
 
         num_bonds = end - start - 1
-        lambdas = numpy.array([lambda_(j,molecules[k]) for j in range(start, end-1)])
+        lambdas = numpy.array([lambda_(j,start, end, molecules[k]) for j in range(start, end-1)])
         total_lambda = sum(lambdas)
         time_until_break = numpy.random.exponential(scale = 1/total_lambda)
 
@@ -85,7 +85,7 @@ def fragment(molecules, lambda_, runtime):
 # Prefer fragment() above.
 def simple_fragment(molecule, lambda_function, runtime):
     """fragment any iterable `molecule` into some number of pieces.
-    
+
     Prefer fragment() function instead
     Each inter-base-pair bond has a rate lambda of breaking determined by
     lambda = lambda_function(k, molecule)
@@ -127,7 +127,7 @@ def fast_fragment(molecules, lambda_, runtime):
     molecules -- the list of all molecules
     lambda_ -- the rate of breaking of a single bond between base adjacent base pairs
     runtime -- how long the fragmentation is run for
-    
+
     The algorithm used to fragment them is the following:
     on each molecule, the time until the next base fragments is distributed as
     an exponential with rate (lambda) the sum of the rates of all of its bonds.
@@ -158,10 +158,10 @@ def fast_fragment(molecules, lambda_, runtime):
         total_lambdas = lambda_ * num_bonds
 
         times_until_break = numpy.full(shape = starts.shape, fill_value=numpy.inf)
-        times_until_break[valid] = numpy.random.exponential( scale = 1/total_lambdas[valid])
+        times_until_break[valid] = numpy.random.exponential(scale = 1/total_lambdas[valid])
         #Note: everything that is not valid (i.e. is a single base and hence can't break)
         # will have infinite breaking time and hence won't break
-        
+
         remaining_time = time_lefts - times_until_break
         broke = (remaining_time > 0)
 
@@ -189,13 +189,13 @@ def fast_fragment(molecules, lambda_, runtime):
         # New batch to potentially break
         batch = numpy.append(lefts, rights, axis=0)
 
-    return [(start, end, k) for start, end, time_left, k in done]
+    return [(int(start), int(end), int(k)) for start, end, time_left, k in done]
 
 
 # Used by direct_fragment
 def sample_without_replacement(n, k):
     """uniformly sample k numbers from 0,...,n-1 without replacement
-    
+
     Intended to be faster than numpy.random.choice(n, size=k, replace=False)
     for the case when n is large and k is small.
     (About 1000x times faster for n=1,000,000 and k=4.)
@@ -213,7 +213,7 @@ def sample_without_replacement(n, k):
 # i.e. all bonds have the same chance of breaking
 def uniform_direct_fragment(molecules, lambda_, runtime):
     """uniform lambda_ parameter fragmentation
-    
+
     Use the fact that the methods of fragment is equivalent (when lambda constant)
     to first sampling the number of break points from a binomial distribution and then
     picking those points uniformly on the molecule"""
