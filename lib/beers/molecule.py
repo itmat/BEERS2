@@ -3,6 +3,8 @@ import re
 
 class Molecule:
 
+    next_molecule_id = 1 # Static variable for creating increasing molecule id's
+
     def __init__(self, molecule_id, sequence, start=None, cigar=None, strand="+"):
         self.molecule_id = molecule_id
         self.sequence = sequence
@@ -67,6 +69,22 @@ class Molecule:
             self.sequence = self.sequence[:position + 1]
         self.cigar = f"{len(self.sequence)}M"
 
+    def fragment(self, start,end):
+        """ Return a smaller molecule from this molecule """
+        assert start < end <= len(self.sequence)
+
+        frag_sequence = self.sequence[start:end]
+        frag_length = end - start
+        frag_cigar = f"{frag_length}M" # Fragments match their parents
+        frag_id = Molecule.new_id(self.molecule_id)
+
+        frag = Molecule(frag_id, frag_sequence, start=start, cigar=frag_cigar, strand=self.strand)
+
+        return frag
+
+    def __len__(self):
+        return len(self.sequence)
+
     def __str__(self):
         return(
             str({"id": self.molecule_id,
@@ -79,6 +97,12 @@ class Molecule:
     def log_entry(self):
         return str(self.molecule_id) + "," + \
                str(self.sequence) + "," + str(self.start or '') + "," + str(self.cigar or '') + "," + self.strand
+
+    @staticmethod
+    def new_id(parent_id=""):
+        new_id = Molecule.next_molecule_id
+        Molecule.next_molecule_id += 1
+        return f"{parent_id}.{new_id}"
 
 
 if __name__ == "__main__":

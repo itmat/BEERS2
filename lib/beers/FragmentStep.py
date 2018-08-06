@@ -25,7 +25,7 @@ class FragmentationStep:
             # perform the slower more general fragmentation
             fragments = fragment(sample, self.lambda_, self.runtime)
 
-        result = [sample[k][start:end] for (start, end, k) in fragments]
+        result = [sample[k].fragment(start,end) for (start, end, k) in fragments]
         return result
 
 def estimate_uniform_lambda(starting_median_length, desired_median_length):
