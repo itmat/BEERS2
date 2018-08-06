@@ -69,7 +69,7 @@ def fragment(molecules, lambda_, runtime):
         total_lambda = sum(lambdas)
         time_until_break = numpy.random.exponential(scale = 1/total_lambda)
 
-        if time_until_break < runtime:
+        if time_until_break < time_left:
             # Break!
             break_point = numpy.random.choice(num_bonds, p=lambdas/total_lambda) + start
             todo.append(((start, break_point + 1), time_left - time_until_break, k))
