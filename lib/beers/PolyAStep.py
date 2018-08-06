@@ -23,18 +23,23 @@ class PolyAStep:
                 if retained:
                     retained_sample.append(molecule)
                     note += 'retained'
-                    breakage_likelihood = min([0.005 * (len(molecule.sequence) - tail_length), 0.98])
-                    breakage = np.random.choice([1,0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
-                    if breakage:
-                        breakpoint = min(np.random.geometric(0.05), len(molecule.sequence) - tail_length - 1)
-                        molecule.break_sequence(breakpoint)
-                        note += ' broken'
+                    note = PolyAStep.three_prime_bias(molecule, tail_length, note)
                 else:
                     note += 'removed'
                 #print(tail_length, retention_odds, note)
                 history_file.write(molecule.log_entry() + "," + note + "\n")
         print("Poly A selection step complete")
         return retained_sample
+
+    @staticmethod
+    def three_prime_bias(molecule, tail_length, note):
+        breakage_likelihood = min([0.005 * (len(molecule.sequence) - tail_length), 0.98])
+        breakage = np.random.choice([1, 0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
+        if breakage:
+            breakpoint = len(molecule.sequence) - min(np.random.geometric(0.05), len(molecule.sequence) - tail_length - 1)
+            molecule.break_sequence(breakpoint)
+            note += ' broken'
+        return note
 
     def validate(self):
         print(f"Poly A step validating parameters")
