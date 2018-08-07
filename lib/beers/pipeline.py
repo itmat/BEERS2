@@ -2,6 +2,7 @@
 
 import json
 import importlib
+import numpy as np
 from molecule import Molecule
 
 class Pipeline:
@@ -19,7 +20,8 @@ class Pipeline:
                 self.steps.append(step_class(log_file, parameters))
             self.sample_file = config_json["sample_file"]
             self.sample = self.populate_molecules()
-
+            self.seed = config_json["base_seed"]
+            np.random.seed(self.seed)
 
     def validate(self, **kwargs):
         if not all([step.validate() for step in self.steps]):

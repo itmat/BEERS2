@@ -19,5 +19,6 @@
       "parameters":{}
     }
   ],
+  "base_seed": 100,
   "sample_file": "../../data/molecules.txt"
 }
