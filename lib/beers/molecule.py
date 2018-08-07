@@ -5,16 +5,19 @@ class Molecule:
 
     next_molecule_id = 1 # Static variable for creating increasing molecule id's
 
-    def __init__(self, molecule_id, sequence, start=None, cigar=None, strand="+"):
+    def __init__(self, molecule_id, sequence, start=None, cigar=None):
         self.molecule_id = molecule_id
         self.sequence = sequence
         self.start = start
         self.cigar = cigar
-        self.strand = strand
 
     def poly_a_tail_length(self):
         match = re.search(r'(A+$)', self.sequence)
         return 0 if not match else len(match.group())
+
+    def longest_poly_a_stretch(self):
+        #TODO what poly A stretch is long enough to possibly be captured by polyAStep?
+        pass
 
     def substitute(self, nucleotide, position):
         original_length = len(self.sequence)
@@ -59,14 +62,11 @@ class Molecule:
             self.cigar = f"{lead_length}M{deletion_length}D{trail_length}M"
             self.sequence = self.sequence[:position+1] + self.sequence[position + 1 + deletion_length:]
 
-    def break_sequence(self, position, retain_3prime=True):
+    def truncate(self, position, retain_3prime=True):
         # Position after which to break the molecule
         # For the present, assume that the 3 prime end is always the end retained.
-        if self.strand == "+":
-            self.start = self.start + position + 1
-            self.sequence = self.sequence[position + 1:]
-        else:
-            self.sequence = self.sequence[:position + 1]
+        self.start = self.start + position + 1
+        self.sequence = self.sequence[position + 1:]
         self.cigar = f"{len(self.sequence)}M"
 
     def fragment(self, start,end):
@@ -90,13 +90,12 @@ class Molecule:
             str({"id": self.molecule_id,
                  "sequence": self.sequence,
                  "start": self.start,
-                 "cigar": self.cigar,
-                 "strand": self.strand})
+                 "cigar": self.cigar})
         )
 
     def log_entry(self):
         return str(self.molecule_id) + "," + \
-               str(self.sequence) + "," + str(self.start or '') + "," + str(self.cigar or '') + "," + self.strand
+               str(self.sequence) + "," + str(self.start or '') + "," + str(self.cigar or '')
 
     @staticmethod
     def new_id(parent_id=""):

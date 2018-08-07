@@ -37,7 +37,7 @@ class PolyAStep:
         breakage = np.random.choice([1, 0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
         if breakage:
             breakpoint = len(molecule.sequence) - min(np.random.geometric(0.05), len(molecule.sequence) - tail_length - 1)
-            molecule.break_sequence(breakpoint)
+            molecule.truncate(breakpoint)
             note += ' broken'
         return note
 
@@ -51,6 +51,7 @@ class PolyAStep:
             return False
         if self.max_retention_prob < self.min_retention_prob:
             print("The maximum retention probability parameter must be greater than or equal to the minimum retention probability.", file=sys.stderr)
+            return False
         return True
 
 
