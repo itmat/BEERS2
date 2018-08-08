@@ -79,7 +79,7 @@ class Molecule:
         self.sequence = self.sequence[position + 1:]
         self.cigar = f"{len(self.sequence)}M"
 
-    def fragment(self, start,end):
+    def make_fragment(self, start,end):
         """ Return a smaller molecule from this molecule """
         assert start < end <= len(self.sequence)
 

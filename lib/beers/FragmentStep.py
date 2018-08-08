@@ -20,12 +20,12 @@ class FragmentationStep:
     def execute(self, sample):
         if isinstance(self.lambda_, numbers.Number):
             # perform a faster fragmentation with uniform rate
-            fragments = fast_fragment(sample, self.lambda_, self.runtime)
+            fragment_locations = fast_compute_fragment_locations(sample, self.lambda_, self.runtime)
         else:
             # perform the slower more general fragmentation
-            fragments = fragment(sample, self.lambda_, self.runtime)
+            fragment_locationss = compute_fragment_locations(sample, self.lambda_, self.runtime)
 
-        result = [sample[k].fragment(start,end) for (start, end, k) in fragments]
+        result = [sample[k].make_fragment(start,end) for (start, end, k) in fragment_locations]
         return result
 
 def estimate_uniform_lambda(starting_median_length, desired_median_length):
@@ -40,7 +40,7 @@ def estimate_uniform_lambda(starting_median_length, desired_median_length):
 
 # BEST GENERAL SOLUTION
 # Much slower than uniform fragmentation like direct_fragment
-def fragment(molecules, lambda_, runtime):
+def compute_fragment_locations(molecules, lambda_, runtime):
     """fragment molecules with varying lambas
 
     molecules -- a list of molecules
@@ -82,7 +82,7 @@ def fragment(molecules, lambda_, runtime):
 
 
 # The general idea, but slow method. Operates on one fragment at a time.
-# Prefer fragment() above.
+# Prefer fragment() above. Not of the same format as other functions in this module
 def simple_fragment(molecule, lambda_function, runtime):
     """fragment any iterable `molecule` into some number of pieces.
 
@@ -121,7 +121,7 @@ def random_range(mins, maxes):
 
 # Fastest UNIFORM fragmentation
 # But is harder to read than direct_fragment() and only very slightly faster (10%)
-def fast_fragment(molecules, lambda_, runtime):
+def fast_compute_fragment_locations(molecules, lambda_, runtime):
     """ Each molecule is fragment randomly according
 
     molecules -- the list of all molecules
@@ -211,7 +211,7 @@ def sample_without_replacement(n, k):
 ### Simplest and very fast method for UNIFORM fragmentation
 # around 10% slower than fast_fragment
 # i.e. all bonds have the same chance of breaking
-def uniform_direct_fragment(molecules, lambda_, runtime):
+def uniform_direct_compute_fragment_locations(molecules, lambda_, runtime):
     """uniform lambda_ parameter fragmentation
 
     Use the fact that the methods of fragment is equivalent (when lambda constant)
