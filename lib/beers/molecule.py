@@ -4,6 +4,7 @@ import re
 class Molecule:
 
     next_molecule_id = 1 # Static variable for creating increasing molecule id's
+    header = "id,sequence,start,cigar,note\n"
 
     def __init__(self, molecule_id, sequence, start=None, cigar=None):
         self.molecule_id = molecule_id
@@ -93,9 +94,8 @@ class Molecule:
                  "cigar": self.cigar})
         )
 
-    def log_entry(self):
-        return str(self.molecule_id) + "," + \
-               str(self.sequence) + "," + str(self.start or '') + "," + str(self.cigar or '')
+    def log_entry(self, note = ''):
+        return str(self.molecule_id) + "," + self.sequence + "," + str(self.start or '') + "," + (self.cigar or '') + "," + note + "\n"
 
     @staticmethod
     def new_id(parent_id=""):

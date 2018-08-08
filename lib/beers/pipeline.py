@@ -21,6 +21,8 @@ class Pipeline:
             self.sample_file = config_json["sample_file"]
             self.sample = self.populate_molecules()
             self.seed = config_json["base_seed"]
+            self.log_filename = config_json["log_filename"]
+            self.log_sample()
             np.random.seed(self.seed)
 
     def validate(self, **kwargs):
@@ -32,12 +34,19 @@ class Pipeline:
         for step in self.steps:
             sample = step.execute(sample)
 
+    def log_sample(self):
+        with open(self.log_filename, "w+") as log_file:
+            log_file.write(Molecule.header)
+            for molecule in self.sample:
+                log_file.write(molecule.log_entry())
+
     def populate_molecules(self):
         molecules = []
         i = 0
         with open(self.sample_file, 'r') as sample_file:
             sequences = sample_file.readlines()
-            for sequence in sequences:
+            for text in sequences:
+                sequence = text.rstrip()
                 cigar = str(len(sequence)) + 'M'
                 molecule = Molecule(i, sequence, 1, cigar)
                 molecules.append(molecule)
