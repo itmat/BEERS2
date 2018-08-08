@@ -26,8 +26,10 @@ class Pipeline:
             np.random.seed(self.seed)
 
     def validate(self, **kwargs):
+        if not all([molecule.validate() for molecule in self.sample]):
+            raise BeersValidationException("Validation error in sample: see stderr for details.")
         if not all([step.validate() for step in self.steps]):
-            raise BeersValidationException("Validation error: see stderr for details.")
+            raise BeersValidationException("Validation error in step: see stderr for details.")
 
     def execute(self):
         sample = self.sample

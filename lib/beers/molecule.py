@@ -1,16 +1,25 @@
 import re
+import sys
 
 
 class Molecule:
 
     next_molecule_id = 1 # Static variable for creating increasing molecule id's
     header = "id,sequence,start,cigar,note\n"
+    disallowed = re.compile((r'[^AGTC]'))
 
     def __init__(self, molecule_id, sequence, start=None, cigar=None):
         self.molecule_id = molecule_id
-        self.sequence = sequence
+        self.sequence = sequence.strip()
         self.start = start
         self.cigar = cigar
+
+    def validate(self):
+        if Molecule.disallowed.search(self.sequence):
+            print(f"The molecule having an id of {self.molecule_id} has a disallowed base.", file=sys.stderr)
+            return False
+        return True
+
 
     def poly_a_tail_length(self):
         match = re.search(r'(A+$)', self.sequence)
