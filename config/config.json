@@ -13,6 +13,14 @@
       }
     },
     {
+        "step_name":"FragmentStep",
+        "log_file":"../../data/fragment_step.log",
+        "parameters": {
+            "lambda": 0.001,
+            "runtime": 1
+        }
+    },
+    {
       "step_name":"SonicateStep",
       "log_file": "",
       "parameters":{}

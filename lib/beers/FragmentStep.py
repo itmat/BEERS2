@@ -1,9 +1,10 @@
 import numpy
 import numbers
 import collections
+from molecule import Molecule
 
-class FragmentationStep:
-    def __init__(self, lambda_, runtime):
+class FragmentStep:
+    def __init__(self, logfile, parameters):
         """
         Make fragmentation step that with rate of fragmentation lambda_ running for run_time
 
@@ -14,10 +15,12 @@ class FragmentationStep:
         runtime -- length of running the experiment (Has the inverse units of lambda_)
         """
         # TODO: these parameters should be read in from a config file
-        self.lambda_ = lambda_
-        self.runtime = runtime
+        self.history_filename = logfile
+        self.lambda_ = parameters["lambda"]
+        self.runtime = parameters["runtime"]
 
     def execute(self, sample):
+        print("Fragment Step acting on sample")
         if isinstance(self.lambda_, numbers.Number):
             # perform a faster fragmentation with uniform rate
             fragment_locations = fast_compute_fragment_locations(sample, self.lambda_, self.runtime)
@@ -26,7 +29,24 @@ class FragmentationStep:
             fragment_locationss = compute_fragment_locations(sample, self.lambda_, self.runtime)
 
         result = [sample[k].make_fragment(start,end) for (start, end, k) in fragment_locations]
+
+        # Output all the molecules to log
+        with open(self.history_filename, "w+") as log_file:
+            log_file.write(Molecule.header)
+            for molecule in result:
+                log_file.write(molecule.log_entry())
+
         return result
+
+    def validate(self):
+        if self.lambda_ <= 0:
+            print("Rate of fragmentation must be positive", file=sys.stderr)
+            return False
+        if self.runtime <= 0:
+            print("Fragmentation runtime must be a positive number", file=sys.stderr)
+            return False
+        return True
+
 
 def estimate_uniform_lambda(starting_median_length, desired_median_length):
     """Computes a (lambda_, rate) pair that give the desired amount of fragmentation"""

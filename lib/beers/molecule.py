@@ -88,7 +88,7 @@ class Molecule:
         frag_cigar = f"{frag_length}M" # Fragments match their parents
         frag_id = Molecule.new_id(self.molecule_id)
 
-        frag = Molecule(frag_id, frag_sequence, start=start, cigar=frag_cigar, strand=self.strand)
+        frag = Molecule(frag_id, frag_sequence, start=start, cigar=frag_cigar)
 
         return frag
 
