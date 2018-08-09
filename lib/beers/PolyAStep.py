@@ -1,6 +1,7 @@
 from molecule import Molecule
 import numpy as np
 import sys
+from timeit import default_timer as timer
 
 
 class PolyAStep:
@@ -31,7 +32,8 @@ class PolyAStep:
 
                 # Weighted distribution based on tail length
                 tail_length = molecule.poly_a_tail_length()
-                retention_odds = min(self.min_retention_prob + self.length_retention_prob * tail_length, self.max_retention_prob)
+                retention_odds = min(self.min_retention_prob + self.length_retention_prob * tail_length,
+                                     self.max_retention_prob)
                 retained = np.random.choice([1, 0], 1, p=[retention_odds, 1 - retention_odds])[0]
                 note = ''
                 if retained:
@@ -45,17 +47,21 @@ class PolyAStep:
         return retained_sample
 
     def apply_three_prime_bias(self, molecule, tail_length, note):
-        breakage_likelihood = min([self.min_breakage_prob * (len(molecule.sequence) - tail_length), self.max_breakage_prob])
+        """
+        Model for polyA selection 3' bias.  Assuming that polyA tail plays no role in truncation of 5' end.
+        :param molecule: molecule to evaluate for truncation
+        :param tail_length: length of polyA tail, which may be 0
+        :param note: comment added to log
+        :return: note with an addendum if a truncation occurs
+        """
+        sequence_minus_tail_length = len(molecule.sequence) - tail_length
+        breakage_likelihood = min([self.min_breakage_prob * sequence_minus_tail_length, self.max_breakage_prob])
         breakage = np.random.choice([1, 0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
         if breakage:
 
-            # Geometric distribution of breakpoints
-            # breakpoint_from_3p = min(np.random.geometric(self.breakpoint_prob), len(molecule.sequence) - tail_length)
-            # breakpoint_from_5p = len(molecule.sequence) - 1 - tail_length - breakpoint_from_3p
-
-            # Linear distribution of breakpoints
-            breakpoint_from_5p = np.random.randint(0, len(molecule.sequence) - tail_length)
-
+            # Geometric distribution of breakpoints - subtract 1 because geometric dist 1 indexed.
+            breakpoint_from_3p = min(np.random.geometric(self.breakpoint_prob), sequence_minus_tail_length) - 1
+            breakpoint_from_5p = sequence_minus_tail_length - 1 - breakpoint_from_3p
             molecule.truncate(breakpoint_from_5p)
             note += ' broken'
         return note
@@ -63,13 +69,14 @@ class PolyAStep:
     def validate(self):
         print(f"Poly A step validating parameters")
         if self.min_retention_prob < 0 or self.min_retention_prob > 1:
-            print("The minimum retention probability parameter must be between 0 and 1 inclusive", file=sys.stderr)
+            print("The minimum retention probability parameter must be between 0 and 1", file=sys.stderr)
             return False
         if self.max_retention_prob < 0 or self.max_retention_prob > 1:
-            print("The maximum retention probability parameter must be between 0 and 1 inclusive", file=sys.stderr)
+            print("The maximum retention probability parameter must be between 0 and 1", file=sys.stderr)
             return False
         if self.max_retention_prob < self.min_retention_prob:
-            print("The maximum retention probability parameter must be greater than or equal to the minimum retention probability.", file=sys.stderr)
+            print("The maximum retention probability parameter must be >= to the minimum retention probability.",
+                  file=sys.stderr)
             return False
         return True
 
@@ -96,9 +103,12 @@ if __name__ == "__main__":
         "min_retention_prob": 0.01,
         "max_retention_prob": 0.99,
         "length_retention_prob": 0.04,
-        "min_breakage_prob": 0.005,
+        "min_breakage_prob": 0.0005,
         "max_breakage_prob": 0.98,
         "breakpoint_prob": 0.0001
       }
     step = PolyAStep(output_data_log_file, input_parameters)
+    start = timer()
     step.execute(molecules)
+    end = timer()
+    print(f"PolyA Selection Step: {end - start} for {len(molecules)} molecules.")
