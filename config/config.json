@@ -4,12 +4,12 @@
       "step_name":"PolyAStep",
       "log_file": "../../data/polyA_selection_step.log",
       "parameters": {
-        "min_retention_prob": 0.02,
-        "max_retention_prob": 0.98,
+        "min_retention_prob": 0.01,
+        "max_retention_prob": 0.99,
         "length_retention_prob": 0.04,
-        "min_breakage_prob": 0.0005,
+        "min_breakage_prob": 0.005,
         "max_breakage_prob": 0.98,
-        "breakpoint_prob": 0.001
+        "breakpoint_prob": 0.0001
       }
     },
     {
