@@ -73,7 +73,7 @@ class Molecule:
             self.sequence = self.sequence[:position+1] + self.sequence[position + 1 + deletion_length:]
 
     def truncate(self, position, retain_3prime=True):
-        # Position after which to break the molecule
+        # Position after which to break the molecule (0 indexed)
         # For the present, assume that the 3 prime end is always the end retained.
         self.start = self.start + position + 1
         self.sequence = self.sequence[position + 1:]

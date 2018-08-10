@@ -35,3 +35,9 @@ if __name__ == "__main__":
                         help='Percent of sequences that represent mRNA (gaussian distribution)')
     args = parser.parse_args()
     generate(args.filename, args.percent_mRNA, args.count, args.mean_length, args.std_dev_length, args.a_tail_mean_length, args.a_tail_std_dev_length)
+
+    # To create 50000 rna strands having ~ 5000 bases and with 10% having ~ 200 polyA tails
+    # python generator.py -f "../../data/molecules5k50k.txt" -c 50000 -m 5000 -d 500 -a 200 -t 25 -p 0.10
+
+    # To create 500000 rna stands having ~5000 bases and with 10% having ~ 200 polyA tails
+    # python generator.py -f "../../data/molecules5k500k.txt" -c 500000 -m 5000 -d 500 -a 200 -t 25 -p 0.10
