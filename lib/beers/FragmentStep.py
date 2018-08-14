@@ -312,8 +312,15 @@ def compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime):
 
         if time_until_break < time_left:
             # Break!
+
             # pick breakpoint by a beta distribution times the length of the molecule and round
-            break_point = math.floor(numpy.random.beta(A,B)*(num_bonds+1)) + start
+            beta_variable = numpy.random.beta(A,B)
+            break_point = math.floor(beta_variable*(num_bonds)) + start
+            if beta_variable == 1.0:
+                # Surprisingly, numpy.random.beta CAN return a 1.0
+                # Which won't round down in the floor above, so we handle it here
+                break_point = start+num_bonds - 1
+
             todo.append(((start, break_point + 1), time_left - time_until_break, k))
             todo.append(((break_point + 1, end), time_left - time_until_break, k))
         else:
