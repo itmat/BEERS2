@@ -3,81 +3,192 @@ import re
 import sys
 import collections
 
+def map_ensembl_to_beers(ids_filename):
+    """
+    Creates a mapping of ENSEMBL IDs to BEERS IDs
+    :param ids_filename: relates ENSEMBL IDs to  BEERS 1.0 IDs: GENE.1, GENE.2, GENE.2, etc...
+    :return: map of BEERS IDs to ENSEMBL IDs
+    """
+    ensembl_id_map = dict()
 
-def quantify(lengths_filename, geneinfo_filename, counts_filename, reads_filename):
-    id_mapping = dict()
-    lengths = collections.defaultdict(int)
-    ucount = collections.defaultdict(int)
-    final_count = collections.defaultdict(int)
-    fpk = dict()
-    num_hits_pattern = re.compile('(NH:i:)(\d+)')
-    with open(lengths_filename, 'r') as lengths_file:
-        for line in lengths_file:
+    # Open file for reading and gather fields in each line into an array.
+    with open(ids_filename, 'r') as ids_file:
+        for line in ids_file:
             fields = line.rstrip('\n').split('\t')
-            id_mapping[fields[0]] = fields[1]
+
+            # Map BEERS ID : ENSEMBL ID
+            ensembl_id_map[fields[0]] = fields[1]
+    return ensembl_id_map
+
+def map_transcript_lengths_to_ensembl(geneinfo_filename, ensembl_id_map):
+    """
+    Computes total transcript length for each transcript and relates it to its ENSEMBL ID
+    :param geneinfo_filename: The full transcript structure in the genome in terms of start and end locations
+     for each exon
+    :return: map of ENSEMBL ID to transcript lengths
+    """
+
+    # This procedure does not map all ensembl keys used.  Consequently we need to insure that
+    # assignments using new keys are initialized to 0
+    transcript_length_map = collections.defaultdict(int)
+
+    # Open file for reading and gather fields in each line into an array.
     with open(geneinfo_filename, 'r') as geneinfo_file:
         for line in geneinfo_file:
             fields = line.rstrip('\n').split('\t')
-            len_ = 0
-            fields[5] = re.sub(r',$','', fields[5])
-            fields[6] = re.sub(r',$','', fields[6])
-            s = fields[5].split(",")
-            e = fields[6].split(",")
-            for i in range(len(s)):
-                len_ = len_ + int(e[i]) - int(s[i])
-            ensid_value = id_mapping[fields[7]]
-            lengths[ensid_value] = len_
+
+            # Starting location(s) for transcript exons - banish trailing comma
+            fields[5] = re.sub(r',$', '', fields[5])
+
+            # Ending location(s) for transcript exons - banish trailing comma
+            fields[6] = re.sub(r',$', '', fields[6])
+
+            # Arrays of start and end locations for transcript exons
+            start_location = fields[5].split(",")
+            end_location = fields[6].split(",")
+
+            # Sum all exon lengths together to create overall transcript length
+            transcript_length = 0
+            for i in range(len(start_location)):
+                transcript_length = transcript_length + int(end_location[i]) - int(start_location[i])
+
+            # Map transcript's ENSEMBL ID to its length
+            ensembl_id_value = ensembl_id_map[fields[7]]
+            transcript_length_map[ensembl_id_value] = transcript_length
+
+    return transcript_length_map
+
+def map_unique_read_count_to_ensembl(counts_filename):
+    """
+    Maps the number of unique reads for a transcript to its ENSEMBL ID
+    :param counts_filename: for each ENSEMBL transcript ID the number of reads (read pairs really) which map
+     UNIQUELY to it.  These have apparently been precomputed even though it seem they are computed again later.
+    :return: map of ENSEMBL ID to unique read counts
+    """
+
+    # This procedure does not map all ensembl keys used.  Consequently we need to insure that
+    # assignments using new keys are initialized to 0
+    read_count_map = collections.defaultdict(int)
+
+    # Open file for reading and gather fields in each line into an array.
     with open(counts_filename, 'r') as counts_file:
         for line in counts_file:
             fields = line.rstrip('\n').split('\t')
-            ucount[fields[0]] = int(fields[1])
+
+            # Map ENSEMBL ID : Unique read count
+            read_count_map[fields[0]] = int(fields[1])
+    return read_count_map
+
+def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
+    final_count = collections.defaultdict(int)
+
+    # The NH tag in the reads file (SAM file) tells us how many locations this read is aligned to.  This
+    # pattern extracts that number.
+    num_hits_pattern = re.compile('(NH:i:)(\d+)')
+
+    ensembl_id_map = map_ensembl_to_beers(ids_filename)
+    transcript_length_map = map_transcript_lengths_to_ensembl(geneinfo_filename, ensembl_id_map)
+    read_count_map = map_unique_read_count_to_ensembl(counts_filename)
+
+    # Open file for reading and start a line counter
     with open(reads_filename, 'r') as reads_file:
         line_count = 0
+
         for line in reads_file:
+
+            # Skip the SAM file header which gives the names of all contigs (contigs are the things we
+            # are aligning the reads to, usually chromosomes but in this case transcripts).
             if line.startswith('@'):
                 continue
+
+            # Skip the reverse read we are counting fragments not reads.
             reads_file.readline()
+
+            # First usable line - bump the counter and report every 100000 line.
             line_count += 1
             if line_count % 100000 == 0:
                 print(f'{line_count}', file = sys.stderr)
+
+            # Gather line's field into an array
             fields = line.rstrip('\n').split('\t')
+
+            # This means the read did not align anywhere so we skip this read
             if fields[2] == '*':
                 continue
-            if not lengths.get(fields[2]):
+
+            # This probably means the transcript was not in our master list of all transcript models
+            #  (the geneinfo filename).  So we skip it.  Really this should not happen
+            #  but just in case.
+            if not transcript_length_map.get(fields[2]):
                 continue
+
+            # Obtain the number of hits from the NH tag
             num_hits_match = re.search(num_hits_pattern, line)
             num_hits = int(num_hits_match.group(2))
-            #seqid = fields[0]
+
+            #seqid = fields[0] This appears to be unnecessary.
+
+            # This mean that this read is a unique mapper.  It aligns only to this transcript.  So we are
+            #  incrementing a counter for this transcript based on the fact that we found a unique aligning read
+            #  and since it's a uniquely aligning read there's nothing more to do.
             if num_hits == 1:
                 final_count[fields[2]] += 1
                 continue
-            ensids = {}
+
+
+            # This dictionary keeps track of which ensembl ID's we've encountered that have multipmappers mapping
+            #  to them.
+            ensids = dict()
+            fpk = dict()
             ensids[fields[2]] = 1
-            if num_hits > 1:
-                for _ in range(num_hits - 1):
 
-                    # Read line
-                    line = reads_file.readline()
+            for _ in range(num_hits - 1):
 
-                    # Skip next line
-                    reads_file.readline()
+                # This and the next line read the next aignment for the current read as we have multiple hits here.
+                # (i.e., same read but aligning to a different transform)
+                line = reads_file.readline()
 
-                    # Parse line fields
-                    new_fields = line.rstrip().split('\t')
+                # Don't forget we skip over the reverse read we don't need it.
+                reads_file.readline()
 
-                    if new_fields[2] != "*" and lengths[new_fields[2]] > 0:
-                        ensids[new_fields[2]] = 1
+                # Parse the line's fields into a array
+                multiple_hit_fields = line.rstrip().split('\t')
+
+                # Here we're basically adding to the dictionary with keys equal to the set of isoforms to which this
+                #  read aligned and we know that there are at least two since this is a multimapper.
+                if multiple_hit_fields[2] != "*" and transcript_length_map[multiple_hit_fields[2]] > 0:
+                    ensids[multiple_hit_fields[2]] = 1
+
+            # Initialize an accumulator.
             total_fpk = 0
+
+            # Here we're adding up the UNIQUE signals from all isoforms this read aligns to.
+            #   But we can't just add up the UNIQUE signals.  We first want to normalize for the length of each
+            #  isoform because we want to be able to say, for example, that two isoforms are expressed at
+            #  the same level, even if one is twice as long as the other.  Because in this case we will get
+            #  twice as many reads from the longer one.  But we're getting more reads because it's longer,
+            #  not because it's expressed higher.  That's why we divide by length in the sum.
             for key in ensids.keys():
-                fpk[key] = ucount[key]/lengths[key]
+                fpk[key] = read_count_map[key]/transcript_length_map[key]
                 total_fpk += fpk[key]
+
+            # This means that there are NO uniquey mapping reads to any of the isoforms that the current read
+            #  is mapping to.  In this case we're just going to mete out the count for this read equally to all
+            #  of the isoforms it aligned to.  That's why the count is incremented by 1/numKeys.
             if total_fpk == 0:
                 num_keys = len(ensids.keys())
                 for key in ensids.keys():
                     final_count[key] += 1/num_keys
+
+            # In this case there are uniquely mapping reads to the isforms.  In this case we're going to mete out
+            #  the count for this read proportionally to how the unique mapping reads are distributed among
+            #  the isoforms
             else:
                 for key in ensids.keys():
+                    # This percent of the signal goes to this isoform.
                     psi = fpk[key] / total_fpk
+
+                    # Increment by psi, the psi values for this read should add to one.
                     final_count[key] += psi
 
     ordered_final_count = collections.OrderedDict(sorted(final_count.items()))
@@ -94,4 +205,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     quantify(args.lengths_filename, args.geneinfo_filename, args.counts_filename, args.reads_filename)
 
+    # Example command
     #python quantify.py -l '/Users/crislawrence/Desktop/cris/BEERS2ENS_SORTED.txt' -g '/Users/crislawrence/Desktop/cris/simulator_config_geneinfo_mm10_ensembl_r75' -c '/Users/crislawrence/Desktop/cris/STAR_umap_counts.Liv1_4.tsv' -r '/Users/crislawrence/Desktop/cris/sim_reads_Liv1_4_Aligned.out.sam'
