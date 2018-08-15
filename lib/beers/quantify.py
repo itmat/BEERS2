@@ -1,14 +1,14 @@
 import argparse
 import re
 import sys
-from collections import defaultdict
+import collections
 
 
 def quantify(lengths_filename, geneinfo_filename, counts_filename, reads_filename):
     id_mapping = dict()
-    lengths = defaultdict(int)
-    ucount = defaultdict(int)
-    final_count = defaultdict(int)
+    lengths = collections.defaultdict(int)
+    ucount = collections.defaultdict(int)
+    final_count = collections.defaultdict(int)
     fpk = dict()
     num_hits_pattern = re.compile('(NH:i:)(\d+)')
     with open(lengths_filename, 'r') as lengths_file:
@@ -53,7 +53,6 @@ def quantify(lengths_filename, geneinfo_filename, counts_filename, reads_filenam
                 continue
             ensids = {}
             ensids[fields[2]] = 1
-            #print(f'first hit: {ensids}')
             if num_hits > 1:
                 for _ in range(num_hits - 1):
 
@@ -70,12 +69,9 @@ def quantify(lengths_filename, geneinfo_filename, counts_filename, reads_filenam
                     #if new_fields[2] != "*" and lengths[new_fields[2]] > 0:
                         #ensids[new_fields[2]] = 1
             total_fpk = 0
-            #print(f'after counting remaining hits {ensids}')
             for key in ensids.keys():
                 fpk[key] = ucount[key]/lengths[key]
-                #print(f'ucount: {ucount[key]} and lengths: {lengths[key]}')
                 total_fpk += fpk[key]
-            #print(f"total_fpk: {total_fpk}")
             if total_fpk == 0:
                 num_keys = len(ensids.keys())
                 for key in ensids.keys():
@@ -83,11 +79,11 @@ def quantify(lengths_filename, geneinfo_filename, counts_filename, reads_filenam
             else:
                 for key in ensids.keys():
                     psi = fpk[key] / total_fpk
-                    #print(f'fpk[key]: {fpk[key]}, total_fpk: {total_fpk}, psi: {psi}')
                     final_count[key] += psi
 
-    for key, value in final_count.items():
-        print(f'{key}:{value}\n')
+    ordered_final_count = collections.OrderedDict(sorted(final_count.items()))
+    for key, value in ordered_final_count.items():
+        print(f'{key}\t{int(value)}')
 
 
 
