@@ -65,9 +65,8 @@ def quantify(lengths_filename, geneinfo_filename, counts_filename, reads_filenam
                     # Parse line fields
                     new_fields = line.rstrip().split('\t')
 
-
-                    #if new_fields[2] != "*" and lengths[new_fields[2]] > 0:
-                        #ensids[new_fields[2]] = 1
+                    if new_fields[2] != "*" and lengths[new_fields[2]] > 0:
+                        ensids[new_fields[2]] = 1
             total_fpk = 0
             for key in ensids.keys():
                 fpk[key] = ucount[key]/lengths[key]
@@ -83,18 +82,7 @@ def quantify(lengths_filename, geneinfo_filename, counts_filename, reads_filenam
 
     ordered_final_count = collections.OrderedDict(sorted(final_count.items()))
     for key, value in ordered_final_count.items():
-        print(f'{key}\t{int(value)}')
-
-
-
-
-
-
-
-
-
-
-
+        print(f'{key}\t{value}')
 
 
 if __name__ == "__main__":
