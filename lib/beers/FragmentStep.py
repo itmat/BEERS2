@@ -1,7 +1,16 @@
 import numpy
-import numbers
+import math
 import collections
 from molecule import Molecule
+
+
+METHODS = {"uniform", "beta"}
+
+# TODO: should this be a parameter?
+# For fragment2
+# just makes lambda into a reasonable value for a molecule of the "typical" size
+# i.e. lambda gives the rate of breakage of a molecule which has this length
+TYPICAL_MOLECULE_SIZE = 1000
 
 class FragmentStep:
     def __init__(self, logfile, parameters):
@@ -16,17 +25,22 @@ class FragmentStep:
         """
         # TODO: these parameters should be read in from a config file
         self.history_filename = logfile
+        self.method = parameters["method"]
         self.lambda_ = parameters["lambda"]
         self.runtime = parameters["runtime"]
 
+        # Parameters used ONLY for beta_fragmentation method
+        if self.method == "beta":
+            self.beta_A = parameters["beta_A"]
+            self.beta_B = parameters["beta_B"]
+            self.beta_N = parameters["beta_N"]
+
     def execute(self, sample):
         print("Fragment Step acting on sample")
-        if isinstance(self.lambda_, numbers.Number):
-            # perform a faster fragmentation with uniform rate
+        if self.method == "uniform":
             fragment_locations = fast_compute_fragment_locations(sample, self.lambda_, self.runtime)
-        else:
-            # perform the slower more general fragmentation
-            fragment_locationss = compute_fragment_locations(sample, self.lambda_, self.runtime)
+        elif self.method == "beta":
+            fragment_locations = compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime)
 
         result = [sample[k].make_fragment(start,end) for (start, end, k) in fragment_locations]
 
@@ -44,6 +58,9 @@ class FragmentStep:
             return False
         if self.runtime <= 0:
             print("Fragmentation runtime must be a positive number", file=sys.stderr)
+            return False
+        if self.method not in METHODS:
+            print("Fragmentation method must be one of the following" + str(METHODS), file=sys.stderr)
             return False
         return True
 
@@ -99,7 +116,6 @@ def compute_fragment_locations(molecules, lambda_, runtime):
             done.append( ((start, end), k) )
 
     return [(start, end, k) for (start, end), k in done]
-
 
 # The general idea, but slow method. Operates on one fragment at a time.
 # Prefer fragment() above. Not of the same format as other functions in this module
@@ -252,3 +268,63 @@ def uniform_direct_compute_fragment_locations(molecules, lambda_, runtime):
         output.extend( (bps[i], bps[i+1], k) for i in range(len(bps)-1) )
 
     return list(output)
+
+### Parametric method with the following assumptions:
+# the rate at which a molecule breaks is proportional to length**N
+# for some  power k
+# and the point at which it breaks follows a Beta distribution with parameters A,B
+# (this gives the a value from 0 to 1 denoting the point on the fragment to break)
+# For symmetric breakage (most useful), you'll want A=B
+# If A=B > 1 then breakage tends towards the middle. If 0 < A=B < 1 then tends towards the edges
+# A = B = 5 gives reasonable values
+# NOTE: there is no theoretical justification for why this should be an appropriate model
+#       but it gives a reasonable looking length distribution while the uniform methods do not
+def compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime):
+    """fragment molecules with varying lambas
+
+    molecules -- a list of molecules
+    lambda_ -- a function mapping (j, (start,end), molecule) to the rate of breakage of
+            the bond at position j of the molecule if it is in a fragment (start,end) of molecule
+    runtime -- length of this process, longer times means more breakage
+
+    returns a list of tuples (start, end, k) of fragments
+    each fragment being k'th molecule from positions start to end (non-inclusive of end)
+    """
+    assert runtime > 0
+    assert A > 0
+    assert B > 0
+    assert lambda_ > 0
+
+    todo = collections.deque()
+    todo.extend(((0, len(molecule)), runtime, k) for k, molecule in enumerate(molecules))
+    done = collections.deque()
+
+    while todo:
+        (start, end), time_left, k = todo.pop()
+        if end - start == 1:
+            done.append(((start, end), k))
+            continue
+
+
+        num_bonds = end - start - 1
+        break_rate = lambda_ * num_bonds**N / TYPICAL_MOLECULE_SIZE**(N-1)
+        time_until_break = numpy.random.exponential(scale = 1/break_rate)
+
+        if time_until_break < time_left:
+            # Break!
+
+            # pick breakpoint by a beta distribution times the length of the molecule and round
+            beta_variable = numpy.random.beta(A,B)
+            break_point = math.floor(beta_variable*(num_bonds)) + start
+            if beta_variable == 1.0:
+                # Surprisingly, numpy.random.beta CAN return a 1.0
+                # Which won't round down in the floor above, so we handle it here
+                break_point = start+num_bonds - 1
+
+            todo.append(((start, break_point + 1), time_left - time_until_break, k))
+            todo.append(((break_point + 1, end), time_left - time_until_break, k))
+        else:
+            # No break!
+            done.append( ((start, end), k) )
+
+    return [(start, end, k) for (start, end), k in done]

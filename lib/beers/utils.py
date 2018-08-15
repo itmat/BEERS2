@@ -9,9 +9,7 @@ class Utils:
         :param strand: RNA/DNA strand to complement.
         :return: complement strand in 5' to 3' direction
         """
-        complement_strand = ''
-        for base in strand:
-            complement_strand += Utils.base_complements[base]
+        complement_strand = ''.join(Utils.base_complements[base] for base in strand)
         return complement_strand[::-1]
 
 

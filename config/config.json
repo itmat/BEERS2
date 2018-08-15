@@ -16,8 +16,12 @@
         "step_name":"FragmentStep",
         "log_file":"../../data/fragment_step.log",
         "parameters": {
+	    "method": "beta",
             "lambda": 0.001,
-            "runtime": 1
+            "runtime": 1,
+	    "beta_N": 2,
+	    "beta_A": 5,
+	    "beta_B": 5
         }
     },
     {
