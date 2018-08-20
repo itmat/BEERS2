@@ -30,6 +30,7 @@ class GeneFilesPreparation:
         :param genes_fasta_filename: - output - contains the genes in fasta format.
         """
         self.genome_fasta_filename = genome_fasta_filename
+        self.edited_genome_fasta_filename = os.path.splitext(genome_fasta_filename)[0] + "_edited.fa"
         self.exons_filename = exons_filename
         self.geneinfo_input_filename = geneinfo_input_filename
         self.geneinfo_output_filename = geneinfo_output_filename
@@ -52,8 +53,10 @@ class GeneFilesPreparation:
 
     def prepare_gene_files(self):
 
+        self.scrub_genome_fasta_file()
+
         # Open the genome fasta file for reading only.
-        with open(self.genome_fasta_filename, 'r') as genome_fasta_file:
+        with open(self.edited_genome_fasta_filename, 'r') as genome_fasta_file:
 
             # Iterate over each chromosome in the genome fasta file.  Note that the chromosome sequence is expected on
             # only one line at this stage.
@@ -80,6 +83,30 @@ class GeneFilesPreparation:
         # Finally create an undated geneinfo file with any gene unrelated to the given genome chromosomes provided,
         # discarded.
         self.update_geneinfo_file()
+
+    def scrub_genome_fasta_file(self):
+        """
+        Edits the genome fasta file, creating an edited version (genome fasta filename without extension + _edited.fa).
+        Edits include:
+        1.  Removing suplemmental information from the description line
+        2.  Removing internal newlines in the sequence
+        3.  Insuring all bases in sequence are represented in upper case.
+        This edited file is the one used in subsequent scripts.
+        """
+        in_sequence = False
+        with open(self.genome_fasta_filename, 'r') as genome_fasta_file, \
+                open(self.edited_genome_fasta_filename, 'w') as edited_genome_fasta_file:
+            for line in genome_fasta_file:
+                if line.startswith('>'):
+                    identifier_only = re.sub(r'[ \t].*', '', line)
+                    if in_sequence:
+                        edited_genome_fasta_file.write("\n")
+                        in_sequence = False
+                    edited_genome_fasta_file.write(identifier_only)
+                else:
+                    edited_genome_fasta_file.write(line.rstrip('\n').upper())
+                    in_sequence = True
+            edited_genome_fasta_file.write("\n")
 
     def update_geneinfo_file(self):
         """
