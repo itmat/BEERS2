@@ -13,28 +13,27 @@ class GeneFilesPreparation:
 
     def __init__(self,
                  genome_fasta_filename,
-                 exons_filename,
-                 geneinfo_input_filename,
-                 geneinfo_output_filename,
+                 geneinfo_filename,
                  genes_fasta_filename):
         """
-        The object is constructed with 3 input file sources (genome fasta, exon location listing, gene info) and
-        2 output file sources (relevant gene info, genes fasta).
+        The object is constructed with 2 input file sources (genome fasta, gene info) and 1 output file
+        source (relevant gene info, genes fasta).  Additionally another output file, named like the genome
+        fasta file but suffixed with '_edited' contained a munged version of the genome fasta file where each
+        chromosome sequence occupies one line.
         :param genome_fasta_filename: input genome fasta filename containing all the chromosomes of interest.  No
         line breaks are allowed within the chromosome sequence.
-        :param exons_filename: input filename of exon location strings
-        :param geneinfo_input_filename: input information about the genes - fields are (chromosome, strand, start,
+        :param geneinfo_filename: input information about the genes - fields are (chromosome, strand, start,
         end, exon count, exon starts, exon ends, gene name)
-        :param geneinfo_output_filename: output - contains same info as the geneinfo_input_filename but with any
-        genes referencing chromosomes not in the genome fasta file removed.
         :param genes_fasta_filename: - output - contains the genes in fasta format.
         """
         self.genome_fasta_filename = genome_fasta_filename
         self.edited_genome_fasta_filename = os.path.splitext(genome_fasta_filename)[0] + "_edited.fa"
-        self.exons_filename = exons_filename
-        self.geneinfo_input_filename = geneinfo_input_filename
-        self.geneinfo_output_filename = geneinfo_output_filename
+        self.geneinfo_filename = geneinfo_filename
+        self.geneinfo_edited_filename = os.path.splitext(geneinfo_filename)[0] + "_edited.txt"
         self.genes_fasta_filename = genes_fasta_filename
+
+        # Holds unique listing of exon locations
+        self.exon_location_list = set()
 
         # Provides the regex pattern for extracting components of the exon location string
         self.exon_info_pattern = re.compile('(.*):(\d+)-(\d+)')
@@ -52,8 +51,16 @@ class GeneFilesPreparation:
             pass
 
     def prepare_gene_files(self):
+        """
+        Essentially does the work of creating a genes fasta file from the inputs provided to the program
+        """
 
+        # Munge the original genome fasta file to create an edited version in which the chromosome sequence has
+        # no internal line breaks and where all bases are in upper case.
         self.scrub_genome_fasta_file()
+
+        # Create a unique listing of exon locations from the gene info file data.
+        self.create_exon_location_list()
 
         # Open the genome fasta file for reading only.
         with open(self.edited_genome_fasta_filename, 'r') as genome_fasta_file:
@@ -93,38 +100,100 @@ class GeneFilesPreparation:
         3.  Insuring all bases in sequence are represented in upper case.
         This edited file is the one used in subsequent scripts.
         """
+
+        # A flag to denote when a fasta sequence is being processed
         in_sequence = False
+
+        # Open the original genome fasta file for reading only and a new edited version of the genome fasta
+        # file for writing only.
         with open(self.genome_fasta_filename, 'r') as genome_fasta_file, \
                 open(self.edited_genome_fasta_filename, 'w') as edited_genome_fasta_file:
+
+            # Iterate over the lines in the original genome fasta file
             for line in genome_fasta_file:
+
+                # Identify whether the current line is a description line or a sequence line
                 if line.startswith('>'):
+
+                    # For a description line, remove any supplemental information following the identifier and
+                    # if the in_sequence flag is raised, lower it and add a line break to the new genome fasta
+                    # file before adding the modified description line.
                     identifier_only = re.sub(r'[ \t].*', '', line)
                     if in_sequence:
                         edited_genome_fasta_file.write("\n")
                         in_sequence = False
                     edited_genome_fasta_file.write(identifier_only)
+                # Otherwise, add the sequence to the new genome fasta file after removing the line break and
+                # insuring all bases are in upper case.  Also raise the in sequence flag.
                 else:
                     edited_genome_fasta_file.write(line.rstrip('\n').upper())
                     in_sequence = True
+
+            # Finally add a line break to the end of the new genome fasta file.
             edited_genome_fasta_file.write("\n")
+
+    def create_exon_location_list(self):
+        """
+        Generate a unique listing of exon location strings from the provided gene info file.  Note that the same
+        exon may appear in multiple genes.  So the listing is actually a set to avoid duplicate entries.
+        """
+
+        # Open the gene info file for reading only
+        with open(self.geneinfo_filename, 'r') as geneinfo_file:
+
+            # Iterate over each line in the file
+            for line in geneinfo_file:
+
+                # Collect all the field values for the line read following newline removal.
+                (chromosome, strand, start, end, exon_count, exon_starts, exon_ends, name) = \
+                    line.rstrip('\n').split('\t')
+
+                # Remove any trailing commas in the exon starts and exon ends fields and split
+                # the starts and stops into their corresponding lists
+                exon_starts_list = re.sub(r'\s*,\s*$', '', exon_starts).split(",")
+                exon_ends_list = re.sub(r'\s*,\s*$', '', exon_ends).split(",")
+
+                # For each exon belonging to the gene, construct the exon's location string and add it to the
+                # growing set of exon locations assuming it is not already present.
+                for index in range(int(exon_count)):
+                    exon_location = f'{chromosome}:{(int(exon_starts_list[index]) + 1)}-{(exon_ends_list[index])}'
+                    self.exon_location_list.add(exon_location)
 
     def update_geneinfo_file(self):
         """
         Create an update geneinfo file in which lines related to chromosomes that are not present in the
-        genome fasta file are expunged.
+        genome fasta file are expunged.  If there are no such omissions, the files will be identical.
         """
+
+        # Holds a list of chromosomes found for exons in the gene info file that are not available in the
+        # genome fasta file
         missing_genome_chromosomes = []
+
+        # Iterate over all the chromosomes found for exons in the gene info file
         for chromosome in self.chromosome_in_exon_file.keys():
+
+            # If that chromosome is not also in the genome fasta file, issue a warning and add the
+            # unavailable chromosome to the list of missing chromosomes.  Otherwise, note the
+            # chromosome as available.
             if chromosome not in self.chromosome_in_genome_file:
                 print(f"no genome sequence for {chromosome}", file=sys.stderr)
                 missing_genome_chromosomes.append(chromosome)
             else:
                 print(f"sequence available for {chromosome}", file=sys.stderr)
+
+        # If there are missing chromosomes, note that fact.
         if missing_genome_chromosomes:
-            print(f"Removing the genes on the chromosomes for which no genome sequences are available.")
-        with open(self.geneinfo_input_filename, 'r') as geneinfo_in, \
-                open(self.geneinfo_output_filename, 'w') as geneinfo_out:
+            print(f"Removing the genes on chromosomes for which no genome sequences are available.", file=sys.stderr)
+
+        # Open the original gene info for reading and the edited gene info file for writing.
+        with open(self.geneinfo_filename, 'r') as geneinfo_in, \
+                open(self.geneinfo_edited_filename, 'w') as geneinfo_out:
+
+            # Iterate over the lines in the original gene info file
             for line in geneinfo_in:
+
+                # If no of the missing chromosomes are found on the line, write the line out to the edited
+                # version of the gene info file.
                 if not any(chromosome in line for chromosome in missing_genome_chromosomes):
                     geneinfo_out.write(line)
 
@@ -132,36 +201,31 @@ class GeneFilesPreparation:
         """
         For the given genome chromosome and its sequence, create a dictionary of exon sequences keyed to the exon's
         location (i.e., chr:start-end).
-        :param genome_chromosome:
-        :param sequence:
-        :return:
+        :param genome_chromosome: given genome chromosome
+        :param sequence: the genome sequence corresponding to the genome chromosome (without line breaks)
+        :return: map of exon location : exon sequence
         """
+
         # Start with a empty dictionary
         exon_sequence_map = dict()
 
-        # Open for reading only, the file containing a listing of exon locations
-        with open(self.exons_filename, 'r') as exons_file:
+        # Iterate over the list of previously obtained exon locations
+        for exon_location in self.exon_location_list:
 
-            # Iterate over the lines in the file
-            for line in exons_file:
+            # Extract the chromosome, start and end from the exon location string
+            exon_info_match = re.search(self.exon_info_pattern, exon_location)
+            chromosome = exon_info_match.group(1)
+            exon_start = int(exon_info_match.group(2))
+            exon_end = int(exon_info_match.group(3))
 
-                # Remove the newline character to be left with the exon location string only
-                exon_key = line.rstrip('\n')
+            # Note that the exon listing contains at least one exon on chromosome 'chromosome'
+            self.chromosome_in_exon_file[chromosome] = True
 
-                # Extract the chromosome, start and end from the exon location string
-                exon_info_match = re.search(self.exon_info_pattern, exon_key)
-                chromosome = exon_info_match.group(1)
-                exon_start = int(exon_info_match.group(2))
-                exon_end = int(exon_info_match.group(3))
-
-                # Note that the exon listing contains at least one exon on chromosome 'chromosome'
-                self.chromosome_in_exon_file[chromosome] = True
-
-                # If the chromosome on which the exon is located is the same of the genome chromosome
-                # provided as a parameter, get the sequence for that exon and create a dictionary
-                # entry relating the exon location string to the exon sequence.
-                if chromosome == genome_chromosome:
-                    exon_sequence_map[exon_key] = sequence[exon_start-1:exon_end]
+            # If the chromosome on which the exon is located is the same of the genome chromosome
+            # provided as a parameter, get the sequence for that exon and create a dictionary
+            # entry relating the exon location string to the exon sequence.
+            if chromosome == genome_chromosome:
+                exon_sequence_map[exon_location] = sequence[exon_start-1:exon_end]
 
         # Return the dictionary of exon location string : exon sequence for the genome chromosome
         # provided in the parameter list.
@@ -170,7 +234,7 @@ class GeneFilesPreparation:
     def make_gene_fasta_file(self, genome_chromosome, exon_sequence_map):
 
         # Open the original gene info file for reading and the genes fasta file for appending.
-        with open(self.geneinfo_input_filename, 'r') as geneinfo_file, \
+        with open(self.geneinfo_filename, 'r') as geneinfo_file, \
              open(self.genes_fasta_filename, 'a') as genes_fasta_file:
 
                 # Iterate over the gene info file
@@ -220,16 +284,12 @@ class GeneFilesPreparation:
         """
         parser = argparse.ArgumentParser(description='Create Gene Info File')
         parser.add_argument('-f', '--genome_fasta_filename')
-        parser.add_argument('-e', '--exons_filename')
-        parser.add_argument('-i', '--geneinfo_input_filename')
-        parser.add_argument('-o', '--geneinfo_output_filename')
+        parser.add_argument('-i', '--geneinfo_filename')
         parser.add_argument('-g', '--genes_fasta_filename')
 
         args = parser.parse_args()
         file_prep = GeneFilesPreparation(args.genome_fasta_filename,
-                                         args.exons_filename,
-                                         args.geneinfo_input_filename,
-                                         args.geneinfo_output_filename,
+                                         args.geneinfo_filename,
                                          args.genes_fasta_filename)
         file_prep.prepare_gene_files()
 
@@ -239,6 +299,6 @@ if __name__ == "__main__":
 
 '''
 Usage Example:
-python gene_files_preparation.py -f ../../data/genome_mm10.fa -e ../../data/exons_mm10.txt -i \
-  ../../data/geneinfo_mm10.txt  -o ../../data/new_geneinfo_mm10.txt -g ../../data/genes_mm10.fa
+python gene_files_preparation.py -f ../../data/genome_mm10.fa  -i ../../data/geneinfo_mm10.txt \
+ -g ../../data/genes_mm10.fa
 '''
