@@ -2,6 +2,7 @@ import numpy
 import math
 import collections
 from molecule import Molecule
+import sys
 
 
 METHODS = {"uniform", "beta"}
@@ -142,8 +143,8 @@ def simple_fragment(molecule, lambda_function, runtime):
     if time_until_break < runtime:
         # Break!
         break_point = numpy.random.choice(num_bonds, p = lambda_array/total_lambda)
-        yield from fragment(molecule[:break_point+1], lambda_function, runtime - time_until_break)
-        yield from fragment(molecule[break_point+1:], lambda_function, runtime - time_until_break)
+        yield from simple_fragment(molecule[:break_point+1], lambda_function, runtime - time_until_break)
+        yield from simple_fragment(molecule[break_point+1:], lambda_function, runtime - time_until_break)
     else:
         # No break!
         yield molecule
