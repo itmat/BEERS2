@@ -1,17 +1,22 @@
 import sys
 from molecule import Molecule
-from scipy.stats import binom
+from scipy.stats import norm
 import numpy as np
+from timeit import default_timer as timer
+import pylab as pl
+
 
 class SizingStep:
 
     def __init__(self, log_filename, parameters):
         self.log_filename = log_filename
-        self.size_mean = parameters.get("size_mean")
-        self.size_sd = parameters.get("size_sd")
-        var = (self.size_sd)^2
-        self.p = 1 - var/self.size_mean
-        self.n = self.size_mean/self.p
+        self.mean_length = parameters.get("mean_length")
+        self.sd_length = parameters.get("sd_length")
+        self.dist = norm(self.mean_length, self.sd_length)
+        mean_prob = self.dist.pdf(self.mean_length)
+        self.normalize_coefficient = 1 / mean_prob
+        self.lower_breakpoint = self.mean_length + 0.25 * self.sd_length
+        self.upper_breakpoint = self.mean_length + 6 * self.sd_length
         print("Sizing step instantiated")
 
     def execute(self, sample):
@@ -21,7 +26,7 @@ class SizingStep:
             log_file.write(Molecule.header)
             for molecule in sample:
                 seq_length = len(molecule.sequence)
-                retention_odds = binom.pmf(seq_length, self.n, self.p)
+                retention_odds = self.dist_function(seq_length)
                 retained = np.random.choice([1, 0], 1, p=[retention_odds, 1 - retention_odds])[0]
                 note = ''
                 if retained:
@@ -33,13 +38,47 @@ class SizingStep:
         print("Sizing step complete")
         return retained_sample
 
+    def dist_function(self, x):
+        y = self.normalize_coefficient * self.dist.pdf(x)
+        if x > self.lower_breakpoint and x <= self.upper_breakpoint:
+                y += max(0, ((x - self.lower_breakpoint) / self.lower_breakpoint) * (1.0 - x/self.upper_breakpoint))
+        return y
+
+    def display_dist_function(self):
+        x_values = np.linspace(0, self.mean_length + 6*self.sd_length, self.mean_length + 6*self.sd_length)
+        y_values = [self.dist_function(x) for x in x_values]
+        pl.plot(x_values, y_values)
+        pl.show()
+
 
     def validate(self):
         print(f"Sizing step validating parameters")
-        if self.size_mean < 0 or self.size_mean > 10000:
-            print("The mean size for the molecules processed in this step must be between 0 and 10000 exclusive", file=sys.stderr)
-            return False
-        if self.size_sd < 0 or self.size_sd > self.size_mean:
-            print("The sizing standard deviation for the moleules processed in thsi step must be betwwen 0 and the given mean, exclusive", file=sys.stderr)
-            return False
         return True
+
+if __name__ == "__main__":
+    np.random.seed(100)
+    molecules = []
+    with open("../../data/molecules.txt", 'r') as sample_file:
+        sequences = sample_file.readlines()
+        for i, text in enumerate(sequences):
+            sequence = text.rstrip()
+            cigar = str(len(sequence)) + 'M'
+            rna_molecule = Molecule(i, sequence, 1, cigar)
+            molecules.append(rna_molecule)
+            i += 1
+    input_data_log_file = "../../data/sizing_step_input_data.log"
+    with open(input_data_log_file, "w+") as input_data_log:
+        input_data_log.write(Molecule.header)
+        for rna_molecule in molecules:
+            input_data_log.write(rna_molecule.log_entry())
+    output_data_log_file = "../../data/sizing_step_output_data.log"
+    input_parameters = {
+        "mean_length": 250,
+        "sd_length": 50
+    }
+    step = SizingStep(output_data_log_file, input_parameters)
+    step.display_dist_function()
+    #start = timer()
+    #step.execute(molecules)
+    #end = timer()
+    #print(f"Sizing Step: {end - start} for {len(molecules)} molecules.")
