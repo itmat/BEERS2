@@ -25,14 +25,12 @@
         }
     },
     {
-      "step_name":"SonicateStep",
-      "log_file": "",
-      "parameters":{}
-    },
-    {
-      "step_name":"HexamerPrimeStep",
-      "log_file": "",
-      "parameters":{}
+      "step_name":"SizingStep",
+      "log_file": "../../data/sizing_step.log",
+      "parameters": {
+          "mean_length":250,
+          "sd_length": 50
+      }
     }
   ],
   "log_filename":"../../data/original_sample.log",
