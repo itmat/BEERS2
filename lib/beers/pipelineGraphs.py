@@ -31,10 +31,15 @@ def generate_graphs(info):
     sizing_retained_df = sizing_df[sizing_df["note"] != "removed"]
     sizing_retained_df['seq_length'] = sizing_retained_df.apply(lambda row: len(row['sequence']), axis=1)
 
+    # Post PCR Amplification data
+    pcr_amp_df = pd.read_csv("../../data/pcr_amplification_step.log")
+    pcr_amp_df['seq_length'] = pcr_amp_df.apply(lambda row: len(row['sequence']), axis=1)
+
     print(f"Total Sequences Originally: {len(original_df)}")
     print(f"Total Sequences Post Poly A: {len(polyA_retained_df)}")
     print(f"Total Sequences Post fragment: {len(frag_df)}")
     print(f"Total Sequences Post sizing: {len(sizing_retained_df)}")
+    print(f"Total Sequences Post PCR Amplification: {len(pcr_amp_df)}")
 
 
     # Histogram comparing sequence lengths before and after step
@@ -61,6 +66,12 @@ def generate_graphs(info):
             x=sizing_retained_df['seq_length'],
             opacity=0.75,
             name="Post Sizing Step",
+            xbins=dict(start=0, end=6500, size=20)
+        ),
+        go.Histogram(
+            x=pcr_amp_df['seq_length'],
+            opacity=0.75,
+            name="Post PCR Amplification Step",
             xbins=dict(start=0, end=6500, size=20)
         )
     ]
