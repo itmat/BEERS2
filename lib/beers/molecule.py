@@ -13,6 +13,9 @@ class Molecule:
         self.sequence = sequence.strip()
         self.start = start
         self.cigar = cigar
+        #Track sequences and locations of bound primers or newly synthesized
+        #cDNA strands, etc.
+        self.bound_molecules = []
 
     def validate(self):
         if Molecule.disallowed.search(self.sequence):
@@ -93,6 +96,39 @@ class Molecule:
 
         return frag
 
+    def bind(self, molecule_to_bind):
+        """Bind another molecule to this molecule. E.g. primer binding.
+
+        Parameters
+        ----------
+        molecule_to_bind : Molecule
+            New molecule (like a primer) to bind to the current molecule. Start
+            coordinate for molecule_to_bind should identify the 5' most position
+            of the current molecule where the binding begins, and must be within
+            the bounds of the current molecule.
+
+        """
+        if not 0 <= molecule_to_bind.start < len(self.sequence):
+            raise BoundMoleculeOutOfBounds()
+        self.bound_molecules.append(molecule_to_bind)
+
+    def print_bound_molecules(self):
+        """Return list of bound molecules and their start coordinates as a string.
+
+        Returns
+        -------
+        String
+            Molecule_ids, sequences, and starts of each bound molecule in a
+            comma-separated string, formatted like this:
+            "id:molecule_id,sequence:ACGT,start:3;".
+            Note, entries for each bound molecule are separated by semicolons.
+
+        """
+        bound_molecule_string = ""
+        for bound_molecule in self.bound_molecules:
+            bound_molecule_string += f"id:{bound_molecule.molecule_id},sequence:{bound_molecule.sequence},start:{bound_molecule.start};"
+        return bound_molecule_string
+
     def __len__(self):
         return len(self.sequence)
 
@@ -113,6 +149,13 @@ class Molecule:
         Molecule.next_molecule_id += 1
         return f"{parent_id}.{new_id}"
 
+class BeersMoleculeException(Exception):
+    """Base class for other molecule exceptions."""
+    pass
+
+class BoundMoleculeOutOfBounds(BeersMoleculeException):
+    """Raised when start coordinate of bound molecule outside  length of this molecule."""
+    pass
 
 if __name__ == "__main__":
     source = "AGTTCAAGCTTGCACTCTAG"
