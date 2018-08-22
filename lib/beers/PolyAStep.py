@@ -54,13 +54,15 @@ class PolyAStep:
         :param note: comment added to log
         :return: note with an addendum if a truncation occurs
         """
+
         sequence_minus_tail_length = len(molecule.sequence) - tail_length
         breakage_likelihood = min([self.min_breakage_prob * sequence_minus_tail_length, self.max_breakage_prob])
         breakage = np.random.choice([1, 0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
         if breakage:
 
-            # Geometric distribution of breakpoints - subtract 1 because geometric dist 1 indexed.
-            breakpoint_from_3p = min(np.random.geometric(self.breakpoint_prob), sequence_minus_tail_length) - 1
+            # Geometric distribution of breakpoints - although geometric dist 1 indexed, we don't subtract
+            # the 1 because we want to be sure of leaving at least one non-polyA nt.
+            breakpoint_from_3p = min(np.random.geometric(self.breakpoint_prob), sequence_minus_tail_length)
             breakpoint_from_5p = sequence_minus_tail_length - 1 - breakpoint_from_3p
             molecule.truncate(breakpoint_from_5p)
             note += ' broken'
