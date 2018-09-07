@@ -3,24 +3,8 @@ import re
 import sys
 import collections
 
-def map_ensembl_to_beers(ids_filename):
-    """
-    Creates a mapping of ENSEMBL IDs to BEERS IDs
-    :param ids_filename: relates ENSEMBL IDs to  BEERS 1.0 IDs: GENE.1, GENE.2, GENE.2, etc...
-    :return: map of BEERS IDs to ENSEMBL IDs
-    """
-    ensembl_id_map = dict()
 
-    # Open file for reading and gather fields in each line into an array.
-    with open(ids_filename, 'r') as ids_file:
-        for line in ids_file:
-            fields = line.rstrip('\n').split('\t')
-
-            # Map BEERS ID : ENSEMBL ID
-            ensembl_id_map[fields[0]] = fields[1]
-    return ensembl_id_map
-
-def map_transcript_lengths_to_ensembl(geneinfo_filename, ensembl_id_map):
+def transcript_length(geneinfo_filename):
     """
     Computes total transcript length for each transcript and relates it to its ENSEMBL ID
     :param geneinfo_filename: The full transcript structure in the genome in terms of start and end locations
@@ -53,42 +37,53 @@ def map_transcript_lengths_to_ensembl(geneinfo_filename, ensembl_id_map):
                 transcript_length = transcript_length + int(end_location[i]) - int(start_location[i])
 
             # Map transcript's ENSEMBL ID to its length
-            ensembl_id_value = ensembl_id_map[fields[7]]
-            transcript_length_map[ensembl_id_value] = transcript_length
+            transcript_length_map[fields[7]] = transcript_length
 
     return transcript_length_map
 
-def map_unique_read_count_to_ensembl(counts_filename):
+
+def transcript_umap_count(reads_filename):
     """
-    Maps the number of unique reads for a transcript to its ENSEMBL ID
-    :param counts_filename: for each ENSEMBL transcript ID the number of reads (read pairs really) which map
-     UNIQUELY to it.  These have apparently been precomputed even though it seem they are computed again later.
-    :return: map of ENSEMBL ID to unique read counts
+    Counts number of reads uniquely mapped to a transcript
+    :param reads_filename: The read alignment information
+    :return: map of ENSEMBL ID to unique mapper read counts of the transcript
     """
 
-    # This procedure does not map all ensembl keys used.  Consequently we need to insure that
-    # assignments using new keys are initialized to 0
-    read_count_map = collections.defaultdict(int)
+    tx_umap_count = collections.defaultdict(int)
 
-    # Open file for reading and gather fields in each line into an array.
-    with open(counts_filename, 'r') as counts_file:
-        for line in counts_file:
+    with open(reads_filename, 'r') as reads_file:
+        for line in reads_file:
+
+            # Skip the SAM file header
+            if line.startswith('@'):
+                continue
+
+            # Skip the reverse read
+            reads_file.readline()
+
+            # Gather line's field into a list
             fields = line.rstrip('\n').split('\t')
 
-            # Map ENSEMBL ID : Unique read count
-            read_count_map[fields[0]] = int(fields[1])
-    return read_count_map
+            # Ignore unaligned reads
+            if fields[2] == "*":
+                continue
+            # Check for flag for unique mapper
+            elif line.find('NH:i:1\t') >= 0:
+                tx = fields[2].split(':')[0]
+                tx_umap_count[tx] += 1
+    return tx_umap_count
 
-def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
-    final_count = collections.defaultdict(int)
+
+
+def quantify(geneinfo_filename, reads_filename, quant_filename):
+    tx_final_count = collections.defaultdict(int)
 
     # The NH tag in the reads file (SAM file) tells us how many locations this read is aligned to.  This
     # pattern extracts that number.
     num_hits_pattern = re.compile('(NH:i:)(\d+)')
 
-    ensembl_id_map = map_ensembl_to_beers(ids_filename)
-    transcript_length_map = map_transcript_lengths_to_ensembl(geneinfo_filename, ensembl_id_map)
-    read_count_map = map_unique_read_count_to_ensembl(counts_filename)
+    tx_length = transcript_length(geneinfo_filename)
+    tx_umap_count = transcript_umap_count(reads_filename)
 
     # Open file for reading and start a line counter
     with open(reads_filename, 'r') as reads_file:
@@ -116,10 +111,12 @@ def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
             if fields[2] == '*':
                 continue
 
+            tx = fields[2].split(':')[0]
+
             # This probably means the transcript was not in our master list of all transcript models
             #  (the geneinfo filename).  So we skip it.  Really this should not happen
             #  but just in case.
-            if not transcript_length_map.get(fields[2]):
+            if not tx_length.get(tx):
                 continue
 
             # Obtain the number of hits from the NH tag
@@ -132,7 +129,7 @@ def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
             #  incrementing a counter for this transcript based on the fact that we found a unique aligning read
             #  and since it's a uniquely aligning read there's nothing more to do.
             if num_hits == 1:
-                final_count[fields[2]] += 1
+                tx_final_count[tx] += 1
                 continue
 
 
@@ -140,7 +137,7 @@ def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
             #  to them.
             ensids = dict()
             fpk = dict()
-            ensids[fields[2]] = 1
+            ensids[tx] = 1
 
             for _ in range(num_hits - 1):
 
@@ -154,10 +151,12 @@ def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
                 # Parse the line's fields into a array
                 multiple_hit_fields = line.rstrip().split('\t')
 
+                multiple_hit_tx = multiple_hit_fields[2].split(':')[0]
+
                 # Here we're basically adding to the dictionary with keys equal to the set of isoforms to which this
                 #  read aligned and we know that there are at least two since this is a multimapper.
-                if multiple_hit_fields[2] != "*" and transcript_length_map[multiple_hit_fields[2]] > 0:
-                    ensids[multiple_hit_fields[2]] = 1
+                if multiple_hit_fields[2] != "*" and tx_length[multiple_hit_tx] > 0:
+                    ensids[multiple_hit_tx] = 1
 
             # Initialize an accumulator.
             total_fpk = 0
@@ -169,7 +168,7 @@ def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
             #  twice as many reads from the longer one.  But we're getting more reads because it's longer,
             #  not because it's expressed higher.  That's why we divide by length in the sum.
             for key in ensids.keys():
-                fpk[key] = read_count_map[key]/transcript_length_map[key]
+                fpk[key] = tx_umap_count[key]/tx_length[key]
                 total_fpk += fpk[key]
 
             # This means that there are NO uniquey mapping reads to any of the isoforms that the current read
@@ -178,7 +177,7 @@ def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
             if total_fpk == 0:
                 num_keys = len(ensids.keys())
                 for key in ensids.keys():
-                    final_count[key] += 1/num_keys
+                    tx_final_count[key] += 1/num_keys
 
             # In this case there are uniquely mapping reads to the isforms.  In this case we're going to mete out
             #  the count for this read proportionally to how the unique mapping reads are distributed among
@@ -189,21 +188,25 @@ def quantify(ids_filename, geneinfo_filename, counts_filename, reads_filename):
                     psi = fpk[key] / total_fpk
 
                     # Increment by psi, the psi values for this read should add to one.
-                    final_count[key] += psi
+                    tx_final_count[key] += psi
 
-    ordered_final_count = collections.OrderedDict(sorted(final_count.items()))
-    for key, value in ordered_final_count.items():
-        print(f'{key}\t{value}')
+    ordered_tx_final_count = collections.OrderedDict(sorted(tx_final_count.items()))
+    # Write the quantfication information to quant_filename
+    with open(quant_filename, 'w') as quant_file:
+        for key, value in ordered_tx_final_count.items():
+            quant_file.write(str(key) + '\t' + str(value) + '\n')
+
+
+
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Quantifier')
-    parser.add_argument('-l', '--lengths_filename')
     parser.add_argument('-g', '--geneinfo_filename')
-    parser.add_argument('-c', '--counts_filename')
     parser.add_argument('-r', '--reads_filename')
+    parser.add_argument('-o', '--quant_filename')
     args = parser.parse_args()
-    quantify(args.lengths_filename, args.geneinfo_filename, args.counts_filename, args.reads_filename)
+    quantify(args.geneinfo_filename, args.reads_filename, args.quant_filename)
 
     # Example command
-    #python quantify.py -l '/Users/crislawrence/Desktop/cris/BEERS2ENS_SORTED.txt' -g '/Users/crislawrence/Desktop/cris/simulator_config_geneinfo_mm10_ensembl_r75' -c '/Users/crislawrence/Desktop/cris/STAR_umap_counts.Liv1_4.tsv' -r '/Users/crislawrence/Desktop/cris/sim_reads_Liv1_4_Aligned.out.sam'
+    #python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_quant.tsv'
