@@ -118,17 +118,18 @@ class VariantsMaker:
         # Calculate the entropy based upon these abundances
         entropy = VariantsMaker.calculate_entropy(abundances)
 
+        # Round abundance to 2 decimal places and render as strings so that the array elements can be joined.
+        printable_abundances = [str(round(abundance, 2)) for abundance in abundances]
+
         # Assemble the total reads, abundances and entropy into a string as add to the line being
         # assembled.
         annotations = f"\tTOT={total_reads_per_position}" \
-                      f"\t{','.join([str(round(abundance,2)) for abundance in abundances])}" \
+                      f"\t{','.join(printable_abundances)}" \
                       f"\tE={entropy}\n"
         line.write(annotations)
         return entropy
 
-
-
-    def dump_to_file(self, chromosome, variant_reads, initial_write=False):
+    def dump_to_file(self, chromosome, variant_reads):
         """
         Parses the variant_reads dictionary (variant:read count) for each chromosome - position to create
         a line with the variants and their counts delimited by pipes.  Dumping each chromosome's worth of
@@ -136,7 +137,6 @@ class VariantsMaker:
         this function will do that ordering and sent that data to stdout.
         :param chromosome: chromosome whose variants are being dumped to file
         :param variant_reads: dictionary of variants to read counts
-        :param initial_write: boolean
         """
         with open(self.variants_filename, "a") as variants_file:
 
@@ -168,7 +168,8 @@ class VariantsMaker:
                 # the chromosome and new position
                 if variant.position != current_position:
 
-                    entropy = VariantsMaker.include_annotations(variant_reads_per_position, total_reads_per_position, line)
+                    entropy = VariantsMaker.include_annotations(variant_reads_per_position,
+                                                                total_reads_per_position, line)
 
                     # Finally transfer the line contents to the output file
                     variants_file.write(line.getvalue())
@@ -197,7 +198,7 @@ class VariantsMaker:
                 variant_reads_per_position.append(variant_reads[variant])
 
             # Handle very last position in dictionary for the chromosome being dumped
-            VariantsMaker.include_annotations(variant_reads_per_position, total_reads_per_position, line)
+            entropy = VariantsMaker.include_annotations(variant_reads_per_position, total_reads_per_position, line)
 
             # Finally transfer the completed line contents to the output file
             variants_file.write(line.getvalue())
@@ -222,7 +223,6 @@ class VariantsMaker:
         """
         variant_reads = dict()
         current_chromosome = 0
-        initial_write = True
         with open(self.alignment_map_filename, "r") as alignment_map_file:
             for index, line in enumerate(alignment_map_file):
                 (chromosome, start, cigar, seq) = line.rstrip('\n').split('\t')
@@ -232,8 +232,7 @@ class VariantsMaker:
                 # If we are starting a new chromosome, dump the data for the existing chromosome into the output
                 # file and renew the variant_reads dictionary for the new chromosome.
                 if current_chromosome != chromosome:
-                    self.dump_to_file(current_chromosome, variant_reads, initial_write)
-                    initial_write = False
+                    self.dump_to_file(current_chromosome, variant_reads)
                     variant_reads.clear()
                     current_chromosome = chromosome
                 cigar, seq = self.remove_clips(cigar, seq)
@@ -283,7 +282,7 @@ class VariantsMaker:
                         loc_on_read += length
 
             # For each chromosome completed dump the dictionary contents to avoid a large memory footprint.
-            self.dump_to_file(current_chromosome, variant_reads, initial_write)
+            self.dump_to_file(current_chromosome, variant_reads)
 
     @staticmethod
     def main():
