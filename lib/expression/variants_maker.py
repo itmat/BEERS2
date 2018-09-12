@@ -99,6 +99,26 @@ class VariantsMaker:
         max_abundances = [scale * max_abundance for max_abundance in max_abundances]
         return -1 * max_abundances[0] * math.log2(max_abundances[0]) - max_abundances[1] * math.log2(max_abundances[1])
 
+    def include_annotations(self, variant_reads_per_position, total_reads_per_position, line):
+
+        # Determine the abundances for each variant (i.e., number of reads for a variant compared with
+        # the total number of reads) for this current position.
+        abundances = [variant_reads_per_position[i] / total_reads_per_position
+                      for i in range(0, len(variant_reads_per_position))]
+
+        # Calculate the entropy based upon these abundances
+        entropy = VariantsMaker.calculate_entropy(abundances)
+
+        # Assemble the total reads, abundances and entropy into a string as add to the line being
+        # assembled.
+        annotations = f"\tTOT={total_reads_per_position}" \
+                      f"\t{','.join([str(round(abundance,2)) for abundance in abundances])}" \
+                      f"\tE={entropy}\n"
+        line.write(annotations)
+        return entropy
+
+
+
     def dump_to_file(self, chromosome, variant_reads, initial_write=False):
         """
         Parses the variant_reads dictionary (variant:read count) for each chromosome - position to create
@@ -129,32 +149,17 @@ class VariantsMaker:
             # Iterate over the variants in the dictionary of variants to read counts sorted by the variant position
             for index, variant in enumerate(sorted(variant_reads.keys(), key=attrgetter('position'))):
 
-                # Initial setting for the current position is the position of the first variant
+                # Initial setting for the current position is the position of the first variant and we start
+                # with the chromosome and position
                 if index == 0:
                     current_position = variant.position
-
-                    # The very first line in the file must start with the chromosome and position.
-                    if initial_write:
-                        line.write(f'{chromosome}:{current_position}')
+                    line.write(f'{chromosome}:{current_position}')
 
                 # if the new position differs from the existing position, start a new line in the file and write out
                 # the chromosome and new position
                 if variant.position != current_position:
 
-                    # Determine the abundances for each variant (i.e., number of reads for a variant compared with
-                    # the total number of reads) for this current position.
-                    abundances = [variant_reads_per_position[i] / total_reads_per_position
-                                  for i in range(0, len(variant_reads_per_position))]
-
-                    # Calculate the entropy based upon these abundances
-                    entropy = VariantsMaker.calculate_entropy(abundances)
-
-                    # Assemble the total reads, abundances and entropy into a string as add to the line being
-                    # assembled.
-                    annotations = f"\tTOT={total_reads_per_position}" \
-                                  f"\t{','.join([str(round(abundance,2)) for abundance in abundances])}" \
-                                  f"\tE={entropy}\n"
-                    line.write(annotations)
+                    entropy = self.include_annotations(variant_reads_per_position, total_reads_per_position, line)
 
                     # Finally transfer the line contents to the output file
                     variants_file.write(line.getvalue())
@@ -182,6 +187,18 @@ class VariantsMaker:
                 total_reads_per_position += variant_reads[variant]
                 variant_reads_per_position.append(variant_reads[variant])
 
+            # Handle very last position in dictionary for last chromosome
+            self.include_annotations(variant_reads_per_position, total_reads_per_position, line)
+
+            # Finally transfer the line contents to the output file
+            variants_file.write(line.getvalue())
+
+            # If the sort by entropy option is selected, also add to the entropy map dictionary the line
+            # entropy, keyed by the line content but only if the total number of reads exceeds the
+            # depth cutoff.
+            if self.entropy_sort and total_reads_per_position >= int(self.depth_cutoff):
+                entropy_map[line.getvalue()] = entropy
+
         # If the user selected the sort by entropy option, other the entropy_map entries in descending order
         # of entropy and print to std out.
         if self.entropy_sort:
@@ -206,7 +223,7 @@ class VariantsMaker:
                 # If we are starting a new chromosome, dump the data for the existing chromosome into the output
                 # file and renew the variant_reads dictionary for the new chromosome.
                 if current_chromosome != chromosome:
-                    self.dump_to_file(chromosome, variant_reads, initial_write)
+                    self.dump_to_file(current_chromosome, variant_reads, initial_write)
                     initial_write = False
                     variant_reads.clear()
                     current_chromosome = chromosome
@@ -256,7 +273,7 @@ class VariantsMaker:
                                 Variant(variant_type, current_chromosome, location,  f'I{insertion_sequence}'), 0) + 1
                         loc_on_read += length
 
-            # One each chromosome completed dump the dictionary contents to avoid a large memory footprint.
+            # For each chromosome completed dump the dictionary contents to avoid a large memory footprint.
             self.dump_to_file(current_chromosome, variant_reads, initial_write)
 
     @staticmethod
@@ -273,8 +290,8 @@ class VariantsMaker:
                             help="Optional request to sort line in order of descreasing entropy.")
         parser.add_argument('-c', '--cutoff_depth', type=int, default=10,
                             help="Integer to indicate minimum read depth a position must have for inclusion."
-                                 " If the option is selected without a minimum read depth, a default of 10 will be"
-                                 " applied.  Note that this option is used only if the sort_by_entropy option is"
+                                 " If the option is not selected, a default of 10 will be applied as the minimum"
+                                 " read depth.  Note that this option is used only if the sort_by_entropy option is"
                                  " invoked.")
         args = parser.parse_args()
         print(args)
