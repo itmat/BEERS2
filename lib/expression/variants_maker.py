@@ -40,9 +40,9 @@ class VariantsMaker:
     chr1:10128503 | C:29 | T:1 | IT:1 ITTT:3
     """
 
-    def __init__(self, alignment_map_filename, sort_by_entropy):
+    def __init__(self, alignment_map_filename, sort_by_entropy, depth_cutoff):
         self.entropy_sort = True if sort_by_entropy else False
-        self.depth_cutoff = sort_by_entropy or 10
+        self.depth_cutoff = depth_cutoff or 10
         self.alignment_map_filename = alignment_map_filename
         self.variants_filename = os.path.splitext(alignment_map_filename)[0] + "_variants.txt"
         self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
@@ -69,7 +69,8 @@ class VariantsMaker:
         cigar = re.sub(self.clip_at_end_pattern, "", cigar)
         return cigar, seq
 
-    def calculate_entropy(self, abundances):
+    @staticmethod
+    def calculate_entropy(abundances):
         """
         Use the top two abundances (if two) of the variants for the given position to compute an entropy.  If
         only one abundance is given, return 0.
@@ -96,7 +97,7 @@ class VariantsMaker:
         # Use a scale factor to normalize to the two abundances used to calculate entropy
         scale = 1/sum(max_abundances)
         max_abundances = [scale * max_abundance for max_abundance in max_abundances]
-        return  -1 * max_abundances[0] * math.log2(max_abundances[0]) - max_abundances[1] * math.log2(max_abundances[1])
+        return -1 * max_abundances[0] * math.log2(max_abundances[0]) - max_abundances[1] * math.log2(max_abundances[1])
 
     def dump_to_file(self, chromosome, variant_reads, initial_write=False):
         """
@@ -106,6 +107,7 @@ class VariantsMaker:
         this function will do that ordering and sent that data to stdout.
         :param chromosome: chromosome whose variants are being dumped to file
         :param variant_reads: dictionary of variants to read counts
+        :param initial_write: boolean
         """
         with open(self.variants_filename, "a") as variants_file:
 
@@ -145,12 +147,12 @@ class VariantsMaker:
                                   for i in range(0, len(variant_reads_per_position))]
 
                     # Calculate the entropy based upon these abundances
-                    entropy = self.calculate_entropy(abundances)
+                    entropy = VariantsMaker.calculate_entropy(abundances)
 
                     # Assemble the total reads, abundances and entropy into a string as add to the line being
                     # assembled.
                     annotations = f"\tTOT={total_reads_per_position}" \
-                                  f"\t{(',').join([str(round(abundance,2)) for abundance in abundances])}" \
+                                  f"\t{','.join([str(round(abundance,2)) for abundance in abundances])}" \
                                   f"\tE={entropy}\n"
                     line.write(annotations)
 
@@ -205,7 +207,7 @@ class VariantsMaker:
                 # file and renew the variant_reads dictionary for the new chromosome.
                 if current_chromosome != chromosome:
                     self.dump_to_file(chromosome, variant_reads, initial_write)
-                    intial_write = False
+                    initial_write = False
                     variant_reads.clear()
                     current_chromosome = chromosome
                 cigar, seq = self.remove_clips(cigar, seq)
@@ -267,17 +269,20 @@ class VariantsMaker:
         parser.add_argument('-a', '--alignment_map_filename',
                             help="Textfile providing chromosome, start postion, cigar,"
                                  " and sequence only for each read.")
-        parser.add_argument('-s', '--sort_by_entropy', type=int,
-                            help= "optional sort by entropy request."
-                                  "  Integer indicates minimum read depth a position must have for inclusion."
-                                  " If the option is selected without a minimum read depth,"
-                                  " a default of 10 will be used" )
+        parser.add_argument('-s', '--sort_by_entropy', action='store_true',
+                            help="Optional request to sort line in order of descreasing entropy.")
+        parser.add_argument('-c', '--cutoff_depth', type=int, default=10,
+                            help="Integer to indicate minimum read depth a position must have for inclusion."
+                                 " If the option is selected without a minimum read depth, a default of 10 will be"
+                                 " applied.  Note that this option is used only if the sort_by_entropy option is"
+                                 " invoked.")
         args = parser.parse_args()
-        variants_maker = VariantsMaker(args.alignment_map_filename, args.sort_by_entropy)
+        print(args)
+        variants_maker = VariantsMaker(args.alignment_map_filename, args.sort_by_entropy, args.cutoff_depth)
         start = timer()
         variants_maker.make_variants()
         end = timer()
-        sys.stderr.write(f"Variants Maker: {end - start} sec")
+        sys.stderr.write(f"Variants Maker: {end - start} sec\n")
 
 
 if __name__ == "__main__":
