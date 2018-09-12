@@ -99,7 +99,16 @@ class VariantsMaker:
         max_abundances = [scale * max_abundance for max_abundance in max_abundances]
         return -1 * max_abundances[0] * math.log2(max_abundances[0]) - max_abundances[1] * math.log2(max_abundances[1])
 
-    def include_annotations(self, variant_reads_per_position, total_reads_per_position, line):
+    @staticmethod
+    def include_annotations(variant_reads_per_position, total_reads_per_position, line):
+        """
+        Calculate abundances and entropy and add the to the line representing the current position
+        :param variant_reads_per_position: number of reads per variabnt (may not correspond to order of variants in the
+        line.
+        :param total_reads_per_position: total number of reads for this position
+        :param line: line representing the current position
+        :return: entropy - needed to build an entropy map if the user chooses to sort by entropy.
+        """
 
         # Determine the abundances for each variant (i.e., number of reads for a variant compared with
         # the total number of reads) for this current position.
@@ -159,7 +168,7 @@ class VariantsMaker:
                 # the chromosome and new position
                 if variant.position != current_position:
 
-                    entropy = self.include_annotations(variant_reads_per_position, total_reads_per_position, line)
+                    entropy = VariantsMaker.include_annotations(variant_reads_per_position, total_reads_per_position, line)
 
                     # Finally transfer the line contents to the output file
                     variants_file.write(line.getvalue())
@@ -187,10 +196,10 @@ class VariantsMaker:
                 total_reads_per_position += variant_reads[variant]
                 variant_reads_per_position.append(variant_reads[variant])
 
-            # Handle very last position in dictionary for last chromosome
-            self.include_annotations(variant_reads_per_position, total_reads_per_position, line)
+            # Handle very last position in dictionary for the chromosome being dumped
+            VariantsMaker.include_annotations(variant_reads_per_position, total_reads_per_position, line)
 
-            # Finally transfer the line contents to the output file
+            # Finally transfer the completed line contents to the output file
             variants_file.write(line.getvalue())
 
             # If the sort by entropy option is selected, also add to the entropy map dictionary the line
