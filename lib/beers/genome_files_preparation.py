@@ -30,11 +30,12 @@ class GenomeFilesPreparation:
             for line in genome_ref_file:
                 if line.startswith(">"):
                     # Skipping >chr - seems fragile
-                    chromosome = line[4:].rstrip()
-                    if chromosome != '1':
+                    chromosome = line[1:].rstrip()
+                    if chromosome != 'chr19':
                         break
                     ref_sequence = genome_ref_file.readline().rstrip()
                     print(f"Length of reference sequence is {len(ref_sequence)}")
+                    last_alt_accepted = False
                     offset = 0
                     where_ref_seq_resumes = 0
                     snp_call_counter = 0
@@ -43,6 +44,7 @@ class GenomeFilesPreparation:
                     sequence_length = 0
                     block_start = timer()
                     for snp_call in vcf_reader:
+                        print(f"snp_call.CHROM is {snp_call.CHROM} and snp_call.ALT is {snp_call.ALT}")
                         if snp_call.CHROM == chromosome and snp_call.ALT and snp_call.ALT[0]:
                             snp_call_counter += 1
                             # making pos is 0 based
@@ -76,13 +78,13 @@ class GenomeFilesPreparation:
                             sequence_str.write(ref_sequence[where_ref_seq_resumes:pos])
                             sequence_str.write(selection)
 
-                            #log_file.write(f"ref {ref_sequence[pos:pos+len(ref)]} and new {sequence[pos+offset:pos+len(selection)+offset]}\n")
                             offset += len(selection) - len(ref)
-                            #log_file.write(f"Zero based position: {pos}\n")
-                            #log_file.write(f"\tRef seq length after ref {len(ref_sequence[:pos+len(ref)])} - selection is {selection} whereas ref was {ref}\n")
-                            #log_file.write(f"\tNew seq length after selection {sequence_length} and offset is {offset}\n\n")
+                            log_file.write(f"Zero based position: {pos}\n")
+                            log_file.write(f"\tRef seq length after ref {len(ref_sequence[:pos+len(ref)])} - selection is {selection} whereas ref was {ref}\n")
+                            log_file.write(f"\tNew seq length after selection {sequence_length} and offset is {offset}\n\n")
                             assert sequence_length == offset + pos + len(ref), f"seqs out of sync at pos {pos}"
                             #assert sequence_length  == len(ref_sequence[:pos+len(ref)]) + offset, f"seqs out of sync at pos {pos}"
+                            #input('?')
                             where_ref_seq_resumes = pos + len(ref)
                             last_alt_accepted = selection != ref
                         elif snp_call.CHROM != chromosome:
@@ -160,3 +162,7 @@ if __name__ == '__main__':
 # python genome_files_preparation.py -r ../../data/preBEERS/genome_mm10_edited.fa -c ../../data/preBEERS/mgp.v5.merged.indels.dbSNP142.normed.vcf \
 # -l ../../data/preBEERS/genome_chr1.log -g ../../data/preBEERS/genome_chr1.fa -s 100
 
+
+# Sample command
+# python genome_files_preparation.py -r ../../data/preBEERS/genome_mm9_edited_chr19.fa -c ../../data/preBEERS/Illumina.UNT_9575.Aligned.out.chr19_only.vcf \
+# -l ../../data/preBEERS/genome_chr19.log -g ../../data/preBEERS/genome_chr19.fa -s 100

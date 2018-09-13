@@ -39,8 +39,8 @@ def generate_graphs(input_log, output_log, info):
     print("Total Sequences Input: " + str(len(input_df)))
     print("Total Sequences Output: " + str(len(retained_df)))
 
-    print("Total Sequence Input with Tail Lengths > 200: " + str(len(input_df[input_df['tail_length'] >= 200])))
-    print("Total Sequence Output with Tail Lengths > 200: " + str(len(retained_df[input_df['tail_length'] >= 200])))
+    #print("Total Sequence Input with Tail Lengths > 200: " + str(len(input_df[input_df['tail_length'] >= 200])))
+    #print("Total Sequence Output with Tail Lengths > 200: " + str(len(retained_df[input_df['tail_length'] >= 200])))
 
     # Histogram comparing sequence lengths before and after step
     data_seq_lengths = [
@@ -122,5 +122,5 @@ if __name__ == '__main__':
         "model_info": "Breakpoint - Geometric Distribution",
         "param_info": "min_retention_prob: 0.01, max_retention_prob: 0.99, length_retention_prob: 0.04, min_breakage_prob: 0.005, max_breakage_prob: 0.98, breakpoint_prob: 0.0001"
     }
-    generate_graphs("../../data/polyA_step_input_data.log","../../data/polyA_step_output_data.log", info)
+    generate_graphs("../../data/original_sample.log","../../data/polyA_step_output_data.log", info)
     app.run_server()
