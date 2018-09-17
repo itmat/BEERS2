@@ -2,6 +2,7 @@ import pandas as pd
 from molecule import Molecule
 import os
 import pysam
+import re
 
 class Utils:
     base_complements = {"A":"T","T":"A","G":"C","C":"G"}
@@ -62,6 +63,39 @@ class Utils:
         new_file.close()
         original_file.close()
 
+    @staticmethod
+    def scrub_genome_fasta_file(genome_fasta_filename):
+
+        edited_genome_fasta_filename = os.path.splitext(genome_fasta_filename)[0] + "_edited.fa"
+
+        in_sequence = False
+
+        with open(genome_fasta_filename, 'r') as genome_fasta_file, \
+                open(edited_genome_fasta_filename, 'w') as edited_genome_fasta_file:
+
+            # Iterate over the lines in the original genome fasta file
+            for line in genome_fasta_file:
+
+                # Identify whether the current line is a description line or a sequence line
+                if line.startswith('>'):
+
+                    # For a description line, remove any supplemental information following the identifier and
+                    # if the in_sequence flag is raised, lower it and add a line break to the new genome fasta
+                    # file before adding the modified description line.
+                    identifier_only = re.sub(r'[ \t].*', '', line)
+                    if in_sequence:
+                        edited_genome_fasta_file.write("\n")
+                        in_sequence = False
+                    edited_genome_fasta_file.write(identifier_only)
+                # Otherwise, add the sequence to the new genome fasta file after removing the line break and
+                # insuring all bases are in upper case.  Also raise the in sequence flag.
+                else:
+                    edited_genome_fasta_file.write(line.rstrip('\n').upper())
+                    in_sequence = True
+
+            # Finally add a line break to the end of the new genome fasta file.
+            edited_genome_fasta_file.write("\n")
+
 
 
 
@@ -72,4 +106,6 @@ if __name__ == "__main__":
 
     #Utils.extract_chromosome('19', '../../data/preBEERS/genome_mm9_edited.fa')
 
-    Utils.remove_cigars_with_N_from_bam_file("../../data/preBEERS/Illumina.UNT_9575.Aligned.out.chr19_only.sorted.bam")
+    #Utils.remove_cigars_with_N_from_bam_file("../../data/preBEERS/Illumina.UNT_9575.Aligned.out.chr19_only.sorted.bam")
+
+    Utils.scrub_genome_fasta_file("../../data/preBEERS/hg19_chr21_22_ref.fa")
