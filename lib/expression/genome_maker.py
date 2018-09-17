@@ -10,25 +10,24 @@ from operator import itemgetter
 
 class GenomeMaker:
 
-    def __init__(self, variants_filename, genome_ref_filename, genome_output_file_stem, seed, threshold):
+    def __init__(self, variants_filename, genome_ref_filename, genome_output_file_stem, seed, threshold, log_filename):
         self.variants_filename = variants_filename
         self.genome_output_file_stem = genome_output_file_stem
         self.genome_ref_filename = genome_ref_filename
+        self.log_filename = log_filename
         np.random.seed(seed)
         self.abundance_threshold = threshold
         self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
-        self.genome_names = ['seq1','seq2']
+        self.genome_names = ['seq1', 'seq2']
         for genome_name in self.genome_names:
             try:
                 os.remove(self.genome_output_file_stem + "_" + genome_name + ".fa")
             except OSError:
                 pass
 
-
-
     def get_most_abundant_variants(self, variants):
         max_variants = []
-        variant_reads = {variant.split(':')[0]:int(variant.split(':')[1]) for variant in variants}
+        variant_reads = {variant.split(':')[0]: int(variant.split(':')[1]) for variant in variants}
         if len(variant_reads) == 1:
             return [next(iter(variant_reads.keys()))]
         for _ in range(2):
@@ -40,7 +39,8 @@ class GenomeMaker:
             return [max_variants[0][0]]
         return [variant for variant, read in max_variants]
 
-    def build_sequence_from_variant(self, genome, variant):
+    @staticmethod
+    def build_sequence_from_variant(genome, variant):
 
         # Insert called for
         if "I" in variant[0]:
@@ -62,81 +62,97 @@ class GenomeMaker:
 
     def make_genome(self):
 
-        with open(self.variants_filename) as variants_file, open(self.genome_ref_filename) as genome_ref_file:
-            reference_chromosome = None
-            reference_sequence = None
-            building_chromosome = False
-            genomes = []
-            for variant_line in variants_file:
-                match = re.match(self.variant_line_pattern, variant_line)
-                chromosome = match.group(1)
-                variant_position = int(match.group(2))
-                variants = match.group(3).split(' | ')
+        with open(self.log_filename, 'w') as log_file:
+            with open(self.variants_filename) as variants_file, open(self.genome_ref_filename) as genome_ref_file:
+                reference_chromosome = None
+                reference_sequence = None
+                building_chromosome = False
+                genomes = list()
+                for variant_line in variants_file:
+                    match = re.match(self.variant_line_pattern, variant_line)
+                    chromosome = match.group(1)
 
-                # Starting new chromosome (possibly the first one)
-                while not reference_chromosome or reference_chromosome < chromosome:
+                    # Substraction to account for fact that variant text file indexed at 1
+                    variant_position = int(match.group(2)) - 1
+                    variants = match.group(3).split(' | ')
 
-                    # At least one chromosome already completed - finish and save
-                    if building_chromosome:
-                        for genome in genomes:
-                            genome.append_segment(reference_sequence[genome.position + genome.offset:])
-                            genome.save_to_file(self.genome_output_file_stem)
+                    # Starting new chromosome (possibly the first one)
+                    while not reference_chromosome or reference_chromosome < chromosome:
 
-                    # Get a reference sequence for the next chromosome in the reference genome file
-                    line = genome_ref_file.readline()
-                    if line.startswith(">"):
-                        reference_chromosome = line[1:].rstrip()
+                        # At least one chromosome already completed - finish and save
+                        if building_chromosome:
+                            for genome in genomes:
+                                log_file.write(f"Appending"
+                                               f" {len(reference_sequence[genome.position + genome.offset:])}\n")
+                                genome.append_segment(reference_sequence[genome.position + genome.offset:])
+                                log_file.write(f"{genome}\n")
+                                genome.save_to_file(self.genome_output_file_stem)
 
-                        # Only set up genomes if the reference chromosome is the same at the one currently
-                        # being read from the variants file.  Otherwise, skip over and get the next chromosome from
-                        # the reference genome file.
-                        if reference_chromosome == chromosome:
-                            building_chromosome = True
-                            reference_sequence = genome_ref_file.readline().rstrip()
-                            genomes = []
-                            genomes.append(
-                                Genome(self.genome_names[0], chromosome, reference_sequence, variant_position))
-                            genomes.append(
-                                Genome(self.genome_names[1], chromosome, reference_sequence, variant_position))
+                        # Get a reference sequence for the next chromosome in the reference genome file
+                        line = genome_ref_file.readline()
+                        if line.startswith(">"):
+                            reference_chromosome = line[1:].rstrip()
+
+                            # Only set up genomes if the reference chromosome is the same at the one currently
+                            # being read from the variants file.  Otherwise, skip over and get the next chromosome from
+                            # the reference genome file.
+                            if reference_chromosome == chromosome:
+                                building_chromosome = True
+                                reference_sequence = genome_ref_file.readline().rstrip()
+                                genomes = list()
+                                start_sequence = reference_sequence[0: variant_position]
+                                genomes.append(
+                                    Genome(self.genome_names[0], chromosome, start_sequence, variant_position))
+                                genomes.append(
+                                    Genome(self.genome_names[1], chromosome, start_sequence, variant_position))
+                            else:
+                                genome_ref_file.readline()
+                                building_chromosome = False
+
+                    # Return the top two (based on number of reads) of the variants on this line.
+                    max_variants = self.get_most_abundant_variants(variants)
+
+                    if max_variants[0] != reference_sequence[variant_position]:
+                        log_file.write(f"Reference at {chromosome}:{variant_position} is "
+                                       f"{reference_sequence[variant_position]} whereas max variant "
+                                       f"is {max_variants[0]}\n")
+
+                    for genome in genomes:
+                        # If the nascent genome seq position translated to reference is downstrem of the variant
+                        # ignore the variant for this genome.
+                        if genome.position + genome.offset > variant_position:
+                            continue
                         else:
-                            genome_ref_file.readline()
-                            building_chromosome = False
+                            # If the nascent genome seq position translated to reference is upstream of the variant add
+                            # the appropriate reference segment to catch up
+                            if genome.position + genome.offset < variant_position:
+                                log_file.write(f"Adding {variant_position - genome.position - genome.offset}"
+                                               f" bases of reference sequence at reference position"
+                                               f" {genome.position + genome.offset}\n")
+                                genome.append_segment(
+                                    reference_sequence[genome.position + genome.offset: variant_position])
 
-                # Return the top two (based on number of reads) of the variants on this line.
-                max_variants = self.get_most_abundant_variants(variants)
+                            # If only one variant, apply directly to genome
+                            if len(max_variants) == 1:
+                                self.build_sequence_from_variant(genome, max_variants[0])
 
+                            # If two variants exist, toss a coin for one
+                            else:
+                                max_variant = np.random.choice([max_variants[0], max_variants[1]], p=[0.5, 0.5])
+                                self.build_sequence_from_variant(genome, max_variant)
+                                max_variants.remove(max_variant)
+
+                # Variants file exhausted, must be done with last chromosome.
                 for genome in genomes:
-                    # If the nascent genome seq position translated to reference is downstrem of the variant ignore the variant for this genome.
-                    if genome.position + genome.offset > variant_position:
-                        continue
-                    else:
-                        # If the nascent genome seq position translated to reference is upstream of the variant add the appropriate
-                        # reference segment to catch up
-                        if genome.position + genome.offset < variant_position:
-                            genome.append_segment(reference_sequence[genome.position + genome.offset : variant_position])
-
-                        # If only one variant, apply directly to genome
-                        if len(max_variants) == 1:
-                            self.build_sequence_from_variant(genome, max_variants[0])
-
-                        # If two variants exist, toss a coin for one
-                        else:
-                            max_variant = np.random.choice([max_variants[0], max_variants[1]], p=[0.5, 0.5])
-                            self.build_sequence_from_variant(genome, max_variant)
-                            max_variants.remove(max_variant)
-
-                prior_variant_line = variant_line
-
-            # Variants file exhausted, must be done with last chromosome.
-            for genome in genomes:
-                genome.append_segment(reference_sequence[genome.position + genome.offset:])
-                genome.save_to_file(self.genome_output_file_stem)
+                    genome.append_segment(reference_sequence[genome.position + genome.offset:])
+                    log_file.write(f"{genome}\n")
+                    genome.save_to_file(self.genome_output_file_stem)
 
     @staticmethod
     def main():
         parser = argparse.ArgumentParser(description='Make Genome Files')
         parser.add_argument('-v', '--variants_filename',
-                              help="Textfile providing variants as provided by the ouput"
+                            help="Textfile providing variants as provided by the ouput"
                                  " of the variants_maker.py script.")
         parser.add_argument('-r', '--reference_genome_filename',
                             help="Fasta file containing the reference genome")
@@ -145,15 +161,17 @@ class GenomeMaker:
         parser.add_argument('-s', '--seed', type=int, default=100,
                             help="Integer to be used as a seed for the random number generator."
                                  "  Value defaults to 100.")
-        parser.add_argument('-t','--threshold', type=float, default=0.03,
+        parser.add_argument('-t', '--threshold', type=float, default=0.03,
                             help="Abundance threshold of alt allele.  Defaults to 0.03")
+        parser.add_argument('-l', '--log_filename', help="Log file.")
         args = parser.parse_args()
         print(args)
         genome_maker = GenomeMaker(args.variants_filename,
                                    args.reference_genome_filename,
                                    args.genome_output_file_stem,
                                    args.seed,
-                                   args.threshold)
+                                   args.threshold,
+                                   args.log_filename)
         start = timer()
         genome_maker.make_genome()
         end = timer()
@@ -192,6 +210,7 @@ class Genome:
     def __str__(self):
         return f"name: {self.name}, chromosome: {self.chromosome}, position: {self.position}, offset: {self.offset}"
 
+
 if __name__ == "__main__":
     sys.exit(GenomeMaker.main())
 
@@ -200,5 +219,6 @@ if __name__ == "__main__":
 Example:
 
 python genome_maker.py -v  ../../data/preBEERS/ETAM080_grp1.gene.norm.chr21_22.all_unique_mappers.fw_only_variants.txt \
--g ../../data/preBEERS/human_21_22_genome -r ../../data/preBEERS/human_chr21_22_ref_edited.fa 
+-g ../../data/preBEERS/human_21_22_genome -r ../../data/preBEERS/hg19_chr21_22_ref_edited.fa \
+-l ../../data/preBEERS/genome_maker.log
 '''
