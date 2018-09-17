@@ -177,6 +177,12 @@ class GenomeMaker:
 
 
 class Genome:
+    """
+    Holds name, chromosome, current sequence, current position (0 indexed) and current offset for a nascent, custom genome.
+    The current offset is such that when it is added to the current position, one arrives at the corresponding position
+    (0 indexed) on the reference genome.  The object also provides methods for appending, inserting and deleting based
+    upon instructions in the variants input file.
+    """
 
     def __init__(self, name, chromosome, start_sequence, start_position):
         self.name = name
@@ -187,15 +193,38 @@ class Genome:
         self.offset = 0
 
     def append_segment(self, sequence):
+        """
+        Append the given sequence segment to the custom genome.  Since the sequence segment either has a one to one
+        correspondence with that of reference genome or is a sequence segment drawn from the reference genome;
+        execution of this method does not alter the current position of the custom genome relative to the current
+        position of the reference genome/variant.  So position advances by the sequence segment length but offset
+        remains unchangeed.
+        :param sequence: sequence segment to append
+        """
         self.sequence.write(sequence)
         self.position += len(sequence)
 
     def insert_segment(self, sequence):
+        """
+        Insert the given sequence segment into the custom genome.  Since the given sequence segment does not correspond
+        to anything in the reference genome; the current position of the custom genome relative to the current position
+        of the reference genome/variant does change by the length of the sequence segment.  Since the custom genome
+        sequence is advancing while the reference sequence is not, the sequence segment length is subtracted from the
+        offset while the genome current position is advanced by the length of the sequence segment.
+        :param sequence: sequence segment to insert
+        """
         self.sequence.write(sequence)
         self.position += len(sequence)
         self.offset += -1 * len(sequence)
 
     def delete_segment(self, length):
+        """
+        Skip over (delete) a length of the reference sequence.  Since the reference sequence is advancing while the
+        custom sequence is not, the relative current position of the genome again changes relative to the current
+        position of the reference sequence.  As such, the current genome position does not advance but the offset
+        increases by the length provided.
+        :param length: number of bases in the reference sequence to skip over.
+        """
         self.offset += length
 
     def save_to_file(self, genome_output_file_stem):
