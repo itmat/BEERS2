@@ -46,19 +46,16 @@ class GenomeMaker:
         if "I" in variant[0]:
             segment_to_insert = variant[1:]
             genome.insert_segment(segment_to_insert)
-            genome.position += 1
 
         # Delete called for
         elif "D" in variant[0]:
             length_to_delete = int(variant[1:])
             genome.delete_segment(length_to_delete)
-            genome.position += 1
 
         # SNP called for
         else:
             base_to_append = variant[0]
             genome.append_segment(base_to_append)
-            genome.position += 1
 
     def make_genome(self):
 
@@ -118,6 +115,7 @@ class GenomeMaker:
                                        f"is {max_variants[0]}\n")
 
                     for genome in genomes:
+
                         # If the nascent genome seq position translated to reference is downstrem of the variant
                         # ignore the variant for this genome.
                         if genome.position + genome.offset > variant_position:
