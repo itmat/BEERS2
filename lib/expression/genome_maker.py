@@ -16,7 +16,7 @@ class GenomeMaker:
         self.genome_ref_filename = genome_ref_filename
         np.random.seed(seed)
         self.abundance_threshold = threshold
-        self.variant_line_pattern = re.compile('^(.+):(\d+) | (.*)\t')
+        self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
         self.genome_names = ['seq1','seq2']
         for genome_name in self.genome_names:
             try:
@@ -30,55 +30,56 @@ class GenomeMaker:
         max_variants = []
         variant_reads = {variant.split(':')[0]:int(variant.split(':')[1]) for variant in variants}
         if len(variant_reads) == 1:
-            return [next(iter(variant_reads.items()))]
+            return [next(iter(variant_reads.keys()))]
         for _ in range(2):
             max_variant = max(variant_reads.items(), key=itemgetter(1))[0]
             max_variants.append((max_variant, variant_reads[max_variant]))
             del variant_reads[max_variant]
         total_reads = sum(read for _, read in max_variants)
         if max_variants[0][1]/total_reads < self.abundance_threshold:
-            return [max_variants[0]]
-        return [(variant, read/total_reads) for variant, read in max_variants]
+            return [max_variants[0][0]]
+        return [variant for variant, read in max_variants]
 
     def build_sequence_from_variant(self, genome, variant):
 
         # Insert called for
         if "I" in variant[0]:
-            segment_to_insert = variant[0][1:]
+            segment_to_insert = variant[1:]
             genome.insert_segment(segment_to_insert)
-            genome.pos += 1
+            genome.position += 1
 
         # Delete called for
         elif "D" in variant[0]:
-            length_to_delete = variant[0][1:]
+            length_to_delete = int(variant[1:])
             genome.delete_segment(length_to_delete)
-            genome.pos += 1
+            genome.position += 1
 
         # SNP called for
         else:
             base_to_append = variant[0]
             genome.append_segment(base_to_append)
-            genome.pos += 1
+            genome.position += 1
 
     def make_genome(self):
 
         with open(self.variants_filename) as variants_file, open(self.genome_ref_filename) as genome_ref_file:
             reference_chromosome = None
             reference_sequence = None
+            building_chromosome = False
             genomes = []
-            for variant_line in variants_file.readline():
+            for variant_line in variants_file:
                 match = re.match(self.variant_line_pattern, variant_line)
                 chromosome = match.group(1)
-                variant_position = match.group(2)
+                variant_position = int(match.group(2))
                 variants = match.group(3).split(' | ')
 
                 # Starting new chromosome (possibly the first one)
-                while reference_chromosome != chromosome:
+                while not reference_chromosome or reference_chromosome < chromosome:
 
                     # At least one chromosome already completed - finish and save
-                    if reference_chromosome:
+                    if building_chromosome:
                         for genome in genomes:
-                            genome.append_segment(reference_sequence[genome.position+genome.offset:])
+                            genome.append_segment(reference_sequence[genome.position + genome.offset:])
                             genome.save_to_file(self.genome_output_file_stem)
 
                     # Get a reference sequence for the next chromosome in the reference genome file
@@ -90,13 +91,16 @@ class GenomeMaker:
                         # being read from the variants file.  Otherwise, skip over and get the next chromosome from
                         # the reference genome file.
                         if reference_chromosome == chromosome:
+                            building_chromosome = True
                             reference_sequence = genome_ref_file.readline().rstrip()
+                            genomes = []
                             genomes.append(
                                 Genome(self.genome_names[0], chromosome, reference_sequence, variant_position))
                             genomes.append(
                                 Genome(self.genome_names[1], chromosome, reference_sequence, variant_position))
                         else:
                             genome_ref_file.readline()
+                            building_chromosome = False
 
                 # Return the top two (based on number of reads) of the variants on this line.
                 max_variants = self.get_most_abundant_variants(variants)
@@ -117,9 +121,16 @@ class GenomeMaker:
 
                         # If two variants exist, toss a coin for one
                         else:
-                            max_variant = np.random.choice([max_variants[0][0], max_variants[1][0]], [0.5, 0.5])
+                            max_variant = np.random.choice([max_variants[0], max_variants[1]], p=[0.5, 0.5])
                             self.build_sequence_from_variant(genome, max_variant)
                             max_variants.remove(max_variant)
+
+                prior_variant_line = variant_line
+
+            # Variants file exhausted, must be done with last chromosome.
+            for genome in genomes:
+                genome.append_segment(reference_sequence[genome.position + genome.offset:])
+                genome.save_to_file(self.genome_output_file_stem)
 
     @staticmethod
     def main():
@@ -129,7 +140,7 @@ class GenomeMaker:
                                  " of the variants_maker.py script.")
         parser.add_argument('-r', '--reference_genome_filename',
                             help="Fasta file containing the reference genome")
-        parser.add_argument('-g', 'genome_output_file_stem',
+        parser.add_argument('-g', '--genome_output_file_stem',
                             help="Path of output genome file.  Will be suffixed _seq1.fa or _seq2.fa")
         parser.add_argument('-s', '--seed', type=int, default=100,
                             help="Integer to be used as a seed for the random number generator."
@@ -172,7 +183,7 @@ class Genome:
         self.offset += length
 
     def save_to_file(self, genome_output_file_stem):
-        str_sequence = self.sequence.read()
+        str_sequence = self.sequence.getvalue()
         self.sequence.close()
         with open(genome_output_file_stem + '_' + self.name + ".fa", 'a') as genome_file:
             genome_file.write(f">{self.chromosome}\n")
@@ -183,3 +194,11 @@ class Genome:
 
 if __name__ == "__main__":
     sys.exit(GenomeMaker.main())
+
+
+'''
+Example:
+
+python genome_maker.py -v  ../../data/preBEERS/ETAM080_grp1.gene.norm.chr21_22.all_unique_mappers.fw_only_variants.txt \
+-g ../../data/preBEERS/human_21_22_genome -r ../../data/preBEERS/human_chr21_22_ref_edited.fa 
+'''
