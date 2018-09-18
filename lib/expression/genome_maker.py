@@ -200,10 +200,19 @@ class GenomeMaker:
 
                                 # In addition to diploid chromosomes, this genome will contain contributions that
                                 # derive solely from the father.  So this genome is skipped when building the M
-                                # chromosome and when building the X chromosome if the input gender is male.
-                                if chromosome != 'chrM' and not(self.gender == 'male' and chromosome == 'chrX'):
+                                # chromosome and when building the X chromosome if the input gender is male.  Also, it
+                                # is possible that there may be Y variants even though the input gender is female.  If
+                                # that is the case, neither genome is built for chromosome Y.
+                                if chromosome != 'chrM'\
+                                        and not(self.gender == 'male' and chromosome == 'chrX')\
+                                        and not(self.gender == 'female' and chromosome == 'chrY'):
                                     genomes.append(
                                         Genome(self.genome_names[1], chromosome, start_sequence, variant_position))
+
+                                # There are no genomes to build move on to the next chromosome, if any.
+                                if not genomes:
+                                    building_chromosome = False
+                                    continue
                             else:
                                 genome_ref_file.readline()
                                 building_chromosome = False
