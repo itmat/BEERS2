@@ -26,18 +26,24 @@ class GenomeMaker:
         a single line - no line breaks)
         :param genome_output_file_stem: path to the output fasta file(s) - will be suffixed with the custom genome
         names.
-        :param seed: seed for random number generator to allow for repeatable analyses.
+        :param seed: seed for random number generator to allow for repeatable analyses.  Defaults to None
         :param threshold: minimum percent abundance of a variant for it to be recognized as a legitimate variant.
+        Defaults to 0.03
         :param log_filename: path to log file.
         """
         self.variants_filename = variants_filename
         self.genome_output_file_stem = genome_output_file_stem
         self.genome_ref_filename = genome_ref_filename
         self.log_filename = log_filename
-        np.random.seed(seed)
+
+        # If seed is set, use it to assure reproducible results.
+        if seed:
+            np.random.seed(seed)
         self.abundance_threshold = threshold
         self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
         self.genome_names = ['seq1', 'seq2']
+
+        # Make sure the filenames for the genomes are pristine.
         for genome_name in self.genome_names:
             try:
                 os.remove(self.genome_output_file_stem + "_" + genome_name + ".fa")
@@ -143,7 +149,10 @@ class GenomeMaker:
                         if building_chromosome:
                             for genome in genomes:
                                 log_file.write(f"Appending"
-                                               f" {len(reference_sequence[genome.position + genome.offset:])}\n")
+                                               f" {len(reference_sequence[genome.position + genome.offset:])}"
+                                               f" bases of reference sequence at reference position "
+                                               f" {genome.position + genome.offset} to complete the genome for"
+                                               f" chromosome {reference_chromosome}.\n")
                                 genome.append_segment(reference_sequence[genome.position + genome.offset:])
                                 log_file.write(f"{genome}\n")
                                 genome.save_to_file(self.genome_output_file_stem)
@@ -160,6 +169,10 @@ class GenomeMaker:
                                 building_chromosome = True
                                 reference_sequence = genome_ref_file.readline().rstrip()
                                 genomes = list()
+                                log_file.write(f"Appending"
+                                               f" {len(reference_sequence[:variant_position])}"
+                                               f" bases of reference sequence at reference position "
+                                               f" 0 to start both genomes for chromosome {chromosome}.\n")
                                 start_sequence = reference_sequence[0: variant_position]
                                 genomes.append(
                                     Genome(self.genome_names[0], chromosome, start_sequence, variant_position))
@@ -172,10 +185,11 @@ class GenomeMaker:
                     # Return the top two (based on number of reads) of the variants on this line.
                     max_variants = self.get_most_abundant_variants(variants)
 
-                    if max_variants[0] != reference_sequence[variant_position]:
+                    variant_keys = [variant.split(":")[0] for variant in variants]
+                    if reference_sequence[variant_position] not in variant_keys:
                         log_file.write(f"Reference at {chromosome}:{variant_position} is "
-                                       f"{reference_sequence[variant_position]} whereas max variant "
-                                       f"is {max_variants[0]}\n")
+                                       f"{reference_sequence[variant_position]} whereas variants "
+                                       f"are {variant_keys}\n")
 
                     for genome in genomes:
 
@@ -205,8 +219,13 @@ class GenomeMaker:
 
                 # Variants file exhausted, must be done with last chromosome.  So save the last pair of genomes.
                 for genome in genomes:
+                    log_file.write(f"Appending"
+                                   f" {len(reference_sequence[genome.position + genome.offset:])}"
+                                   f" bases of reference sequence at reference position "
+                                   f" {genome.position + genome.offset} to complete the genome for"
+                                   f" chromosome {chromosome}.\n")
                     genome.append_segment(reference_sequence[genome.position + genome.offset:])
-                    log_file.write(f"{genome}\n")
+                    log_file.write(f"Final Genome for chromosome {reference_chromosome}: {genome}\n")
                     genome.save_to_file(self.genome_output_file_stem)
 
     @staticmethod
@@ -231,11 +250,11 @@ class GenomeMaker:
                             help="Fasta file containing the reference genome")
         parser.add_argument('-g', '--genome_output_file_stem',
                             help="Path of output genome file.  Will be suffixed _seq1.fa or _seq2.fa")
-        parser.add_argument('-s', '--seed', type=int, default=100,
+        parser.add_argument('-s', '--seed', type=int, default=None,
                             help="Integer to be used as a seed for the random number generator."
-                                 "  Value defaults to 100.")
+                                 "  Value defaults to no seed.")
         parser.add_argument('-t', '--threshold', type=float, default=0.03,
-                            help="Abundance threshold of alt allele.  Defaults to 0.03")
+                            help="Abundance threshold of alt allele.  Defaults to 0.03 (3%)")
         parser.add_argument('-l', '--log_filename', help="Log file.")
         args = parser.parse_args()
         print(args)
@@ -325,9 +344,9 @@ if __name__ == "__main__":
 
 
 '''
-Example:
+Example Call:
 
 python genome_maker.py -v  ../../data/preBEERS/ETAM080_grp1.gene.norm.chr21_22.all_unique_mappers.fw_only_variants.txt \
 -g ../../data/preBEERS/human_21_22_genome -r ../../data/preBEERS/hg19_chr21_22_ref_edited.fa \
--l ../../data/preBEERS/genome_maker.log
+-l ../../data/preBEERS/genome_maker.log -s 100
 '''
