@@ -14,7 +14,14 @@ class GenomeMaker:
     file.  The custom genomes are built one chromosome at a time.
     """
 
-    def __init__(self, variants_filename, genome_ref_filename, genome_output_file_stem, seed, threshold, log_filename):
+    def __init__(self,
+                 variants_filename,
+                 genome_ref_filename,
+                 genome_output_file_stem,
+                 seed,
+                 threshold,
+                 log_filename,
+                 gender):
         """
         Constructor for the GenomeMaker object which holds the arguments provided.  It also contains the hardcoded
         custom genome names and the regular expression used to extract the needed data from the variants file.  Since
@@ -30,18 +37,20 @@ class GenomeMaker:
         :param threshold: minimum percent abundance of a variant for it to be recognized as a legitimate variant.
         Defaults to 0.03
         :param log_filename: path to log file.
+        :param gender: gender ascribed to the variants input file.
         """
         self.variants_filename = variants_filename
         self.genome_output_file_stem = genome_output_file_stem
         self.genome_ref_filename = genome_ref_filename
         self.log_filename = log_filename
+        self.gender = gender
 
         # If seed is set, use it to assure reproducible results.
         if seed:
             np.random.seed(seed)
         self.abundance_threshold = threshold
         self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
-        self.genome_names = ['seq1', 'seq2']
+        self.genome_names = ['maternal', 'paternal']
 
         # Make sure the filenames for the genomes are pristine.
         for genome_name in self.genome_names:
@@ -50,14 +59,16 @@ class GenomeMaker:
             except OSError:
                 pass
 
-    def get_most_abundant_variants(self, variants):
+    def get_most_abundant_variants(self, chromosome, variants):
         """
         Obtains the (at most) two variants for a chromosome and position having the most reads (greatest abundances).
         In many cases, there may be only one variant given, in which case it alone is returned.  In some cases, the
         lesser of the two most abundant variants may be so few reads as to be deemed invalid, in which case only the
         most abundant variant is returned.  Otherwise the top two variants are returned.
-        :param variants:
-        :return:
+        :param chromosome: chromosome to which the variantes apply.  In some cases, only one chromosome of the given
+        type is contributed, in which case, only the most abundant variant should be returned.
+        :param variants: list of variant descriptions and their read counts
+        :return: list of one or two more abundant variants sans read counts
         """
         max_variants = []
 
@@ -74,6 +85,11 @@ class GenomeMaker:
             max_variant = max(variant_reads.items(), key=itemgetter(1))[0]
             max_variants.append((max_variant, variant_reads[max_variant]))
             del variant_reads[max_variant]
+
+        # If the chromosome is unique to one parent (e.g., chrM or chrY) or unique due to gender (e.g. chr X and
+        # gender is male) return the most abundant variant only.
+        if chromosome in ['chrM', 'chrY'] or (self.gender == 'male' and chromosome == 'chrX'):
+            return max_variants[0][0]
 
         # Determine the total reads for the top two variants and if the lesser variant's percentage of the total
         # reads is below the threshold, discard it and return only the top variant without its read count.
@@ -143,7 +159,7 @@ class GenomeMaker:
 
                     # Starting new chromosome (possibly the first one).  The less than accounts for the possibility
                     # that the reference genome file may have chromosomes not in the variants file.
-                    while not reference_chromosome or reference_chromosome < chromosome:
+                    while not reference_chromosome or reference_chromosome != chromosome:
 
                         # At least one chromosome already completed - finish and save
                         if building_chromosome:
@@ -174,16 +190,35 @@ class GenomeMaker:
                                                f" bases of reference sequence at reference position "
                                                f" 0 to start both genomes for chromosome {chromosome}.\n")
                                 start_sequence = reference_sequence[0: variant_position]
-                                genomes.append(
-                                    Genome(self.genome_names[0], chromosome, start_sequence, variant_position))
-                                genomes.append(
-                                    Genome(self.genome_names[1], chromosome, start_sequence, variant_position))
+
+                                # In addition to diploid chromosomes, this genome will contain contributions that
+                                # derive solely from the mother.  So this genome is skipped when building the Y
+                                # chromosome.
+                                if chromosome != 'chrY':
+                                    genomes.append(
+                                        Genome(self.genome_names[0], chromosome, start_sequence, variant_position))
+
+                                # In addition to diploid chromosomes, this genome will contain contributions that
+                                # derive solely from the father.  So this genome is skipped when building the M
+                                # chromosome and when building the X chromosome if the input gender is male.  Also, it
+                                # is possible that there may be Y variants even though the input gender is female.  If
+                                # that is the case, neither genome is built for chromosome Y.
+                                if chromosome != 'chrM'\
+                                        and not(self.gender == 'male' and chromosome == 'chrX')\
+                                        and not(self.gender == 'female' and chromosome == 'chrY'):
+                                    genomes.append(
+                                        Genome(self.genome_names[1], chromosome, start_sequence, variant_position))
+
+                                # There are no genomes to build move on to the next chromosome, if any.
+                                if not genomes:
+                                    building_chromosome = False
+                                    continue
                             else:
                                 genome_ref_file.readline()
                                 building_chromosome = False
 
                     # Return the top two (based on number of reads) of the variants on this line.
-                    max_variants = self.get_most_abundant_variants(variants)
+                    max_variants = self.get_most_abundant_variants(chromosome, variants)
 
                     variant_keys = [variant.split(":")[0] for variant in variants]
                     if reference_sequence[variant_position] not in variant_keys:
@@ -256,6 +291,7 @@ class GenomeMaker:
         parser.add_argument('-t', '--threshold', type=float, default=0.03,
                             help="Abundance threshold of alt allele.  Defaults to 0.03 (3%)")
         parser.add_argument('-l', '--log_filename', help="Log file.")
+        parser.add_argument('-x', '--gender', help="Gender of input sample.")
         args = parser.parse_args()
         print(args)
         genome_maker = GenomeMaker(args.variants_filename,
@@ -263,7 +299,8 @@ class GenomeMaker:
                                    args.genome_output_file_stem,
                                    args.seed,
                                    args.threshold,
-                                   args.log_filename)
+                                   args.log_filename,
+                                   args.gender)
         start = timer()
         genome_maker.make_genome()
         end = timer()
@@ -348,5 +385,5 @@ Example Call:
 
 python genome_maker.py -v  ../../data/preBEERS/ETAM080_grp1.gene.norm.chr21_22.all_unique_mappers.fw_only_variants.txt \
 -g ../../data/preBEERS/human_21_22_genome -r ../../data/preBEERS/hg19_chr21_22_ref_edited.fa \
--l ../../data/preBEERS/genome_maker.log -s 100
+-l ../../data/preBEERS/genome_maker.log -s 100 -x female
 '''
