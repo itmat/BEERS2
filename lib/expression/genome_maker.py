@@ -72,7 +72,12 @@ class GenomeMaker:
         # Determine the total reads for the top two variants and if the lesser variant's percentage of the total
         # reads is below the threshold, discard it and return only the top variant without its read count.
         total_reads = sum(read for _, read in max_variants)
-        if max_variants[0][1]/total_reads < self.abundance_threshold:
+        if max_variants[1][1]/total_reads < self.abundance_threshold:
+            return [max_variants[0][0]]
+
+        # If the second most abundant variant has only 1 read when the total reads between the top two most abundant
+        # variants is 10 or greater, again return only the top variant without its read count.
+        if total_reads >= 10 and max_variants[1][1] == 1:
             return [max_variants[0][0]]
 
         # Otherwise, return both variants without the corresponding read counts.
