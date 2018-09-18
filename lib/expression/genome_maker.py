@@ -159,7 +159,7 @@ class GenomeMaker:
 
                     # Starting new chromosome (possibly the first one).  The less than accounts for the possibility
                     # that the reference genome file may have chromosomes not in the variants file.
-                    while not reference_chromosome or reference_chromosome < chromosome:
+                    while not reference_chromosome or reference_chromosome != chromosome:
 
                         # At least one chromosome already completed - finish and save
                         if building_chromosome:
