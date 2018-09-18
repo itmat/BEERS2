@@ -9,8 +9,27 @@ from operator import itemgetter
 
 
 class GenomeMaker:
+    """
+    Used to create two custom genomes based upon the contents of a variants file and an appropriate reference genome
+    file.  The custom genomes are built one chromosome at a time.
+    """
 
     def __init__(self, variants_filename, genome_ref_filename, genome_output_file_stem, seed, threshold, log_filename):
+        """
+        Constructor for the GenomeMaker object which holds the arguments provided.  It also contains the hardcoded
+        custom genome names and the regular expression used to extract the needed data from the variants file.  Since
+        the output files holding the custom genomes are constructed one chromosome at a time, they must start out as
+        virgin files.  So any prior files having the same path/filename are first deleted.
+        :param variants_filename: path of the text file containing the variants (formatted as in the variants_maker.py
+        file in this package)
+        :param genome_ref_filename:  fasta file containing the reference genome (each chromosome sequence should be on
+        a single line - no line breaks)
+        :param genome_output_file_stem: path to the output fasta file(s) - will be suffixed with the custom genome
+        names.
+        :param seed: seed for random number generator to allow for repeatable analyses.
+        :param threshold: minimum percent abundance of a variant for it to be recognized as a legitimate variant.
+        :param log_filename: path to log file.
+        """
         self.variants_filename = variants_filename
         self.genome_output_file_stem = genome_output_file_stem
         self.genome_ref_filename = genome_ref_filename
@@ -26,21 +45,48 @@ class GenomeMaker:
                 pass
 
     def get_most_abundant_variants(self, variants):
+        """
+        Obtains the (at most) two variants for a chromosome and position having the most reads (greatest abundances).
+        In many cases, there may be only one variant given, in which case it alone is returned.  In some cases, the
+        lesser of the two most abundant variants may be so few reads as to be deemed invalid, in which case only the
+        most abundant variant is returned.  Otherwise the top two variants are returned.
+        :param variants:
+        :return:
+        """
         max_variants = []
+
+        # Make a fresh copy of the variants (since variants are mutable) that may be modified.  Insure that
+        # reads are treated as integers.
         variant_reads = {variant.split(':')[0]: int(variant.split(':')[1]) for variant in variants}
+
+        # If only one variant is given, return it only without the read count.
         if len(variant_reads) == 1:
             return [next(iter(variant_reads.keys()))]
+
+        # Otherwise, use the max operation to pluck off the top two variants, one at a time.
         for _ in range(2):
             max_variant = max(variant_reads.items(), key=itemgetter(1))[0]
             max_variants.append((max_variant, variant_reads[max_variant]))
             del variant_reads[max_variant]
+
+        # Determine the total reads for the top two variants and if the lesser variant's percentage of the total
+        # reads is below the threshold, discard it and return only the top variant without its read count.
         total_reads = sum(read for _, read in max_variants)
         if max_variants[0][1]/total_reads < self.abundance_threshold:
             return [max_variants[0][0]]
+
+        # Otherwise, return both variants without the corresponding read counts.
         return [variant for variant, read in max_variants]
 
     @staticmethod
     def build_sequence_from_variant(genome, variant):
+        """
+        Applies the variant provided to the custom genome provided in accordance with the variant's format (e.g.,
+        D indicates delete followed by number of bases to delete, I indicates insert followed by bases to insert, and
+        no D or I indicates a single base change.
+        :param genome: custom genome to which the variant is applied
+        :param variant: variant to apply
+        """
 
         # Insert called for
         if "I" in variant[0]:
@@ -58,14 +104,25 @@ class GenomeMaker:
             genome.append_segment(base_to_append)
 
     def make_genome(self):
+        """
+        Performs the task of making two custom genomes, one chromosome at a time, from the provided variant file and
+        genome reference file.
+        """
 
+        # Open the log file for writing
         with open(self.log_filename, 'w') as log_file:
+
+            # Open both the variants file and genome reference file for reading
             with open(self.variants_filename) as variants_file, open(self.genome_ref_filename) as genome_ref_file:
                 reference_chromosome = None
                 reference_sequence = None
                 building_chromosome = False
                 genomes = list()
+
+                # Iterate over each variant line in the variants file
                 for variant_line in variants_file:
+
+                    # Extract the variant chromomsome, variant position and an array of the variants from the line.
                     match = re.match(self.variant_line_pattern, variant_line)
                     chromosome = match.group(1)
 
@@ -73,7 +130,8 @@ class GenomeMaker:
                     variant_position = int(match.group(2)) - 1
                     variants = match.group(3).split(' | ')
 
-                    # Starting new chromosome (possibly the first one)
+                    # Starting new chromosome (possibly the first one).  The less than accounts for the possibility
+                    # that the reference genome file may have chromosomes not in the variants file.
                     while not reference_chromosome or reference_chromosome < chromosome:
 
                         # At least one chromosome already completed - finish and save
@@ -92,7 +150,7 @@ class GenomeMaker:
 
                             # Only set up genomes if the reference chromosome is the same at the one currently
                             # being read from the variants file.  Otherwise, skip over and get the next chromosome from
-                            # the reference genome file.
+                            # the reference genome file.  An new set of of genomes is created for each new chromosome.
                             if reference_chromosome == chromosome:
                                 building_chromosome = True
                                 reference_sequence = genome_ref_file.readline().rstrip()
@@ -140,7 +198,7 @@ class GenomeMaker:
                                 self.build_sequence_from_variant(genome, max_variant)
                                 max_variants.remove(max_variant)
 
-                # Variants file exhausted, must be done with last chromosome.
+                # Variants file exhausted, must be done with last chromosome.  So save the last pair of genomes.
                 for genome in genomes:
                     genome.append_segment(reference_sequence[genome.position + genome.offset:])
                     log_file.write(f"{genome}\n")
@@ -148,6 +206,18 @@ class GenomeMaker:
 
     @staticmethod
     def main():
+        """
+        Entry point for the genome maker.  Three input file paths/names are required.  One is the variant file, created
+        by the variants maker in this package.  The second is a fasta file of the reference genome containing at least
+        those chromosomes found in the variants file.  Each of the chromosome sequences in the fasta file must be
+        resident on one line.  THe third is a log file.  One output file path/name is required, to which the hardcoded
+        custom genome names will be suffixed to form fasta files of the custom genome sequences created.  Two optional
+        arguments are the seed and the threshold.
+
+        It should be noted that both the variants file and the genome reference fasta file should list the chromosomes
+        in the same order.  Additionally, the variants file should list the variants in ascending order of position
+        within each chromosome.
+        """
         parser = argparse.ArgumentParser(description='Make Genome Files')
         parser.add_argument('-v', '--variants_filename',
                             help="Textfile providing variants as provided by the ouput"
@@ -178,7 +248,7 @@ class GenomeMaker:
 
 class Genome:
     """
-    Holds name, chromosome, current sequence, current position (0 indexed) and current offset for a nascent, custom genome.
+    Holds name, chromosome, current seq, current position (0 indexed) and current offset for a nascent, custom genome.
     The current offset is such that when it is added to the current position, one arrives at the corresponding position
     (0 indexed) on the reference genome.  The object also provides methods for appending, inserting and deleting based
     upon instructions in the variants input file.
@@ -228,6 +298,13 @@ class Genome:
         self.offset += length
 
     def save_to_file(self, genome_output_file_stem):
+        """
+        Saves the custom genome sequence into a single line of a fasta file.  The genome name is suffixed to the
+        given output filename steam.  Since the genome sequence data is saved one chromosome at a time, the
+        output file is appended to.  That means that the output file should be empty when the first chromosome
+        sequence is added.  Since the sequence is memory is closed at this time, this genome can no longer be modified.
+        :param genome_output_file_stem: the name of the output file to which the genome file is suffixed.
+        """
         str_sequence = self.sequence.getvalue()
         self.sequence.close()
         with open(genome_output_file_stem + '_' + self.name + ".fa", 'a') as genome_file:
