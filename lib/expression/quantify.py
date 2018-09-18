@@ -19,6 +19,8 @@ def transcript_length(geneinfo_filename):
     # Open file for reading and gather fields in each line into an array.
     with open(geneinfo_filename, 'r') as geneinfo_file:
         for line in geneinfo_file:
+            if line.startswith('#'):
+                continue
             fields = line.rstrip('\n').split('\t')
 
             # Starting location(s) for transcript exons - banish trailing comma
@@ -75,7 +77,7 @@ def transcript_umap_count(reads_filename):
 
 
 
-def quantify(geneinfo_filename, reads_filename, quant_filename):
+def quantify(geneinfo_filename, reads_filename, quant_files_prefix):
     tx_final_count = collections.defaultdict(int)
 
     # The NH tag in the reads file (SAM file) tells us how many locations this read is aligned to.  This
@@ -84,6 +86,16 @@ def quantify(geneinfo_filename, reads_filename, quant_filename):
 
     tx_length = transcript_length(geneinfo_filename)
     tx_umap_count = transcript_umap_count(reads_filename)
+
+
+    # Transcript : parent gene dictionary
+    tx_gn_map = collections.defaultdict(str)
+    with open(geneinfo_filename, 'r') as geneinfo_file:
+        for line in geneinfo_file:
+            if line.startswith('#'):
+                continue
+            fields = line.rstrip('\n').split('\t')
+            tx_gn_map[fields[7]] = fields[8]
 
     # Open file for reading and start a line counter
     with open(reads_filename, 'r') as reads_file:
@@ -191,11 +203,22 @@ def quantify(geneinfo_filename, reads_filename, quant_filename):
                     tx_final_count[key] += psi
 
     ordered_tx_final_count = collections.OrderedDict(sorted(tx_final_count.items()))
-    # Write the quantfication information to quant_filename
-    with open(quant_filename, 'w') as quant_file:
-        for key, value in ordered_tx_final_count.items():
-            quant_file.write(str(key) + '\t' + str(value) + '\n')
 
+    # Write the transcript quantification information to transcript quant filename
+    with open(quant_files_prefix + '_tx.tsv', 'w') as quant_file:
+        for key, value in ordered_tx_final_count.items():
+            quant_file.write(str(key) + '\t' + str(round(value, 3)) + '\n')
+
+    # Add the transcript counts to parent gene to get gene count
+    gn_final_count = collections.defaultdict(float)
+    for key, value in ordered_tx_final_count.items():
+        gn_final_count[tx_gn_map[key]] += value
+
+    ordered_gn_final_count = collections.OrderedDict(sorted(gn_final_count.items()))
+    # Write gene quantification information to gene quant filename
+    with open(quant_files_prefix + '_gn.tsv', 'w') as quant_file:
+        for key, value in ordered_gn_final_count.items():
+            quant_file.write(str(key) + '\t' + str(round(value,3)) + '\n')
 
 
 
@@ -204,9 +227,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Quantifier')
     parser.add_argument('-g', '--geneinfo_filename')
     parser.add_argument('-r', '--reads_filename')
-    parser.add_argument('-o', '--quant_filename')
+    parser.add_argument('-o', '--quant_files_prefix')
     args = parser.parse_args()
-    quantify(args.geneinfo_filename, args.reads_filename, args.quant_filename)
+    quantify(args.geneinfo_filename, args.reads_filename, args.quant_files_prefix)
 
     # Example command
-    #python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_quant.tsv'
+    # python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_quant'
