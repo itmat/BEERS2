@@ -89,7 +89,7 @@ class GenomeMaker:
         # If the chromosome is unique to one parent (e.g., chrM or chrY) or unique due to gender (e.g. chr X and
         # gender is male) return the most abundant variant only.
         if chromosome in ['chrM', 'chrY'] or (self.gender == 'male' and chromosome == 'chrX'):
-            return max_variants[0][0]
+            return [max_variants[0][0]]
 
         # Determine the total reads for the top two variants and if the lesser variant's percentage of the total
         # reads is below the threshold, discard it and return only the top variant without its read count.
