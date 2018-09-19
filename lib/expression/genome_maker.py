@@ -6,6 +6,7 @@ import os
 import argparse
 from timeit import default_timer as timer
 from operator import itemgetter
+import time
 
 
 class GenomeMaker:
@@ -19,25 +20,32 @@ class GenomeMaker:
                  genome_ref_filename,
                  genome_output_file_stem,
                  seed,
-                 threshold,
+                 min_threshold,
                  log_filename,
-                 gender):
+                 gender,
+                 min_read_total_count):
         """
         Constructor for the GenomeMaker object which holds the arguments provided.  It also contains the hardcoded
         custom genome names and the regular expression used to extract the needed data from the variants file.  Since
         the output files holding the custom genomes are constructed one chromosome at a time, they must start out as
         virgin files.  So any prior files having the same path/filename are first deleted.
         :param variants_filename: path of the text file containing the variants (formatted as in the variants_maker.py
-        file in this package)
+        file in this package).  Below is an example of the expected variants file formatting:
+            chr1:1498605 | T:12 | D1:1      TOT=13  0.92,0.08       E=0.39124356362925566
+            chr1:1498606 | T:13 | IT:1      TOT=14  0.93,0.07       E=0.37123232664087563
         :param genome_ref_filename:  fasta file containing the reference genome (each chromosome sequence should be on
-        a single line - no line breaks)
+        a single line - no line breaks)  Also note that the chromosome order must agree with the order of the
+        chromosomes in the variants_filename because once passed, as reference chromosome is not revisited.
         :param genome_output_file_stem: path to the output fasta file(s) - will be suffixed with the custom genome
         names.
         :param seed: seed for random number generator to allow for repeatable analyses.  Defaults to None
-        :param threshold: minimum percent abundance of a variant for it to be recognized as a legitimate variant.
+        :param min_threshold: minimum percent abundance of a variant for it to be recognized as a legitimate variant.
         Defaults to 0.03
         :param log_filename: path to log file.
         :param gender: gender ascribed to the variants input file.
+        :param min_read_total_count: when the total reads of the two most abundant variants meet or exceed this value,
+        the second most abundant variant read count must exceed one to be included as a viable variant irregardless of
+        whether it meets the minimum threshold requirement.
         """
         self.variants_filename = variants_filename
         self.genome_output_file_stem = genome_output_file_stem
@@ -45,14 +53,20 @@ class GenomeMaker:
         self.log_filename = log_filename
         self.gender = gender
 
-        # If seed is set, use it to assure reproducible results.
-        if seed:
-            np.random.seed(seed)
-        self.abundance_threshold = threshold
+        # If seed is set, use it to assure reproducible results.  Otherwise generate a seed from a timestamp so
+        # that it may be added to the log file in the event that the user wishes to repeat an experiment after the
+        # fact.
+        if not seed:
+            seed = GenomeMaker.generate_seed()
+        self.seed = seed
+        np.random.seed(seed)
+        self.min_abundance_threshold = min_threshold
+        self.min_read_total_count = min_read_total_count
 
         # Pattern used to extract chromosome, position and variants from each variants line.
         # The [^\] is there to insure that we avoid greedy matches to subsequent colons since colons
-        # delimit chromosome and position and also variant description and read count.
+        # delimit chromosome and position and also variant description and read count, but a pipe
+        # separates the chromosome:position from the variant description:read count portion.
         self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
         self.genome_names = ['maternal', 'paternal']
 
@@ -70,6 +84,20 @@ class GenomeMaker:
             except OSError:
                 pass
 
+    @staticmethod
+    def generate_seed():
+        """
+        Provides an integer of 32 bits or less using a seconds based timestamp.  If the timestamp exceeds 32 bits, the
+        integer obtained from the lowest 32 bits is returned
+        :return: a 32 bit integer seed for the numpy random number generator.
+        """
+        candidate_seed = int(time.time())
+
+        # If the timestamp bit length exceeds 32 bits, mask out all but the lowest 32 bits.
+        if candidate_seed.bit_length() > 32:
+            candidate_seed = candidate_seed & 0xffffffff
+        return candidate_seed
+
     def get_most_abundant_variants(self, chromosome, variants):
         """
         Obtains the (at most) two variants for a chromosome and position having the most reads (greatest abundances).
@@ -83,8 +111,9 @@ class GenomeMaker:
         """
         max_variants = []
 
-        # Make a fresh copy of the variants (since variants are mutable) that may be modified.  Insure that
-        # reads are treated as integers.
+        # Make a fresh copy of the variants (since variants are mutable) that may be modified.  Create a dictionary
+        # from the array (variant description: read count) and insure that reads are treated as integers.
+        # (e.g., ['C:1','T:2','D2:2'] => {'C': 1, 'T': 2, 'D2': 2})
         variant_reads = {variant.split(':')[0]: int(variant.split(':')[1]) for variant in variants}
 
         # If only one variant is given, return it only without the read count.
@@ -93,8 +122,14 @@ class GenomeMaker:
 
         # Otherwise, use the max operation to pluck off the top two variants, one at a time.
         for _ in range(2):
+
+            # This line grabs the variant description with the maximum read count
             max_variant = max(variant_reads.items(), key=itemgetter(1))[0]
+
+            # This line appends a tuple, (variant description, variant read count) to the max_variants arrays.
             max_variants.append((max_variant, variant_reads[max_variant]))
+
+            # Remove the the variant_reads dictionary the entry having the max_variant as the key.
             del variant_reads[max_variant]
 
         # If the chromosome is unique to one parent (e.g., chrM or chrY) or unique due to gender (e.g. chr X and
@@ -105,12 +140,13 @@ class GenomeMaker:
         # Determine the total reads for the top two variants and if the lesser variant's percentage of the total
         # reads is below the threshold, discard it and return only the top variant without its read count.
         total_reads = sum(read for _, read in max_variants)
-        if max_variants[1][1]/total_reads < self.abundance_threshold:
+        if max_variants[1][1]/total_reads < self.min_abundance_threshold:
             return [max_variants[0][0]]
 
         # If the second most abundant variant has only 1 read when the total reads between the top two most abundant
-        # variants is 10 or greater, again return only the top variant without its read count.
-        if total_reads >= 10 and max_variants[1][1] == 1:
+        # variants is equal to or greater then the min_read_total_count, again return only the top variant without its
+        # read count.
+        if total_reads >= self.min_read_total_count and max_variants[1][1] == 1:
             return [max_variants[0][0]]
 
         # Otherwise, return both variants without the corresponding read counts.
@@ -154,7 +190,10 @@ class GenomeMaker:
             with open(self.variants_filename) as variants_file, open(self.genome_ref_filename) as genome_ref_file:
                 reference_chromosome = None
                 reference_sequence = None
+
+                # Flag to indicate when a genome (via the current chromosome) is being constructed.
                 building_chromosome = False
+
                 genomes = list()
 
                 # Iterate over each variant line in the variants file
@@ -168,8 +207,10 @@ class GenomeMaker:
                     variant_position = int(match.group(2)) - 1
                     variants = match.group(3).split(' | ')
 
-                    # Starting new chromosome (possibly the first one).  The less than accounts for the possibility
-                    # that the reference genome file may have chromosomes not in the variants file.
+                    # Starting new chromosome in the variants file or, if no reference_chromosome yet exists, starting
+                    # the very first chromosome.  We iterate in case the variants file skips over a chromosome.  The
+                    # variants file and the reference genome fasta file must order the chromosomes in the same way but
+                    # the reference genome file can be more complete (have more chromosomes) than the variants file.
                     while not reference_chromosome or reference_chromosome != chromosome:
 
                         # At least one chromosome already completed - finish and save
@@ -301,20 +342,28 @@ class GenomeMaker:
         parser.add_argument('-s', '--seed', type=int, default=None,
                             help="Integer to be used as a seed for the random number generator."
                                  "  Value defaults to no seed.")
-        parser.add_argument('-t', '--threshold', type=float, default=0.03,
-                            help="Abundance threshold of alt allele.  Defaults to 0.03 (3 percent)")
+        parser.add_argument('-m', '--min_threshold', type=float, default=0.03,
+                            help="For any position, if the percent abundance of the second most abundant variant"
+                                 "relative to the two most abundant variants falls below this threshold, the seond"
+                                 "most abundant variant will be discarded.  Defaults to 0.03 (3 percent)")
         parser.add_argument('-l', '--log_filename', help="Log file.")
         parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'],
                             help="Gender of input sample (male or female).")
+        parser.add_argument('-c', '--min_read_total_count', type=int, default=10,
+                            help="For any position, if the total reads from the two most abundant variants"
+                                 " equals or exceeds this value, the second most abundant variant will be discarded"
+                                 " if it is a single read even if it passes the minimum threshold test.  Defaults to"
+                                 " 10.")
         args = parser.parse_args()
         print(args)
         genome_maker = GenomeMaker(args.variants_filename,
                                    args.reference_genome_filename,
                                    args.genome_output_file_stem,
                                    args.seed,
-                                   args.threshold,
+                                   args.min_threshold,
                                    args.log_filename,
-                                   args.gender)
+                                   args.gender,
+                                   args.min_read_total_count)
         start = timer()
         genome_maker.make_genome()
         end = timer()
@@ -361,7 +410,7 @@ class Genome:
         offset while the genome current position is advanced by the length of the sequence segment.
         :param sequence: sequence segment to insert
         """
-        self.indels_file.write(f"{self.chromosome}:{self.position + self.offset}\tI\t{len(sequence)}\n")
+        self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tI\t{len(sequence)}\n")
         self.sequence.write(sequence)
         self.position += len(sequence)
         self.offset += -1 * len(sequence)
@@ -374,7 +423,7 @@ class Genome:
         increases by the length provided.
         :param length: number of bases in the reference sequence to skip over.
         """
-        self.indels_file.write(f"{self.chromosome}:{self.position + self.offset}\tD\t{length}\n")
+        self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tD\t{length}\n")
         self.offset += length
 
     def save_to_file(self):
@@ -390,10 +439,14 @@ class Genome:
             genome_output_file.write(f">{self.chromosome}\n")
             genome_output_file.write(str_sequence + "\n")
 
-        # TODO might be a better place for this - say when the object is deleted?
+        # TODO might be a better place for this - say using a context manager?
         self.indels_file.close()
 
     def __str__(self):
+        """
+        Provide a string representation of the Genome object mainly for debugging purposes.
+        :return: string representation of the Genome object
+        """
         return f"name: {self.name}, chromosome: {self.chromosome}, position: {self.position}, offset: {self.offset}"
 
 
