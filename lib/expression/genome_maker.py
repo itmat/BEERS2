@@ -49,6 +49,10 @@ class GenomeMaker:
         if seed:
             np.random.seed(seed)
         self.abundance_threshold = threshold
+
+        # Pattern used to extract chromosome, position and variants from each variants line.
+        # The [^\] is there to insure that we avoid greedy matches to subsequent colons since colons
+        # delimit chromosome and position and also variant description and read count.
         self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
         self.genome_names = ['maternal', 'paternal']
 
@@ -56,6 +60,13 @@ class GenomeMaker:
         for genome_name in self.genome_names:
             try:
                 os.remove(self.genome_output_file_stem + "_" + genome_name + ".fa")
+            except OSError:
+                pass
+
+        # Make sure the filenames for the genome indel lists are pristine.
+        for genome_name in self.genome_names:
+            try:
+                os.remove(self.genome_output_file_stem + "_indels_" + genome_name + ".txt")
             except OSError:
                 pass
 
@@ -171,7 +182,7 @@ class GenomeMaker:
                                                f" chromosome {reference_chromosome}.\n")
                                 genome.append_segment(reference_sequence[genome.position + genome.offset:])
                                 log_file.write(f"{genome}\n")
-                                genome.save_to_file(self.genome_output_file_stem)
+                                genome.save_to_file()
 
                         # Get a reference sequence for the next chromosome in the reference genome file
                         line = genome_ref_file.readline()
@@ -196,7 +207,8 @@ class GenomeMaker:
                                 # chromosome.
                                 if chromosome != 'chrY':
                                     genomes.append(
-                                        Genome(self.genome_names[0], chromosome, start_sequence, variant_position))
+                                        Genome(self.genome_names[0], chromosome, start_sequence,
+                                               variant_position, self.genome_output_file_stem))
 
                                 # In addition to diploid chromosomes, this genome will contain contributions that
                                 # derive solely from the father.  So this genome is skipped when building the M
@@ -207,7 +219,8 @@ class GenomeMaker:
                                         and not(self.gender == 'male' and chromosome == 'chrX')\
                                         and not(self.gender == 'female' and chromosome == 'chrY'):
                                     genomes.append(
-                                        Genome(self.genome_names[1], chromosome, start_sequence, variant_position))
+                                        Genome(self.genome_names[1], chromosome, start_sequence,
+                                               variant_position, self.genome_output_file_stem))
 
                                 # There are no genomes to build move on to the next chromosome, if any.
                                 if not genomes:
@@ -261,7 +274,7 @@ class GenomeMaker:
                                    f" chromosome {chromosome}.\n")
                     genome.append_segment(reference_sequence[genome.position + genome.offset:])
                     log_file.write(f"Final Genome for chromosome {reference_chromosome}: {genome}\n")
-                    genome.save_to_file(self.genome_output_file_stem)
+                    genome.save_to_file()
 
     @staticmethod
     def main():
@@ -289,9 +302,10 @@ class GenomeMaker:
                             help="Integer to be used as a seed for the random number generator."
                                  "  Value defaults to no seed.")
         parser.add_argument('-t', '--threshold', type=float, default=0.03,
-                            help="Abundance threshold of alt allele.  Defaults to 0.03 (3%)")
+                            help="Abundance threshold of alt allele.  Defaults to 0.03 (3 percent)")
         parser.add_argument('-l', '--log_filename', help="Log file.")
-        parser.add_argument('-x', '--gender', help="Gender of input sample.")
+        parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'],
+                            help="Gender of input sample (male or female).")
         args = parser.parse_args()
         print(args)
         genome_maker = GenomeMaker(args.variants_filename,
@@ -315,13 +329,16 @@ class Genome:
     upon instructions in the variants input file.
     """
 
-    def __init__(self, name, chromosome, start_sequence, start_position):
+    def __init__(self, name, chromosome, start_sequence, start_position, genome_output_file_stem):
         self.name = name
         self.chromosome = chromosome
         self.sequence = StringIO()
         self.sequence.write(start_sequence)
         self.position = start_position
         self.offset = 0
+        self.genome_output_filename = genome_output_file_stem + '_' + self.name + ".fa"
+        self.genome_indels_filename = genome_output_file_stem + '_indels_' + self.name + ".txt"
+        self.indels_file = open(self.genome_indels_filename, 'a')
 
     def append_segment(self, sequence):
         """
@@ -344,6 +361,7 @@ class Genome:
         offset while the genome current position is advanced by the length of the sequence segment.
         :param sequence: sequence segment to insert
         """
+        self.indels_file.write(f"{self.chromosome}:{self.position + self.offset}\tI\t{len(sequence)}\n")
         self.sequence.write(sequence)
         self.position += len(sequence)
         self.offset += -1 * len(sequence)
@@ -356,21 +374,24 @@ class Genome:
         increases by the length provided.
         :param length: number of bases in the reference sequence to skip over.
         """
+        self.indels_file.write(f"{self.chromosome}:{self.position + self.offset}\tD\t{length}\n")
         self.offset += length
 
-    def save_to_file(self, genome_output_file_stem):
+    def save_to_file(self):
         """
         Saves the custom genome sequence into a single line of a fasta file.  The genome name is suffixed to the
         given output filename steam.  Since the genome sequence data is saved one chromosome at a time, the
         output file is appended to.  That means that the output file should be empty when the first chromosome
         sequence is added.  Since the sequence is memory is closed at this time, this genome can no longer be modified.
-        :param genome_output_file_stem: the name of the output file to which the genome file is suffixed.
         """
         str_sequence = self.sequence.getvalue()
         self.sequence.close()
-        with open(genome_output_file_stem + '_' + self.name + ".fa", 'a') as genome_file:
-            genome_file.write(f">{self.chromosome}\n")
-            genome_file.write(str_sequence + "\n")
+        with open(self.genome_output_filename, 'a') as genome_output_file:
+            genome_output_file.write(f">{self.chromosome}\n")
+            genome_output_file.write(str_sequence + "\n")
+
+        # TODO might be a better place for this - say when the object is deleted?
+        self.indels_file.close()
 
     def __str__(self):
         return f"name: {self.name}, chromosome: {self.chromosome}, position: {self.position}, offset: {self.offset}"
