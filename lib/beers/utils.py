@@ -96,7 +96,185 @@ class Utils:
             # Finally add a line break to the end of the new genome fasta file.
             edited_genome_fasta_file.write("\n")
 
+    @staticmethod
+    def convert_gtf_to_annot_file_format(gtf_filename):
+        """Convert a GTF file to a tab-delimited annotation file with one line
+        per transcript. Each line in the annotation file will have the following
+        columns:
+             1 - chrom
+             2 - strand
+             3 - txStart
+             4 - txEnd
+             5 - exonCount
+             6 - exonStarts
+             7 - exonEnds
+             8 - transcript_id
+             9 - gene_id
+            10 - genesymbol
+            11 - biotype
+        This method derives transcript info from the "exon" lines in the GTF
+        file and assumes the exons are listed in the order they appear in the
+        transcript, as opposed to their genomic coordinates. The annotation file
+        will list exons in order by plus-strand coordinates, so this method
+        reverses the order of exons for all minus-strand transcripts.
 
+        See website for standard 9-column GTF specification:
+        https://useast.ensembl.org/info/website/upload/gff.html
+
+        Parameters
+        ----------
+        gtf_filename : string
+            Path to GTF file to be converted annotation file format.
+
+        Returns
+        -------
+        string
+            Name of the annotation file produced from the GTF file.
+
+        """
+        output_annot_filename = os.path.splitext(gtf_filename)[0] + ".annotation.txt"
+
+        with open(gtf_filename, 'r') as gtf_file, \
+                open(output_annot_filename, 'w') as output_annot_file:
+
+            #Define line format for annotation file
+            annot_output_format = '{chrom}\t{strand}\t{txStart}\t{txEnd}\t{exonCount}\t{exonStarts}\t{exonEnds}\t{transcriptID}\t{geneID}\t{geneSymbol}\t{biotype}\n'
+
+            #Print annot file header
+            output_annot_file.write(annot_output_format.replace('{', '').replace('}', ''))
+
+            #Regex patterns used to extract individual attributes from the 9th
+            #column in the GTF file (the "attributes" column)
+            txid_pattern = re.compile(r'transcript_id "([^"]+)";')
+            geneid_pattern = re.compile(r'gene_id "([^"]+)";')
+            genesymbol_pattern = re.compile(r'gene_name "([^"]+)";')
+            biotype_pattern = re.compile(r'gene_biotype "([^"]+)";')
+
+            line_data = [] #List of line fields from current line of gtf
+            curr_gtf_tx = "" #transcript ID from current line of gtf
+            chrom = "" #Chromosome for current transcript
+            strand = "" #Strand for current transcript
+            txid = "" #ID of current transcript
+            geneid = "" #gene ID of current transcript
+            genesymbol = "None" #gene symbol of current transcript
+            biotype = "None" #Biotype of current transcript
+            ex_starts = [] #List of exon start coordinates for current transcript
+            ex_stops = [] #List of exon stop coordinates for current transcript
+            ex_count = 1 #Number of exons in current transcript
+
+            #Step through GTF until first exon entry (need to prime variables
+            #with data from first exon).
+            exon_found = False
+            for line in gtf_file:
+                line_data = line.split("\t")
+                if line_data[2] == "exon":
+                    exon_found = True
+                    break
+
+            if not exon_found:
+                raise NoExonsInGTF('ERROR: {gtf_file} contains no lines with exon feature_type.\n'.format(gtf_file=gtf_filename))
+
+            #Prime variables with data from first exon
+            chrom = line_data[0]
+            strand = line_data[6]
+            ex_starts.append(line_data[3])
+            ex_stops.append(line_data[4])
+            txid = txid_pattern.search(line_data[8]).group(1)
+            geneid = geneid_pattern.search(line_data[8]).group(1)
+            if genesymbol_pattern.search(line_data[8]):
+                genesymbol = genesymbol_pattern.search(line_data[8]).group(1)
+            if biotype_pattern.search(line_data[8]):
+                biotype = biotype_pattern.search(line_data[8]).group(1)
+
+            #process the remainder of the GTF file
+            for line in gtf_file:
+                line = line.rstrip('\n')
+                line_data = line.split("\t")
+
+                if line_data[2] == "exon":
+                    curr_gtf_tx = txid_pattern.search(line_data[8]).group(1)
+
+                    #Check transcript in current line is a new transcript
+                    if curr_gtf_tx == txid:
+
+                        #Check strand of transcript. If minus, reverse exon order.
+                        if strand == "-":
+                            ex_starts.reverse()
+                            ex_stops.reverse()
+
+                        #Format data from previous transcript and write to annotation file
+                        output_annot_file.write(
+                            annot_output_format.format(
+                                chrom=chrom,
+                                strand=strand,
+                                txStart=ex_starts[0],
+                                txEnd=ex_stops[-1],
+                                exonCount=ex_count,
+                                exonStarts=','.join(ex_starts),
+                                exonEnds=','.join(ex_stops),
+                                transcriptID=txid,
+                                geneID=geneid,
+                                geneSymbol=genesymbol,
+                                biotype=biotype
+                            )
+                        )
+
+                        #Load data from new transcript into appropriate variables
+                        txid = curr_gtf_tx
+                        chrom = line_data[0]
+                        strand = line_data[6]
+                        ex_count = 1
+                        ex_starts = [line_data[3]]
+                        ex_stops = [line_data[4]]
+                        geneid = geneid_pattern.search(line_data[8]).group(1)
+                        if genesymbol_pattern.search(line_data[8]):
+                            genesymbol = genesymbol_pattern.search(line_data[8]).group(1)
+                        else:
+                            genesymbol = "None"
+                        if biotype_pattern.search(line_data[8]):
+                            biotype = biotype_pattern.search(line_data[8]).group(1)
+                        else:
+                            biotype = "None"
+
+                    #This exon is strill from the same transcript.
+                    else:
+                        ex_starts.append(line_data[3])
+                        ex_stops.append(line_data[4])
+                        ex_count += 1
+
+            #Finish processing last transcript in GTF file
+
+            #Check strand. If minus, reverse exon order.
+            if strand == "-":
+                ex_starts.reverse()
+                ex_stops.reverse()
+
+            #Format data from last transcript and write to annotation file
+            output_annot_file.write(
+                annot_output_format.format(
+                    chrom=chrom,
+                    strand=strand,
+                    txStart=ex_starts[0],
+                    txEnd=ex_stops[-1],
+                    exonCount=ex_count,
+                    exonStarts=','.join(ex_starts),
+                    exonEnds=','.join(ex_stops),
+                    transcriptID=txid,
+                    geneID=geneid,
+                    geneSymbol=genesymbol,
+                    biotype=biotype
+                )
+            )
+
+        return output_annot_filename
+
+class BeersUtilsException(Exception):
+    """Base class for other Utils exceptions."""
+    pass
+
+class NoExonsInGTF(BeersUtilsException):
+    """Raised when GTF file contains no lines with "exon" in the 3rd column (feature_type)."""
+    pass
 
 
 if __name__ == "__main__":
