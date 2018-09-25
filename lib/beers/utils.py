@@ -132,6 +132,8 @@ class Utils:
             Name of the annotation file produced from the GTF file.
 
         """
+        #Note, as-is this statement won't expand "~" in the path to point to
+        #home directory.
         output_annot_filename = os.path.splitext(gtf_filename)[0] + ".annotation.txt"
 
         with open(gtf_filename, 'r') as gtf_file, \
@@ -167,7 +169,12 @@ class Utils:
             exon_found = False
             for line in gtf_file:
                 line_data = line.split("\t")
-                if line_data[2] == "exon":
+                #First conditional is to skip any header lines, which would
+                #result in a "list index out of range" error when checking the
+                #second conditional. Header lines don't contain any tabs, so
+                #there is no 3rd list element in line_data, following the split
+                #command.
+                if len(line_data) > 1 and line_data[2] == "exon":
                     exon_found = True
                     break
 
@@ -195,7 +202,7 @@ class Utils:
                     curr_gtf_tx = txid_pattern.search(line_data[8]).group(1)
 
                     #Check transcript in current line is a new transcript
-                    if curr_gtf_tx == txid:
+                    if curr_gtf_tx != txid:
 
                         #Check strand of transcript. If minus, reverse exon order.
                         if strand == "-":
