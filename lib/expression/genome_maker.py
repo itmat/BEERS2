@@ -23,7 +23,9 @@ class GenomeMaker:
                  min_threshold,
                  log_filename,
                  gender,
-                 min_read_total_count):
+                 min_read_total_count,
+                 ignore_indels,
+                 ignore_snps):
         """
         Constructor for the GenomeMaker object which holds the arguments provided.  It also contains the hardcoded
         custom genome names and the regular expression used to extract the needed data from the variants file.  Since
@@ -46,12 +48,16 @@ class GenomeMaker:
         :param min_read_total_count: when the total reads of the two most abundant variants meet or exceed this value,
         the second most abundant variant read count must exceed one to be included as a viable variant irregardless of
         whether it meets the minimum threshold requirement.
+        :param ignore_indels: choose reference genome base over indel option when a indel variant is encountered.
+        :param ignore_snps: choose reference genome base over snp option when a snp variant is encountered.
         """
         self.variants_filename = variants_filename
         self.genome_output_file_stem = genome_output_file_stem
         self.genome_ref_filename = genome_ref_filename
         self.log_filename = log_filename
         self.gender = gender
+        self.ignore_indels = ignore_indels
+        self.ignore_snps = ignore_snps
 
         # If seed is set, use it to assure reproducible results.  Otherwise generate a seed from a timestamp so
         # that it may be added to the log file in the event that the user wishes to repeat an experiment after the
@@ -152,30 +158,38 @@ class GenomeMaker:
         # Otherwise, return both variants without the corresponding read counts.
         return [variant for variant, read in max_variants]
 
-    @staticmethod
-    def build_sequence_from_variant(genome, variant):
+    def build_sequence_from_variant(self, genome, variant, reference_base):
         """
         Applies the variant provided to the custom genome provided in accordance with the variant's format (e.g.,
         D indicates delete followed by number of bases to delete, I indicates insert followed by bases to insert, and
         no D or I indicates a single base change.
         :param genome: custom genome to which the variant is applied
         :param variant: variant to apply
+        :param reference_base:  base to use in place of indels when the option to ignore indels is selected.
         """
+
+        # Indel called for but ignore indels is specified or SNP called for but ignore snps is specified,
+        # then revert to reference base
+        if (self.ignore_indels and ("I" in variant[0] or "D" in variant[0])) \
+           or (self.ignore_snps and not ("I" in variant[0] or "D" in variant[0])):
+            genome.append_segment(reference_base)
+            return
 
         # Insert called for
         if "I" in variant[0]:
             segment_to_insert = variant[1:]
             genome.insert_segment(segment_to_insert)
+            return
 
         # Delete called for
-        elif "D" in variant[0]:
+        if "D" in variant[0]:
             length_to_delete = int(variant[1:])
             genome.delete_segment(length_to_delete)
+            return
 
         # SNP called for
-        else:
-            base_to_append = variant[0]
-            genome.append_segment(base_to_append)
+        base_to_append = variant[0]
+        genome.append_segment(base_to_append)
 
     def make_genome(self):
         """
@@ -296,14 +310,16 @@ class GenomeMaker:
                                 genome.append_segment(
                                     reference_sequence[genome.position + genome.offset: variant_position])
 
+                            reference_base = reference_sequence[genome.position + genome.offset: variant_position]
+
                             # If only one variant, apply directly to genome
                             if len(max_variants) == 1:
-                                self.build_sequence_from_variant(genome, max_variants[0])
+                                self.build_sequence_from_variant(genome, max_variants[0], reference_base)
 
                             # If two variants exist, toss a coin for one
                             else:
                                 max_variant = np.random.choice([max_variants[0], max_variants[1]], p=[0.5, 0.5])
-                                self.build_sequence_from_variant(genome, max_variant)
+                                self.build_sequence_from_variant(genome, max_variant, reference_base)
                                 max_variants.remove(max_variant)
 
                 # Variants file exhausted, must be done with last chromosome.  So save the last pair of genomes.
@@ -354,6 +370,10 @@ class GenomeMaker:
                                  " equals or exceeds this value, the second most abundant variant will be discarded"
                                  " if it is a single read even if it passes the minimum threshold test.  Defaults to"
                                  " 10.")
+        parser.add_argument('-i', '--ignore_indels', action='store_true',
+                            help="Use the reference genome base in place of an indel.  Defaults to false.")
+        parser.add_argument('-j', '--ignore_snps', action='store_true',
+                            help="Use the reference genome base in place of a snp.  Defaults to False.")
         args = parser.parse_args()
         print(args)
         genome_maker = GenomeMaker(args.variants_filename,
@@ -363,7 +383,9 @@ class GenomeMaker:
                                    args.min_threshold,
                                    args.log_filename,
                                    args.gender,
-                                   args.min_read_total_count)
+                                   args.min_read_total_count,
+                                   args.ignore_indels,
+                                   args.ignore_snps)
         start = timer()
         genome_maker.make_genome()
         end = timer()
@@ -460,4 +482,10 @@ Example Call:
 python genome_maker.py -v  ../../data/preBEERS/ETAM080_grp1.gene.norm.chr21_22.all_unique_mappers.fw_only_variants.txt \
 -g ../../data/preBEERS/human_21_22_genome -r ../../data/preBEERS/hg19_chr21_22_ref_edited.fa \
 -l ../../data/preBEERS/genome_maker.log -s 100 -x female
+
+python genome_maker.py -v  ../../data/preBEERS/hg19/Test_dataset.All_unique_mappers.fw_only_variants.txt \
+-g ../../data/preBEERS/hg19/genome_maker_output_no_indels \
+-r ../../data/preBEERS/hg19/reference_genome_edited.fa \
+-l ../../data/preBEERS/genome_maker.log -s 100 -x male -i
+
 '''
