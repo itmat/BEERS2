@@ -12,6 +12,9 @@ class Utils:
 
     base_complements = {"A": "T", "T": "A", "G": "C", "C": "G"}
 
+    #Line format definition for annotation file
+    annot_output_format = '{chrom}\t{strand}\t{txStart}\t{txEnd}\t{exonCount}\t{exonStarts}\t{exonEnds}\t{transcriptID}\t{geneID}\t{geneSymbol}\t{biotype}\n'
+
     @staticmethod
     def create_complement_strand(strand):
         """
@@ -281,11 +284,8 @@ class Utils:
         with open(gtf_filename, 'r') as gtf_file, \
                 open(output_annot_filename, 'w') as output_annot_file:
 
-            #Define line format for annotation file
-            annot_output_format = '{chrom}\t{strand}\t{txStart}\t{txEnd}\t{exonCount}\t{exonStarts}\t{exonEnds}\t{transcriptID}\t{geneID}\t{geneSymbol}\t{biotype}\n'
-
             #Print annot file header
-            output_annot_file.write(annot_output_format.replace('{', '').replace('}', ''))
+            output_annot_file.write(Utils.annot_output_format.replace('{', '').replace('}', ''))
 
             #Regex patterns used to extract individual attributes from the 9th
             #column in the GTF file (the "attributes" column)
@@ -353,7 +353,7 @@ class Utils:
 
                         #Format data from previous transcript and write to annotation file
                         output_annot_file.write(
-                            annot_output_format.format(
+                            Utils.annot_output_format.format(
                                 chrom=chrom,
                                 strand=strand,
                                 txStart=ex_starts[0],
@@ -400,7 +400,7 @@ class Utils:
 
             #Format data from last transcript and write to annotation file
             output_annot_file.write(
-                annot_output_format.format(
+                Utils.annot_output_format.format(
                     chrom=chrom,
                     strand=strand,
                     txStart=ex_starts[0],
