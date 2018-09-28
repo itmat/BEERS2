@@ -118,10 +118,8 @@ class ChromosomeCoordinate:
             True if equivalent and false otherwise.
 
         """
-        return isinstance(other, ChromosomeCoordinate) and (
-            self.chrom_name == other.chrom_name and
-            self.start_coord == other.start_coord and
-            self.end_coord == other.end_coord)
+        return isinstance(other, ChromosomeCoordinate) and \
+            (self.chrom_name, self.start_coord, self.end_coord) == (other.chrom_name, other.start_coord, other.end_coord)
 
     def __ne__(self, other):
         """Test non-equivalence between this and given ChromosomeCoordinate object.
