@@ -8,7 +8,6 @@ class ChromosomeSort:
     """
     Provides a facility for sorting a list of chromosome names by means of a ChromosomeName class.
     The ordering is as follows:
-    0.  no character string (a test needed because of recursion - see below)
     1.  leading digits (sorted numerically)
     2.  leading roman numerals (sorted by arabic number equivalents)
     3.  leading names potentially identified as gender related chromosomes (sorted x,y,m)
@@ -16,9 +15,9 @@ class ChromosomeSort:
     5.  leading alphabetic characters (sorted by dictionary order)
     6.  leading non-alphanumeric characters (sorted by ascii order)
 
-    Case is disreguarded.  For any of the cases above, in the case of equivalence of these leading characters, any
+    Case is disregarded.  For any of the items above, in the event of equivalence of these leading characters, any
     following character strings that start with a character different from the leading character classification,
-    are used to create new ChromosomeName classes and then compared - essentially recusing through the string
+    are used to create new ChromosomeName classes and then again compared - essentially recursing through the string
     representing the ChromosomeName.
     """
 
@@ -43,10 +42,10 @@ class ChromosomeSort:
                 chromosome_names.append(ChromosomeName(line.rstrip('\n')))
 
         # Print the original list, sort and print the sorted list.
-        print('\n'.join([chromosome_name.content for chromosome_name in chromosome_names]))
+        print('\n'.join([chromosome_name.original_content for chromosome_name in chromosome_names]))
         print('---')
         results = sorted(chromosome_names)
-        print('\n'.join([chromosome_name.content for chromosome_name in results]))
+        print('\n'.join([chromosome_name.original_content for chromosome_name in results]))
 
     @staticmethod
     def main():
@@ -74,6 +73,7 @@ class ChromosomeName:
         Provide a lower case version of the string representation of the chromosome name.
         :param content: string representation of the chromosome name
         """
+        self.original_content = content
         self.content = content.lower()
 
     def __eq__(self, other):
@@ -101,7 +101,9 @@ class ChromosomeName:
         :return: True if this ChromosomeName is greater and false otherwise.
         """
 
-        # Remaining content > no content
+        # Remaining content > no content.  In recursively created ChromosomeName objects from the trailing content,
+        # eventually we create ChromosomeName objects that are empty of content.  For the case where one name is a
+        # substring of the other, put the shorter name first.
         if not self.content:
             return False
         if not other.content:
@@ -113,12 +115,12 @@ class ChromosomeName:
         if self.content[0].isdigit() and not other.content[0].isdigit():
             return False
 
-        # Extract leading digits, if any
-        name_match = re.match('^(\d+)(.*)$', self.content)
-        other_name_match = re.match('^(\d+)(.*)$', other.content)
+        # Extract leading digits, if any, and any trailing content not starting with a digit
+        leading_digit_pattern = '^(\d+)(.*)$'
+        name_match = re.match(leading_digit_pattern, self.content)
+        other_name_match = re.match(leading_digit_pattern, other.content)
 
-        # If both name start with digits order by digits, the name having digits composing the larger
-        # number is greater.
+        # If both names have leading numerical content, compare them (as numbers)
         if name_match and other_name_match:
             if int(name_match.group(1)) > int(other_name_match.group(1)):
                 return True
@@ -129,16 +131,20 @@ class ChromosomeName:
             # greater than the other chromosome name object.
             return ChromosomeName(name_match.group(2)) > ChromosomeName(other_name_match.group(2))
 
-        # Names starting with roman numerals and special XYM designations > names not starting with roman numerals
-        # and special characters
-        if not re.match('^([ivxym]+)(.*)$', self.content) and re.match('^([ivxym]+)(.*)$', other.content):
+        # Names starting with roman numerals and special XYM gender designators > names not starting with roman
+        # numerals or special gender designators
+        # Recall that leading digits have already been handled at this point.
+        if not re.match('^[ivxym]', self.content) and re.match('^[ivxym]', other.content):
             return True
-        if re.match('^([ivxym]+)(.*)$', self.content) and not re.match('^([ivxym]+)(.*)$', other.content):
+        if re.match('^[ivxym]', self.content) and not re.match('^[ivxym]', other.content):
             return False
 
-        # Extract leading roman numerals, if any
-        name_match = re.match('^([ivx]+)(.*)$', self.content)
-        other_name_match = re.match('^([ivx]+)(.*)$', other.content)
+        # Extract leading roman numerals, if any, and any trailing content not starting with a roman numeral.
+        leading_roman_pattern = '^([ivx]+)(.*)$'
+        name_match = re.match(leading_roman_pattern, self.content)
+        other_name_match = re.match(leading_roman_pattern, other.content)
+
+        # If both names have leading roman numeral content, compare them (as arabic number equivalents).
         if name_match and other_name_match:
             name_roman = Roman(name_match.group(1))
             other_roman = Roman(other_name_match.group(1))
@@ -158,32 +164,41 @@ class ChromosomeName:
             return False
 
         # Names not starting with 'chr' > names starting with 'chr'
+        # Recall that leading digits, gender designators, and roman numerals have already been handled at this point.
         if not re.match('^chr', self.content) and re.match('^chr', other.content):
             return True
         if re.match('^chr', self.content) and not re.match('^chr', other.content):
             return False
 
-        # Extract leading 'chr' if any
-        name_match = re.match('^(chr)(.*)$', self.content)
-        other_name_match = re.match('^(chr)(.*)$', other.content)
+        # Extract leading 'chr' strings, if any, and any trailing content.
+        leading_chr_pattern = '^(chr)(.*)$'
+        name_match = re.match(leading_chr_pattern, self.content)
+        other_name_match = re.match(leading_chr_pattern, other.content)
 
-        # If both chr, check whether one chromosome name object created from the remaining string
-        # is greater than the other chromosome object
+        # If both names have a leading 'chr' string, only the trailing strings need be compared.
         if name_match and other_name_match:
+
+            # check whether one chromosome name object created from the
+            # trailing content is greater than the other chromosome object similarly created.
             return ChromosomeName(name_match.group(2)) > ChromosomeName(other_name_match.group(2))
 
         # Names not starting with alphabetic characters > names starting with alphabetic characters.
+        # Recall that leading digits, gender designators, roman_numerals, and 'chr' have already been handled at
+        # this point.
         if not self.content[0].isalpha() and other.content[0].isalpha():
             return True
         if self.content[0].isalpha() and not other.content[0].isalpha():
             return False
 
-        # Extract leading alphabetic content, if any
-        name_match = re.match('^([a-z]+)(.*)$', self.content)
-        other_name_match = re.match('^([a-z]+)(.*)$', other.content)
+        # Extract leading alphabetic content, if any, and any trailing content not starting with an alphabetic character
+        leading_alphabetic_pattern = '^([a-z]+)(.*)$'
+        name_match = re.match(leading_alphabetic_pattern, self.content)
+        other_name_match = re.match(leading_alphabetic_pattern, other.content)
+
+        # If both names have leading alphabetic content, compare them
         if name_match and other_name_match:
 
-            # Which character string is greater determine by string >
+            # Which character string is greater is determined by string >
             if name_match.group(1) > other_name_match.group(1):
                 return True
             if name_match.group(1) < other_name_match.group(1):
@@ -195,9 +210,30 @@ class ChromosomeName:
             return result
 
         # At this point, the leading characters are not digits, roman numerals, special gender related chars or
-        # alphabetic characters, leaving just non-alphanumeric characters.  Since there are no rules for how
-        # non-alphanumeric characters are orders we will rely on string comparisons.
-        # TODO - add parsing and handling for leading non-alphanumerics
+        # alphabetic characters, leaving just names starting with non-alphanumeric characters.  Since there are no
+        # rules for how non-alphanumeric characters are orders we will rely on string comparisons.
+
+        # Extract leading non-alphanumeric content, if any, and any trailing content not starting with a
+        # non-alphanumeric character.
+        leading_non_alphanumeric_pattern = '^(\W+)(.*)$'
+        name_match = re.match(leading_non_alphanumeric_pattern, self.content)
+        other_name_match = re.match(leading_non_alphanumeric_pattern, other.content)
+
+        # If both names have leading non-alphanumeric content, compare them
+        if name_match and other_name_match:
+
+            # Which character string is greater is determined by string >
+            if name_match.group(1) > other_name_match.group(1):
+                return True
+            if name_match.group(1) < other_name_match.group(1):
+                return False
+
+            # If both non-alphanumeric contents match, check whether one chromosome name object created from the
+            # trailing content is greater than the other chromosome object similarly created.
+            result = ChromosomeName(name_match.group(2)) > ChromosomeName(other_name_match.group(2))
+            return result
+
+        # Theoretically, we shouldn't get here
         return True
 
     def __lt__(self, other):
