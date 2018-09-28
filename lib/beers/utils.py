@@ -1,9 +1,8 @@
-import pandas as pd
-from molecule import Molecule
 import os
 import re
 import sys
-
+import pandas as pd
+from beers.molecule import Molecule
 
 class Utils:
     """
