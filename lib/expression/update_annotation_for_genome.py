@@ -5,6 +5,7 @@ import collections
 import bisect
 from timeit import default_timer as timer
 from beers.utils import Utils
+from expression.chromosome_sorter import ChromosomeName
 
 class UpdateAnnotationForGenome:
     """Updates a gene annotation's coordinates to account for insertions &
@@ -93,7 +94,6 @@ class UpdateAnnotationForGenome:
     def update_annotation(self):
         """Main work-horse function that generates the updated annotation.
         """
-        #TODO: check input annotation and variant files are sorted by chr in the same order
 
         with open(self.genome_indel_filename, 'r') as genome_indel_file, \
                 open(self.input_annot_filename, 'r') as input_annot_file, \
@@ -265,24 +265,24 @@ class UpdateAnnotationForGenome:
         #previous line if needed.
         prev_line_file_position = variant_file.tell()
 
-        chrom_found = False
+        #Check indel file until desired chromosome found or passed.
+        chrom_found_or_passed = False
+        #Represent as ChromosomeName class to leverage extensive methods for
+        #comparing chromosome names.
+        compare_chrom = ChromosomeName(chrom)
+
         for line in variant_file_iter:
             line_data = line.split('\t')
             indel_chrom, indel_position = line_data[0].split(':')
-            if indel_chrom == chrom:
-                chrom_found = True
+            #Represent as ChromosomeName class to leverage extensive methods for
+            #comparing chromosome names.
+            if ChromosomeName(indel_chrom) >= compare_chrom:
+                chrom_found_or_passed = True
                 break
             else:
                 prev_line_file_position = variant_file.tell()
 
-        #TODO: Once we've implemented generic utility functions for making
-        #      ordered comparisons of chromosome names, I can change the code
-        #      above to break when it finds the first chromosome >= the desired
-        #      one. This will prevent the above loop from running until the end
-        #      of the variant file if the desired chromosome is not present in
-        #      the variant file.
-
-        if not chrom_found:
+        if not chrom_found_or_passed:
             #Rewind to position variant file started at
             variant_file.seek(variant_file_start_position)
         else:
