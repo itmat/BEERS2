@@ -236,6 +236,15 @@ class ChromosomeName:
         # Theoretically, we shouldn't get here
         return True
 
+    def __ge__(self, other):
+        """
+        Obtained by determining whether the ChromosomeName is greater or equal.
+        :param other: other ChromosomeName object for comparison
+        :return: True if this ChromosomeName is greater or equal and false otherwise.
+
+        """
+        return self.__gt__(other) or self.__eq__(other)
+
     def __lt__(self, other):
         """
         Obtained by determining whether the ChromosomeName is greater or equal and negating that finding.
@@ -243,6 +252,174 @@ class ChromosomeName:
         :return: True if this ChromosomeName is less and false otherwise.
         """
         return not self.__gt__(other) and self.__ne__(other)
+
+    def __le__(self, other):
+        """
+        Obtained by determining whether this ChromosomeCoordinate is greater and
+        negating that finding.
+        :param other: other ChromosomeName object for comparison
+        :return: True if this ChromosomeName is less or equal and false otherwise.
+
+        """
+        return not self.__gt__(other)
+
+
+class ChromosomeCoordinate(ChromosomeName):
+    """Class holds chromosome name, start and end coordinates for making comparisons.
+
+    This is a subclass of ChromosomeName, so ChromosomeName comparator functions
+    are used for name component of each chromosome, while the coordinates are
+    compared numerically.
+
+    Parameters
+    ----------
+    content : string
+        Name of the chromosome compatible with ChromosomeName class.
+    start_coord : int
+        (Optional) Start coordinate of chromosomal coordinate. Defaults to 0.
+    end_coord : int
+        (Optional) End coordinate of chromosomal coordinate. Defaults to
+        start_coord value.
+
+    Attributes
+    ----------
+    start_coord - int
+    end_coord - int
+
+    """
+
+    def __init__(self, chrom_name, start_coord=None, end_coord=None):
+        """
+        Provide ChromosomeName representation of chromosome name string.
+        """
+        ChromosomeName.__init__(self, chrom_name)
+        if start_coord is None:
+            self.start_coord = 0
+        else:
+            self.start_coord = int(start_coord)
+        if end_coord is None:
+            self.end_coord = int(self.start_coord)
+        else:
+            self.end_coord = int(end_coord)
+
+    def __eq__(self, other):
+        """Test equivalence between this and given ChromosomeCoordinate object.
+
+        ChromosomeNames, start coordinates, and end coordinates must all be
+        equal.
+
+        Parameters
+        ----------
+        other : ChromosomeCoordinate
+            Other ChromosomeCoordinate object for comparison
+
+        Returns
+        -------
+        Boolean
+            True if equivalent and false otherwise.
+
+        """
+        return isinstance(other, ChromosomeCoordinate) and \
+            ChromosomeName.__eq__(self, other) and \
+            (self.start_coord, self.end_coord) == (other.start_coord, other.end_coord)
+
+    def __ne__(self, other):
+        """Test non-equivalence between this and given ChromosomeCoordinate object.
+
+        Just the negation of __eq__().
+
+        Parameters
+        ----------
+        other : ChromosomeCoordinate
+            Other ChromosomeCoordinate object for comparison
+
+        Returns
+        -------
+        Boolean
+            True if not equivalent and false otherwise.
+
+        """
+        return not self.__eq__(other)
+
+    def __gt__(self, other):
+        """Test if this is greater than the given ChromosomeCoordinate.
+
+        Makes comparisons in the following order: ChromosomeNames, start
+        coordinate, end coordinate.
+
+        Parameters
+        ----------
+        other : ChromosomeCoordinate
+            Other ChromosomeCoordinate object for comparison.
+
+        Returns
+        -------
+        Boolean
+            True if this ChromosomeCoordinate is greater, false otherwise.
+
+        """
+        if ChromosomeName.__eq__(self, other):
+
+            if self.start_coord == other.start_coord:
+                return self.end_coord > other.end_coord
+
+            return self.start_coord > other.start_coord
+
+        return ChromosomeName.__gt__(self, other)
+
+    def __ge__(self, other):
+        """Test if this is greater or equal to the given ChromosomeCoordinate.
+
+        Parameters
+        ----------
+        other : ChromosomeCoordinate
+            Other ChromosomeCoordinate object for comparison.
+
+        Returns
+        -------
+        Boolean
+            True if this ChromosomeCoordinate is greater or equal, false otherwise.
+
+        """
+        return self.__gt__(other) or self.__eq__(other)
+
+    def __lt__(self, other):
+        """Test if this is less than the given ChromosomeCoordinate.
+
+        Obtained by determining whether this ChromosomeCoordinate is greater or
+        equal the given and negating that finding.
+
+        Parameters
+        ----------
+        other : ChromosomeCoordinate
+            Other ChromosomeCoordinate object for comparison.
+
+        Returns
+        -------
+        Boolean
+            True if this ChromosomeCoordinate is less, false otherwise.
+
+        """
+        return not self.__gt__(other) and self.__ne__(other)
+
+    def __le__(self, other):
+        """Test if this is less or equal to the given ChromosomeCoordinate.
+
+        Obtained by determining whether this ChromosomeCoordinate is greater and
+        negating that finding.
+
+        Parameters
+        ----------
+        other : ChromosomeCoordinate
+            Other ChromosomeCoordinate object for comparison.
+
+        Returns
+        -------
+        Boolean
+            True if this ChromosomeCoordinate is less or equal, false otherwise.
+
+        """
+        return not self.__gt__(other)
 
 
 class Roman:
