@@ -100,8 +100,9 @@ class UpdateAnnotationForGenome:
                 open(self.updated_annot_filename, 'w') as updated_annot_file, \
                 open(self.log_filename, 'w') as log_file:
 
-            #Skip header in annotation file and load first annotated feature
+            #Copy header form annotation file
             annot_feature = input_annot_file.readline()
+            updated_annot_file.write(annot_feature)
 
             current_chrom = ""
 
@@ -111,7 +112,8 @@ class UpdateAnnotationForGenome:
                 line_data = annot_feature.split('\t')
 
                 if current_chrom != line_data[0]:
-                    log_file.write(f"Processing indels and annotated features from chrom {line_data[0]}.\n")
+                    current_chrom = line_data[0]
+                    log_file.write(f"Processing indels and annotated features from chromosome {current_chrom}.\n")
                     current_chrom_variants = UpdateAnnotationForGenome._read_chr_from_variant_file(genome_indel_file, current_chrom)
                     #Since code below will be performing many lookups and index-
                     #based references to the values and keys in current_chrom_variants,
@@ -120,8 +122,10 @@ class UpdateAnnotationForGenome:
                     #than re-creating them each time the code needs to access a
                     #key or value by ordered index.
                     current_chrom_variant_coords = list(current_chrom_variants.keys())
-                    current_chrom_variant_offsets = list(current_chrom_variants.items())
-                    current_chrom = line_data[0]
+                    current_chrom_variant_offsets = list(current_chrom_variants.values())
+                    #New chromosome contains no variants
+                    if len(current_chrom_variant_coords) == 0:
+                        log_file.write(f"----No indels from chromosome {current_chrom}.\n")
 
                 #Current chromosome contains at least one variant
                 if len(current_chrom_variant_coords) > 0:
@@ -139,10 +143,35 @@ class UpdateAnnotationForGenome:
                     tx_start_offset_index = bisect.bisect_right(current_chrom_variant_coords, tx_start) - 1
                     tx_end_offset_index = bisect.bisect_right(current_chrom_variant_coords, tx_end) - 1
 
+                    #No indels before start of current feature.
+                    if tx_start_offset_index == -1:
+
+                        updated_tx_start = tx_start
+
+                        #No indels before end of current feature
+                        if tx_end_offset_index == -1:
+                            updated_tx_end = tx_end
+                            updated_exon_starts = exon_starts
+                            updated_exon_ends = exon_ends
+                        #First indels occur before end of current feature
+                        else:
+                            updated_tx_end = tx_end + current_chrom_variant_offsets[tx_end_offset_index]
+                            for coord in exon_starts:
+                                ex_coord_offset_index = bisect.bisect_right(current_chrom_variant_coords, coord) - 1
+                                updated_exon_coord = coord
+                                if ex_coord_offset_index >= 0:
+                                    updated_exon_coord += current_chrom_variant_offsets[ex_coord_offset_index]
+                                updated_exon_starts.append(updated_exon_coord)
+                            for coord in exon_ends:
+                                ex_coord_offset_index = bisect.bisect_right(current_chrom_variant_coords, coord) - 1
+                                updated_exon_coord = coord
+                                if ex_coord_offset_index >= 0:
+                                    updated_exon_coord += current_chrom_variant_offsets[ex_coord_offset_index]
+                                updated_exon_ends.append(updated_exon_coord)
                     #No new variants between the start and stop coordinates, so
                     #apply the same offset to all coordinates in the current
                     #feature.
-                    if tx_start_offset_index == tx_end_offset_index:
+                    elif tx_start_offset_index == tx_end_offset_index:
                         offset = current_chrom_variant_offsets[tx_start_offset_index]
                         updated_tx_start = tx_start + offset
                         updated_tx_end = tx_end + offset
@@ -155,11 +184,11 @@ class UpdateAnnotationForGenome:
                         #Update lists of exon starts/ends with correct offsets
                         updated_exon_starts = []
                         updated_exon_ends = []
-                        for coord in exon_ends:
+                        for coord in exon_starts:
                             ex_coord_offset_index = bisect.bisect_right(current_chrom_variant_coords, coord) - 1
                             updated_exon_coord = coord + current_chrom_variant_offsets[ex_coord_offset_index]
                             updated_exon_starts.append(updated_exon_coord)
-                        for coord in exon_starts:
+                        for coord in exon_ends:
                             ex_coord_offset_index = bisect.bisect_right(current_chrom_variant_coords, coord) - 1
                             updated_exon_coord = coord + current_chrom_variant_offsets[ex_coord_offset_index]
                             updated_exon_ends.append(updated_exon_coord)
@@ -172,8 +201,8 @@ class UpdateAnnotationForGenome:
                             txStart=updated_tx_start,
                             txEnd=updated_tx_end,
                             exonCount=line_data[4],
-                            exonStarts=','.join(updated_exon_starts),
-                            exonEnds=','.join(updated_exon_ends),
+                            exonStarts=','.join([str(x) for x in updated_exon_starts]),
+                            exonEnds=','.join([str(x) for x in updated_exon_ends]),
                             transcriptID=line_data[7],
                             geneID=line_data[8],
                             geneSymbol=line_data[9],
@@ -184,7 +213,6 @@ class UpdateAnnotationForGenome:
                 #No variants in the current chromosome, so no need to update
                 #feature coordinates.
                 else:
-                    log_file.write(f"----No indels from chrom {line_data[0]}.\n")
                     updated_annot_file.write(f"{annot_feature}\n")
 
 
@@ -285,6 +313,12 @@ class UpdateAnnotationForGenome:
         if not chrom_found_or_passed:
             #Rewind to position variant file started at
             variant_file.seek(variant_file_start_position)
+        elif ChromosomeName(indel_chrom) > compare_chrom:
+            #Backup position of pointer in variant_file so if/when this
+            #chromosomethe is eventually processed, the first variant will be
+            #re-read. Otherwise, the next time the variant file is accessed,
+            #it would skip straight to the second entry for the chromosome.
+            variant_file.seek(prev_line_file_position)
         else:
             #Backup position of pointer in variant_file so the first variant
             #on the desired chromosome will be re-read in the loop below.
@@ -294,6 +328,7 @@ class UpdateAnnotationForGenome:
 
             for line in variant_file_iter:
 
+                line_data = line.split('\t')
                 indel_chrom, indel_position = line_data[0].split(':')
                 indel_position = int(indel_position)
                 indel_type = line_data[1]
@@ -365,53 +400,3 @@ class UpdateAnnotationForGenome:
 
 if __name__ == '__main__':
     sys.exit(UpdateAnnotationForGenome.main())
-
-
-
-"""Things I'll need to consider with this program:
-    1) Transcripts/genes that overlap the same coordinates. I'll need to repeat
-       the process for each one, which could involve re-processing the same set
-       of indels multiple times. I might want to read all indels for a given
-       chromosome into a data structure and then process each of the transcripts
-       from the same chromosome. This way maybe I can just lookup the set of
-       indels I'll need for a given transcript?
-    2) Following from 1), I'll need to handle annotations from chromosomes that
-       don't contain any variants (i.e. they'd be absent from the indel file).
-    3) I'll need to track rolling coordinate changes as I go. It won't be enough
-       just to increment/decrement each feature coordinate by each indel length.
-       Maybe the overall architecture of the program should be it processes the
-       indels by determining the updated coordinate at the location of each indel.
-       Then, as it's processing a gene annotation, it just looks up the current
-       offset for the closest indel <= each of its coordinates. For example, if
-       at reference position chr1:12345, I know the cummulative offset is +15,
-       because of all the indels that have occurred at and before that position,
-       and I'm processing feature coordinate at chr:12350, I just look up the
-       rolling offset calculated at the closest variant position less than the
-       feature coordinate (the one at chr1:12345), and add the rolling offset.
-    4) Here are some pythonic solutions to the fast lookup table problem:
-       https://stackoverflow.com/questions/7934547/python-find-closest-key-in-a-dictionary-from-the-given-input-key
-       See second and third answers. Note, I don't think I can count on having
-       Python >= 3.7 (which orders dictionary keys based on the order they are)
-       input), so I'm going to need to use another datastructure (there are some
-       suggestisons in the stackoverflow link above).
-            -If I use the bisect function, I might be able to shorten the search
-             space by dropping a subset of variants that have already been
-             processed. This only really matters if there's a performance hit
-             from all of the continued lookups.
-    5) Following from 4, if I can find a quick/efficient way of finding the
-       closest variants to the start and end coordinate for a given feature, is
-       there a way to quickly grab all of the entries bewteen these two extremes?
-       Looking at the bisect and OrderedDict example in the stackoverflow link,
-       I think bisect just returns an index, rather than a value, so I can just
-       grab a list slice using from the OrderedDict, once I have the first and
-       last variant indexes I'll need.
-    6) Another thought: If I use a properly-sorted GTF file, this may all be a
-       non-issue. Then again, GTF features still have a start and stop, so I'd
-       still need to be grabbing multiple coordinates.
-    7) Potential update to OrderedDict that might be faster for doing a lot of
-       list conversions (https://pypi.org/project/ruamel.ordereddict/). Also,
-       this page provides a lot of useful info (especially the comments below
-       the accepted answer). Also, Quantum7's answer gives a great overview of
-       everything and suggests I might be okay sticking to an OrderedDict.
-
-"""
