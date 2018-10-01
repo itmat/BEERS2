@@ -87,6 +87,8 @@ class ChromosomeCoordinate:
 
     """
 
+    #TODO: Make this a subclass of ChromosomeName
+
     def __init__(self, chrom_name, start_coord=None, end_coord=None):
         """
         Provide ChromosomeName representation of chromosome name string.
@@ -176,7 +178,7 @@ class ChromosomeCoordinate:
         Returns
         -------
         Boolean
-            True if this ChromosomeCoordinate is greater, false otherwise.
+            True if this ChromosomeCoordinate is greater or equal, false otherwise.
 
         """
         return self.__gt__(other) or self.__eq__(other)
@@ -393,6 +395,15 @@ class ChromosomeName:
         # Theoretically, we shouldn't get here
         return True
 
+    def __ge__(self, other):
+        """
+        Obtained by determining whether the ChromosomeName is greater or equal.
+        :param other: other ChromosomeName object for comparison
+        :return: True if this ChromosomeName is greater or equal and false otherwise.
+
+        """
+        return self.__gt__(other) or self.__eq__(other)
+
     def __lt__(self, other):
         """
         Obtained by determining whether the ChromosomeName is greater or equal and negating that finding.
@@ -400,6 +411,16 @@ class ChromosomeName:
         :return: True if this ChromosomeName is less and false otherwise.
         """
         return not self.__gt__(other) and self.__ne__(other)
+
+    def __le__(self, other):
+        """
+        Obtained by determining whether this ChromosomeCoordinate is greater and
+        negating that finding.
+        :param other: other ChromosomeName object for comparison
+        :return: True if this ChromosomeName is less or equal and false otherwise.
+
+        """
+        return not self.__gt__(other)
 
 
 class Roman:
