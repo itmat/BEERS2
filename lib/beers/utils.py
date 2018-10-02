@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import pandas as pd
+import time as time
 from beers.molecule import Molecule
 
 class Utils:
@@ -416,6 +417,20 @@ class Utils:
 
         return output_annot_filename
 
+    @staticmethod
+    def generate_seed():
+        """
+        Provides an integer of 32 bits or less using a seconds based timestamp.  If the timestamp exceeds 32 bits, the
+        integer obtained from the lowest 32 bits is returned
+        :return: a 32 bit integer seed for the numpy random number generator.
+        """
+        candidate_seed = int(time.time())
+
+        # If the timestamp bit length exceeds 32 bits, mask out all but the lowest 32 bits.
+        if candidate_seed.bit_length() > 32:
+            candidate_seed = candidate_seed & 0xffffffff
+        return candidate_seed
+
 class BeersUtilsException(Exception):
     """Base class for other Utils exceptions."""
     pass
@@ -442,7 +457,9 @@ if __name__ == "__main__":
 
     # Utils.retrieve_chromosome_names_from_fasta_file('../../data/preBEERS/hg19/reference_genome_edited.fa',
     #                                                 '../../data/preBEERS/hg19/reference_chromosomes.txt')
-    print(Utils.compare_file_field_orders('../../data/preBEERS/hg19/reference_chromosomes.txt',
-                                          '../../data/preBEERS/hg19/Test_dataset.All_unique_mappers'
-                                          '.fw_only_variants.txt',
-                                          delimiters=(' ', ':')))
+    #print(Utils.compare_file_field_orders('../../data/preBEERS/hg19/reference_chromosomes.txt',
+    #                                      '../../data/preBEERS/hg19/Test_dataset.All_unique_mappers'
+    #                                      '.fw_only_variants.txt',
+    #                                      delimiters=(' ', ':')))
+
+    print(Utils.generate_seed())
