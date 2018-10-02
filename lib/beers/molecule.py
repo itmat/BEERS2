@@ -8,11 +8,12 @@ class Molecule:
     header = "id,sequence,start,cigar,note\n"
     disallowed = re.compile((r'[^AGTC]'))
 
-    def __init__(self, molecule_id, sequence, start=None, cigar=None):
+    def __init__(self, molecule_id, sequence, start=None, cigar=None, transcript_id=None):
         self.molecule_id = molecule_id
         self.sequence = sequence.strip()
         self.start = start
         self.cigar = cigar
+        self.transcript_id = transcript_id
         #Track sequences and locations of bound primers or newly synthesized
         #cDNA strands, etc.
         self.bound_molecules = []
@@ -137,7 +138,8 @@ class Molecule:
             str({"id": self.molecule_id,
                  "sequence": self.sequence,
                  "start": self.start,
-                 "cigar": self.cigar})
+                 "cigar": self.cigar,
+                 "transcript id": self.transcript_id})
         )
 
     def log_entry(self, note = ''):
