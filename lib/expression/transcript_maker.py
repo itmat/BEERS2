@@ -66,6 +66,11 @@ class TranscriptMaker:
 
                 # Transcript id and counts
                 transcript_id, transcript_counts = fields[0], int(fields[1])
+
+                # Skip over transcripts that have no counts.
+                if transcript_counts == 0:
+                    continue
+
                 self.transcript_distribution.append(transcript_id, transcript_counts)
 
     def create_transcript_counts_map(self):
