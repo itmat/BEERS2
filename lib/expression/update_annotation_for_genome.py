@@ -156,6 +156,9 @@ class UpdateAnnotationForGenome:
                         #First indels occur before end of current feature
                         else:
                             updated_tx_end = tx_end + current_chrom_variant_offsets[tx_end_offset_index]
+
+                            updated_exon_starts = []
+                            updated_exon_ends = []
                             for coord in exon_starts:
                                 ex_coord_offset_index = bisect.bisect_right(current_chrom_variant_coords, coord) - 1
                                 updated_exon_coord = coord
