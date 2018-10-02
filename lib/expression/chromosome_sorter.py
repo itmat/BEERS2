@@ -49,7 +49,8 @@ class ChromosomeSort:
         print('\n'.join([chromosome_name.original_content for chromosome_name in results]))
 
     @staticmethod
-    def sort_file_by_chromosome_coordinates(input_filename, chrom_column, start_column=None, end_column=None, sorted_filename=None):
+    def sort_file_by_chromosome_coordinates(input_filename, chrom_column, start_column=None, end_column=None,
+                                            header=True, sorted_filename=None):
         """Sorts a tab-delimited file by chromosomal coordinates.
 
         Note, this function will overwrite the contents of any existing sorted
@@ -70,6 +71,12 @@ class ChromosomeSort:
             [Optional] Column number in input file containing end coordinate of
             chromosome span. If not given, file sorted as if all end coordinates
             are 0.
+        header : Boolean
+            [Optional] First line in the input file contains a header. If true,
+            first line from input file is copied directly as first line in
+            sorted file (not included in sorting). If false, first line is
+            treated as any other in the file and included in the sorting.
+            Default: True.
         sorted_filename : string
             [Optional] Path to sorted file. If none given, it will use the
             original filename with ".sorted" inserted before the extension.
@@ -110,8 +117,9 @@ class ChromosomeSort:
             coordinates_to_entries = {}
 
             #Copy header from input file
-            line = input_file.readline()
-            sorted_file.write(line)
+            if header is True:
+                line = input_file.readline()
+                sorted_file.write(line)
 
             #Load all entries from input file into memory, in preparation for sort.
             for line in input_file:
