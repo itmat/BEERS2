@@ -86,7 +86,7 @@ class TranscriptMaker:
 
         # Pair transcript_id with counts probabilistically
         self.create_transcript_counts_map()
-        print(sum(self.transcript_counts_map.values()))
+        print(f'Number of transcripts: {sum(self.transcript_counts_map.values())}')
 
         # Create a unique listing of exon locations from the transcript annotation file data.
         self.create_exon_location_list()
@@ -117,9 +117,9 @@ class TranscriptMaker:
                 exon_sequence_map = self.create_exon_sequence_map(chromosome, sequence)
                 print(f"Done with exons for {chromosome}")
 
-                # Generate the gene fasta file using the genome chromosome and the related exon sequence map.
-                total_per_chrom = self.make_molecules(chromosome, exon_sequence_map)
-                print(f"Done with {total_per_chrom} molecules for {chromosome}")
+                # Generate molecules using the current genome chromosome and the related exon sequence map.
+                self.make_molecules(chromosome, exon_sequence_map)
+                print(f"Done for chromosome {chromosome}")
 
     def create_exon_location_list(self):
         """
@@ -188,7 +188,6 @@ class TranscriptMaker:
 
     def make_molecules(self, genome_chromosome, exon_sequence_map):
 
-        total = 0
         # Open the transcript annotation file for reading
         with open(self.annotation_filename, 'r') as annotation_file, open(self.log_filename, 'a') as log_file:
 
@@ -235,7 +234,6 @@ class TranscriptMaker:
 
                             # Log the transcript
                             log_file.write(f'{transcript_id}\t{quantity}\t{transcript_sequence}\n')
-                            total += quantity
 
                             # Affix a poly A tail
                             transcript_sequence += self.polya_tail
@@ -245,7 +243,6 @@ class TranscriptMaker:
                                 self.molecules.add(Molecule(Molecule.next_molecule_id, transcript_sequence, 1,
                                                             cigar, transcript_id))
                                 Molecule.next_molecule_id += 1
-        return(total)
 
     @staticmethod
     def main():
@@ -262,11 +259,12 @@ class TranscriptMaker:
         args = parser.parse_args()
         print(args)
         sample_molecules = set()
+        transcriptome_size = int(int(args.transcriptome_size)/2)
         # transcript_maker1 = TranscriptMaker(args.maternal_annot_filename,
         #                                    args.maternal_quant_filename,
         #                                    args.maternal_genome_filename,
         #                                    args.log_filename,
-        #                                    args.transcriptome_size)
+        #                                    transcriptome_size)
         # transcript_maker1.prepare_transcripts()
         # sample_molecules.union(transcript_maker1.molecules)
         transcript_maker2 = TranscriptMaker(args.paternal_annot_filename,
@@ -274,7 +272,7 @@ class TranscriptMaker:
                                             args.paternal_genome_filename,
                                             args.log_filename,
                                             args.seed,
-                                            args.transcriptome_size)
+                                            transcriptome_size)
         transcript_maker2.prepare_transcripts()
         sample_molecules.union(transcript_maker2.molecules)
         print(f'Number of molecules: {len(transcript_maker2.molecules)}')
