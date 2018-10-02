@@ -312,3 +312,8 @@ class VariantsMaker:
 
 if __name__ == "__main__":
     sys.exit(VariantsMaker.main())
+
+'''Example call
+python variants_maker.py -a ../../data/preBEERS/test_human.txt
+'''
+
