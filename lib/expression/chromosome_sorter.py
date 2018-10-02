@@ -52,6 +52,9 @@ class ChromosomeSort:
     def sort_file_by_chromosome_coordinates(input_filename, chrom_column, start_column=None, end_column=None, sorted_filename=None):
         """Sorts a tab-delimited file by chromosomal coordinates.
 
+        Note, this function will overwrite the contents of any existing sorted
+        file matching the default or given filename.
+
         Parameters
         ----------
         input_filename : string
@@ -84,13 +87,19 @@ class ChromosomeSort:
         if end_column is not None:
             end_column -= 1
 
+        #Clear pre-existing sorted file.
+        try:
+            os.remove(sorted_filename)
+        except OSError:
+            pass
+
         with open(input_filename, 'r') as input_file, \
                 open(sorted_filename, 'w') as sorted_file:
 
             #List of ChromosomeCoordinate objects. Once all coordinates from
             #input file loaded, this list will be used to sort everything in
             #order by chromosome coordinate.
-            chrom_coordinates = []
+            unsorted_chrom_coordinates = []
 
             #Maps a string of chromosome coordinates to corresponding entries
             #from the input file.
@@ -116,14 +125,20 @@ class ChromosomeSort:
                     end_coord = int(line_data[end_column])
 
                 current_coord = ChromosomeCoordinate(chrom_name, start_coord, end_coord)
-                chrom_coordinates.append(current_coord)
                 #Use string form of ChromosomeCoordinate as key ("{chr}\t{start}\t{end}").
-                coordinates_to_entries[str(current_coord)] += line
+                if str(current_coord) not in coordinates_to_entries:
+                    unsorted_chrom_coordinates.append(current_coord)
+                    coordinates_to_entries[str(current_coord)] = line
+                else:
+                    #If matching chromosome span already encountered, append
+                    #new feature's information to the running list of entries.
+                    coordinates_to_entries[str(current_coord)] += line
+
 
             #Sort chromosome coordinates, then save contents of input file to
             #output file in sorted order.
-            sorted(chrom_coordinates)
-            for coord in chrom_coordinates:
+            sorted_chrom_coordinates = sorted(unsorted_chrom_coordinates)
+            for coord in sorted_chrom_coordinates:
                 #Use string form of ChromosomeCoordinate as key ("{chr}\t{start}\t{end}").
                 sorted_file.write(coordinates_to_entries[str(coord)])
 
@@ -385,7 +400,7 @@ class ChromosomeCoordinate(ChromosomeName):
 
     def __repr__(self):
         """Return representation of ChromosomeCoordinate object and its contents."""
-        return '{class_name}(content="{content}", start_coord={start_coord}, end_coord={end_coord})>'.format(
+        return '{class_name}(content="{content}", start_coord={start_coord}, end_coord={end_coord})'.format(
             class_name=self.__class__.__name__,
             content=self.content,
             start_coord=self.start_coord,
