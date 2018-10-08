@@ -49,6 +49,12 @@ class ChromosomeSort:
         print('\n'.join([chromosome_name.original_content for chromosome_name in results]))
 
     @staticmethod
+    def sort_chromosome_name_list(listing):
+        chromosome_names = [ChromosomeName(item) for item in listing]
+        results = sorted(chromosome_names)
+        return [chromosome_name.original_content for chromosome_name in results]
+
+    @staticmethod
     def sort_file_by_chromosome_coordinates(input_filename, chrom_column, start_column=None, end_column=None,
                                             header=True, sorted_filename=None):
         """Sorts a tab-delimited file by chromosomal coordinates.
@@ -262,9 +268,9 @@ class ChromosomeName:
             return ChromosomeName(name_match.group(2)) > ChromosomeName(other_name_match.group(2))
 
         # X or Y before M
-        if self.content == 'm' and (other.content == 'x' or other.content == 'y'):
+        if self.content[0] == 'm' and (other.content[0] == 'x' or other.content[0] == 'y'):
             return True
-        if (self.content == 'x' or self.content == 'y') and other.content == 'm':
+        if (self.content[0] == 'x' or self.content[0] == 'y') and other.content[0] == 'm':
             return False
 
         # Names not starting with 'chr' > names starting with 'chr'
