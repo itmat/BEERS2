@@ -23,6 +23,7 @@ class GenomeMaker:
                  min_threshold,
                  log_filename,
                  gender,
+                 gender_chr_names,
                  min_read_total_count,
                  ignore_indels,
                  ignore_snps):
@@ -45,6 +46,7 @@ class GenomeMaker:
         Defaults to 0.03
         :param log_filename: path to log file.
         :param gender: gender ascribed to the variants input file.
+        :param gender_chr_names: listing of X, Y, M chromosome names in this order.
         :param min_read_total_count: when the total reads of the two most abundant variants meet or exceed this value,
         the second most abundant variant read count must exceed one to be included as a viable variant irregardless of
         whether it meets the minimum threshold requirement.
@@ -56,6 +58,7 @@ class GenomeMaker:
         self.genome_ref_filename = genome_ref_filename
         self.log_filename = log_filename
         self.gender = gender
+        self.gender_chr_names = {name[0]:name[1] for name in zip(['X','Y','M'],gender_chr_names)}
         self.ignore_indels = ignore_indels
         self.ignore_snps = ignore_snps
 
@@ -140,7 +143,7 @@ class GenomeMaker:
 
         # If the chromosome is unique to one parent (e.g., chrM or chrY) or unique due to gender (e.g. chr X and
         # gender is male) return the most abundant variant only.
-        if chromosome in ['chrM', 'chrY'] or (self.gender == 'male' and chromosome == 'chrX'):
+        if chromosome in [self.gender_chr_names['M'], self.gender_chr_names['Y']] or (self.gender == 'male' and chromosome == self.gender_chr_names['X']):
             return [max_variants[0][0]]
 
         # Determine the total reads for the top two variants and if the lesser variant's percentage of the total
@@ -241,8 +244,18 @@ class GenomeMaker:
 
                         # Get a reference sequence for the next chromosome in the reference genome file
                         line = genome_ref_file.readline()
+
+                        # Accounts for the possibility that the reference genome file is exhausted before the
+                        # variants file.  This can happen if the reference genome chromosomes and the variant
+                        # chromosomes are not ordered identically.  This is a problem since both inputs are being
+                        # streamed from files presently.
+                        if not line:
+                            print("Warning:  Variants file not exhausted but reference genome file is."
+                                  "  Could be due to misordering.")
+                            sys.exit(1)
                         if line.startswith(">"):
                             reference_chromosome = line[1:].rstrip()
+                            print("Ref chr: " + reference_chromosome)
 
                             # Only set up genomes if the reference chromosome is the same at the one currently
                             # being read from the variants file.  Otherwise, skip over and get the next chromosome from
@@ -260,7 +273,7 @@ class GenomeMaker:
                                 # In addition to diploid chromosomes, this genome will contain contributions that
                                 # derive solely from the mother.  So this genome is skipped when building the Y
                                 # chromosome.
-                                if chromosome != 'chrY':
+                                if chromosome != self.gender_chr_names['Y']:
                                     genomes.append(
                                         Genome(self.genome_names[0], chromosome, start_sequence,
                                                variant_position, self.genome_output_file_stem))
@@ -270,9 +283,9 @@ class GenomeMaker:
                                 # chromosome and when building the X chromosome if the input gender is male.  Also, it
                                 # is possible that there may be Y variants even though the input gender is female.  If
                                 # that is the case, neither genome is built for chromosome Y.
-                                if chromosome != 'chrM'\
-                                        and not(self.gender == 'male' and chromosome == 'chrX')\
-                                        and not(self.gender == 'female' and chromosome == 'chrY'):
+                                if chromosome != self.gender_chr_names['M'] \
+                                        and not(self.gender == 'male' and chromosome == self.gender_chr_names['X'])\
+                                        and not(self.gender == 'female' and chromosome == self.gender_chr_names['Y']):
                                     genomes.append(
                                         Genome(self.genome_names[1], chromosome, start_sequence,
                                                variant_position, self.genome_output_file_stem))
@@ -322,6 +335,7 @@ class GenomeMaker:
                                 self.build_sequence_from_variant(genome, max_variant, reference_base)
                                 max_variants.remove(max_variant)
 
+
                 # Variants file exhausted, must be done with last chromosome.  So save the last pair of genomes.
                 for genome in genomes:
                     log_file.write(f"Appending"
@@ -365,6 +379,9 @@ class GenomeMaker:
         parser.add_argument('-l', '--log_filename', help="Log file.")
         parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'],
                             help="Gender of input sample (male or female).")
+        # TODO should be required - this will do under we have a pipeline
+        parser.add_argument('-n', '--gender_chr_names', type=lambda names: [name for name in names.split(',')],
+                            help="Enter the gender specific chromosome names in X, Y, M order.")
         parser.add_argument('-c', '--min_read_total_count', type=int, default=10,
                             help="For any position, if the total reads from the two most abundant variants"
                                  " equals or exceeds this value, the second most abundant variant will be discarded"
@@ -383,6 +400,7 @@ class GenomeMaker:
                                    args.min_threshold,
                                    args.log_filename,
                                    args.gender,
+                                   args.gender_chr_names,
                                    args.min_read_total_count,
                                    args.ignore_indels,
                                    args.ignore_snps)
@@ -479,13 +497,10 @@ if __name__ == "__main__":
 '''
 Example Call:
 
-python genome_maker.py -v  ../../data/preBEERS/ETAM080_grp1.gene.norm.chr21_22.all_unique_mappers.fw_only_variants.txt \
--g ../../data/preBEERS/human_21_22_genome -r ../../data/preBEERS/hg19_chr21_22_ref_edited.fa \
--l ../../data/preBEERS/genome_maker.log -s 100 -x female
-
-python genome_maker.py -v  ../../data/preBEERS/hg19/Test_dataset.All_unique_mappers.fw_only_variants.txt \
--g ../../data/preBEERS/hg19/genome_maker_output_no_indels \
--r ../../data/preBEERS/hg19/reference_genome_edited.fa \
--l ../../data/preBEERS/genome_maker.log -s 100 -x male -i
+python genome_maker.py \
+-v  ../../data/expression/GRCh38/Test_data.1002_baseline.All_unique_mappers.fw_only.sorted_to_match_fasta_variants.txt \
+-g ../../data/expression/GRCh38/xgenome_maker_output \
+-r ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome_edited.fa \
+-l ../../data/expression/GRCh38/xgenome_maker.log -n "X,Y,MT" -s 100 -x female
 
 '''
