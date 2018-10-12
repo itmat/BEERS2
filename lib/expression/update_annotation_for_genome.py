@@ -5,7 +5,6 @@ import collections
 import bisect
 from timeit import default_timer as timer
 from beers.utils import Utils
-from expression.chromosome_sorter import ChromosomeName
 
 class UpdateAnnotationForGenome:
     """Updates a gene annotation's coordinates to account for insertions &
@@ -70,18 +69,6 @@ class UpdateAnnotationForGenome:
         #     to another method called after another files are tested (maybe the
         #     main?).
 
-        #Check to make sure the indel file and the annotation file have
-        #chromosomes sorted in the same order. Note, the chromosome in the indel
-        #file is combined with a coordinate (i.e. chr1:12345). By using ":" as
-        #the delim for the indel file, I can grab the chromosome as the first
-        #column, without any further parsing.
-        chrom_order_match = Utils.compare_file_field_orders(self.genome_indel_filename,
-                                                            self.input_annot_filename,
-                                                            delimiters=(":", "\t"))
-        if not chrom_order_match:
-            raise Exception("ERROR: Mismatch in chromosome order between indel and annotation files.\n")
-            #raise ChromOrderMismatch()
-
         #Clear the output file first. Maybe we should update this so it checks
         #for an existing file first, stops and warns the user, and then the user
         #has the option of using something like a "--force" parameter to just
@@ -95,12 +82,14 @@ class UpdateAnnotationForGenome:
         """Main work-horse function that generates the updated annotation.
         """
 
-        with open(self.genome_indel_filename, 'r') as genome_indel_file, \
-                open(self.input_annot_filename, 'r') as input_annot_file, \
+        #Load indel offsets from the indel file
+        indel_offsets = UpdateAnnotationForGenome._get_offsets_from_variant_file(self.genome_indel_filename)
+
+        with open(self.input_annot_filename, 'r') as input_annot_file, \
                 open(self.updated_annot_filename, 'w') as updated_annot_file, \
                 open(self.log_filename, 'w') as log_file:
 
-            #Copy header form annotation file
+            #Copy header from annotation file
             annot_feature = input_annot_file.readline()
             updated_annot_file.write(annot_feature)
 
@@ -114,21 +103,26 @@ class UpdateAnnotationForGenome:
                 if current_chrom != line_data[0]:
                     current_chrom = line_data[0]
                     log_file.write(f"Processing indels and annotated features from chromosome {current_chrom}.\n")
-                    current_chrom_variants = UpdateAnnotationForGenome._read_chr_from_variant_file(genome_indel_file, current_chrom)
-                    #Since code below will be performing many lookups and index-
-                    #based references to the values and keys in current_chrom_variants,
-                    #it will likely be more efficient to create a list of values
-                    #and a list of keys from current_chrom_variants once, rather
-                    #than re-creating them each time the code needs to access a
-                    #key or value by ordered index.
-                    current_chrom_variant_coords = list(current_chrom_variants.keys())
-                    current_chrom_variant_offsets = list(current_chrom_variants.values())
-                    #New chromosome contains no variants
-                    if len(current_chrom_variant_coords) == 0:
-                        log_file.write(f"----No indels from chromosome {current_chrom}.\n")
 
-                #Current chromosome contains at least one variant
-                if len(current_chrom_variant_coords) > 0:
+                    if current_chrom in indel_offsets:
+                        """
+                        Since code below will be performing many lookups and index-
+                        based references to the values and keys in current_chrom_variants,
+                        it will likely be more efficient to create a list of values
+                        and a list of keys from current_chrom_variants once, rather
+                        than re-creating them each time the code needs to access a
+                        key or value by ordered index.
+                        """
+                        current_chrom_variant_coords = list(indel_offsets[current_chrom].keys())
+                        current_chrom_variant_offsets = list(indel_offsets[current_chrom].values())
+                    else:
+                        #New chromosome contains no variants
+                        log_file.write(f"----No indels from chromosome {current_chrom}.\n")
+                        current_chrom_variant_coords = ()
+                        current_chrom_variant_coords = ()
+
+                #Current chromosome contains variants
+                if current_chrom_variant_coords:
 
                     tx_start = int(line_data[2])
                     tx_end = int(line_data[3])
@@ -218,134 +212,52 @@ class UpdateAnnotationForGenome:
                 else:
                     updated_annot_file.write(f"{annot_feature}\n")
 
-
     @staticmethod
-    def _read_chr_from_variant_file(variant_file, chrom):
-        """Read all variants in the indel file from the given chromosome,
-        calculate rolling offset at each variant position, and return result in
-        an ordered dictionary.
+    def _get_offsets_from_variant_file(genome_indel_filename):
+        """Read indel file, calculate rolling offset at each variant position
+        and return results as a dictionary of ordered dictionaries, indexed by
+        chromoeomse name.
 
-        Note, upon finding the next chromosome after the given one, this method
-        will rewind the variant_file iterator one line. This way the next time
-        the iterator is accessed, it will return the first line from the next
-        chromosome, rather than skipping it (since it would already have been
-        iterated over when identifying the start of the next chromosome).
+        This method requires the genome_indel_filename attribute is set and
+        contains a valid filename.
 
         Parameters
         ----------
-        variant_file : file
-            File iterator pointing to a genome_indel_filename.
-        chrom : string
-            Chromosome name.
+        genome_indel_filename : string
+            Full path to indel file generated by GenomeFilesPreparation.
 
         Returns
         -------
-        OrderedDict
-            Collection of variant coordinates and corresponding rolling offsets
-            at each position for the given chromosome.
-            Key = chromosomal coordinate of variant position
-            Value = rolling offest at variant position
-            If the given chromosome name is not present in the remainder of the
-            variant file, then this function returns an empty OrderedDict
-            object.
+        OrderedDict nested in defaultdict
+            Ordered collection of rolling offsets for each chromosome.
+            For outer defaultdict:
+                Key = chromosome/contig name from indel file
+                Value = OrderedDict (see below)
+            For inner OrderedDict:
+                Key = chromosomal coordinate of variant position
+                Value = rolling offest at variant position
+            So variant_offsets["chr1"][12345] stores the rolling offset at
+            position 12345 on chromosome 1.
 
         """
-        variant_offsets = collections.OrderedDict()
-        rolling_offset = 0
 
-        #Need to keep track of file position as I read through. Then I can jump
-        #back one line once I'm done reading variant positions from the current
-        #chromosome to make sure I don't lose the first line of the next
-        #chromosome.
+        with open(genome_indel_filename, 'r') as genome_indel_file:
 
-        """
-        The code below iterates over the variant file's contents, but it also
-        tracks and resets the positions to avoid skipping lines using the tell()
-        and seek() methods. However, using next() on the iterator (called
-        implicitly when an iterator is used in a for loop) disables the use of
-        tell() and seek() on the iterator (throws an error if you try to do it
-        anyway). This is caused by the next() method's use of an internal buffer
-        that ultimately leads to a mismatch in the file pointer position if you
-        try to use next at the same time as tell()/seek(). One workaround is to
-        create a new iterator wrapped around the variant file that uses
-        readline() to advance the file, instead of next(). readLine is still
-        compatible with seek() and tell(). So I use the new iterator in the
-        for loops (or wherever I'll need a next() call), and then use seek() and
-        tell() on the original file iterator.
-        """
-        variant_file_iter = iter(variant_file.readline, '')
+            """
+            By using the defaultdict object, I can specify the default value
+            used every time I create a new key. This way, I don't need to
+            include code to check and instantiate keys with empty OrderedDict
+            objects. It's all handed by the defaultdict
+            """
+            variant_offsets = collections.defaultdict(collections.OrderedDict)
+            rolling_offset = 0
 
-        #The logic of the code below is built on the assumption that any
-        #chromosomes contained in the variant file between its current position
-        #and the location of the desired chromosome can safely be skipped. As
-        #it's coded up below, the variant_file iterator will be left at the
-        #first entry after all variants from the desired chromosome, or it will
-        #reset its position if no instances of the desired chromosome are found.
-        #Any entries prior to the desired chromosome (if found) are skipped and
-        #lost to future analyses. This will not pose a problem if the variant
-        #file is queried in the same order that it is sorted (i.e. after a
-        #chromosome is skipped/processed, it will not be queried later).
-
-        #Track starting position in the variant file. If the entire file is
-        #searched before the desired chrom is found, reset the file iterator
-        #to this start position, so no chromosomes are skipped in future
-        #searches.
-        variant_file_start_position = variant_file.tell()
-
-        #Track current position in the variant file, so I can return to the
-        #previous line if needed.
-        prev_line_file_position = variant_file.tell()
-
-        #Check indel file until desired chromosome found or passed.
-        chrom_found_or_passed = False
-        #Represent as ChromosomeName class to leverage extensive methods for
-        #comparing chromosome names.
-        compare_chrom = ChromosomeName(chrom)
-
-        for line in variant_file_iter:
-            line_data = line.split('\t')
-            indel_chrom, indel_position = line_data[0].split(':')
-            #Represent as ChromosomeName class to leverage extensive methods for
-            #comparing chromosome names.
-            if ChromosomeName(indel_chrom) >= compare_chrom:
-                chrom_found_or_passed = True
-                break
-            else:
-                prev_line_file_position = variant_file.tell()
-
-        if not chrom_found_or_passed:
-            #Rewind to position variant file started at
-            variant_file.seek(variant_file_start_position)
-        elif ChromosomeName(indel_chrom) > compare_chrom:
-            #Backup position of pointer in variant_file so if/when this
-            #chromosomethe is eventually processed, the first variant will be
-            #re-read. Otherwise, the next time the variant file is accessed,
-            #it would skip straight to the second entry for the chromosome.
-            variant_file.seek(prev_line_file_position)
-        else:
-            #Backup position of pointer in variant_file so the first variant
-            #on the desired chromosome will be re-read in the loop below.
-            #Otherwise, the loop would skip straight to the second entry for
-            #the desired chromosome.
-            variant_file.seek(prev_line_file_position)
-
-            for line in variant_file_iter:
-
+            for line in genome_indel_file:
                 line_data = line.split('\t')
                 indel_chrom, indel_position = line_data[0].split(':')
                 indel_position = int(indel_position)
                 indel_type = line_data[1]
                 indel_offset = int(line_data[2])
-
-                #Entries for the next chromosome found (i.e. done extracting
-                #variants from desired chromosome)
-                if indel_chrom != chrom:
-                    #Backup position of pointer in variant_file to avoid skipping
-                    #first variant in the next chromosome, the next time the
-                    #iterator is accessed. Otherwise, any code to processed the
-                    #next chromosome would skip straight to the second entry.
-                    variant_file.seek(prev_line_file_position)
-                    break
 
                 #If variant is a deletion, make offset negative so it subtracts
                 #from the rolling offset.
@@ -353,9 +265,9 @@ class UpdateAnnotationForGenome:
                     indel_offset *= -1
 
                 rolling_offset += indel_offset
-                variant_offsets[indel_position] = rolling_offset
+                variant_offsets[indel_chrom][indel_position] = rolling_offset
 
-        return variant_offsets
+            return variant_offsets
 
     @staticmethod
     def main():
@@ -386,20 +298,6 @@ class UpdateAnnotationForGenome:
         updated_annotation.update_annotation()
         end = timer()
         print(f"Updated annotation: {end - start}")
-
-
-#class BeersUpdateAnnotationException(Exception):
-#    """Base class for other UpdateAnnotation exceptions."""
-#    def __init__(self, arg1):
-#        self.arg1 = arg1
-#        super(BeersUpdateAnnotationException, self).__init__(arg1)
-#
-#class ChromOrderMismatch(BeersUpdateAnnotationException):
-#    """Raised when indel and annotation files have chromosomes sorted in different orders."""
-#    def __init__(self):
-#        error_msg = 'ERROR: Mismatch in chromosome order between indel and annotation files.\n'
-#        super(ChromOrderMismatch, self).__init__(error_msg)
-
 
 if __name__ == '__main__':
     sys.exit(UpdateAnnotationForGenome.main())
