@@ -499,8 +499,8 @@ Example Call:
 
 python genome_maker.py \
 -v  ../../data/expression/GRCh38/Test_data.1002_baseline.All_unique_mappers.fw_only.sorted_to_match_fasta_variants.txt \
--g ../../data/expression/GRCh38/xgenome_maker_output \
+-g ../../data/expression/GRCh38/genome_maker_output \
 -r ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome_edited.fa \
--l ../../data/expression/GRCh38/xgenome_maker.log -n "X,Y,MT" -s 100 -x female
+-l ../../data/expression/GRCh38/genome_maker.log -n "X,Y,MT" -s 100 -x female
 
 '''

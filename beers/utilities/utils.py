@@ -3,7 +3,7 @@ import re
 import sys
 import pandas as pd
 import time as time
-from beers.molecule import Molecule
+from molecule import Molecule
 
 class Utils:
     """
@@ -449,7 +449,7 @@ if __name__ == "__main__":
 
     # Utils.remove_cigars_with_n_from_bam_file("../../data/preBEERS/Illumina.UNT_9575.Aligned.out.chr19_only.sorted.bam")
 
-    # Utils.scrub_genome_fasta_file("../../data/preBEERS/hg19/reference_genome.fa")
+    # Utils.scrub_genome_fasta_file("../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa")
 
     # list1 = [1, 5, 10, 3, 4]
     # list2 = [2, 1, 4, 11, 7, 6]
@@ -462,4 +462,6 @@ if __name__ == "__main__":
     #                                      '.fw_only_variants.txt',
     #                                      delimiters=(' ', ':')))
 
-    print(Utils.generate_seed())
+    #print(Utils.generate_seed())
+
+    pass

@@ -73,10 +73,9 @@ class TranscriptMaker:
 
                 self.transcript_distribution.append(transcript_id, transcript_counts)
 
-    def create_transcript_counts_map(self):
+    def create_random_transcript_id(self):
         for _ in range(self.transcriptome_size):
-            transcript_id = self.transcript_distribution.locate_id(np.random.uniform())
-            self.transcript_counts_map[transcript_id] = self.transcript_counts_map.get(transcript_id, 0) + 1
+            return self.transcript_distribution.locate_id(np.random.uniform())
 
     def prepare_transcripts(self):
 
@@ -84,12 +83,11 @@ class TranscriptMaker:
         self.create_transcript_cumulative_distribution()
         self.transcript_distribution.normalize()
 
-        # Pair transcript_id with counts probabilistically
-        self.create_transcript_counts_map()
-        print(f'Number of transcripts: {sum(self.transcript_counts_map.values())}')
-
         # Create a unique listing of exon locations from the transcript annotation file data.
         self.create_exon_location_list()
+
+        # Map to stash transcript sequences keyed by transcript id.
+        transcript_sequences = dict()
 
         # Open the genome fasta file for reading only.
         with open(self.genome_filename, 'r') as genome_file:
@@ -100,11 +98,6 @@ class TranscriptMaker:
 
                 # Remove the leading '>' character to leave the chromosome
                 chromosome = line.lstrip('>').rstrip('\n')
-
-                # TODO - awkward hack to compare UCSC and ensembl
-                chromosome = chromosome[3:]
-                if chromosome == 'M':
-                    chromosome += 'T'
 
                 # Note that the chromosome 'chromosome' is among those listed in the genome file
                 self.chromosome_in_genome_file[chromosome] = True
@@ -118,8 +111,10 @@ class TranscriptMaker:
                 print(f"Done with exons for {chromosome}")
 
                 # Generate molecules using the current genome chromosome and the related exon sequence map.
-                self.make_molecules(chromosome, exon_sequence_map)
+                transcript_sequences.update(self.make_transcripts(chromosome, exon_sequence_map))
                 print(f"Done for chromosome {chromosome}")
+
+        self.make_molecules(transcript_sequences)
 
     def create_exon_location_list(self):
         """
@@ -186,7 +181,10 @@ class TranscriptMaker:
         # provided in the parameter list.
         return exon_sequence_map
 
-    def make_molecules(self, genome_chromosome, exon_sequence_map):
+    def make_transcripts(self, genome_chromosome, exon_sequence_map):
+
+        # Initialize map relating transcript ids to transcript sequences
+        transcript_sequences = dict()
 
         # Open the transcript annotation file for reading
         with open(self.annotation_filename, 'r') as annotation_file, open(self.log_filename, 'a') as log_file:
@@ -220,29 +218,47 @@ class TranscriptMaker:
                             # Initialize the gene's sequence
                             transcript_sequence = ""
 
-                            # For each exon belonging to the transcript, construct the exon's location string and use it as
-                            # a key to obtain the actual exon sequence.  Concatenate that exon sequence to the transcript
-                            # sequence.  Note that the 1 added to each exon start takes into account the zero based
-                            # and half-open ucsc coordinates.
+                            # For each exon belonging to the transcript, construct the exon's location string and use
+                            # it as a key to obtain the actual exon sequence.  Concatenate that exon sequence to the
+                            # transcript sequence.  Note that the 1 added to each exon start takes into account the
+                            # zero based and half-open ucsc coordinates.
                             for index in range(int(exon_count)):
                                 exon_key = f'{chromosome}:{int(exon_starts_list[index]) + 1}-{(exon_ends_list[index])}'
                                 exon_sequence = exon_sequence_map[exon_key]
                                 transcript_sequence += exon_sequence
 
-                            # Create an initial cigar sequence (all matches)
-                            cigar = str(len(transcript_sequence)) + 'M'
+                                transcript_sequences[transcript_id] = transcript_sequence
 
-                            # Log the transcript
-                            log_file.write(f'{transcript_id}\t{quantity}\t{transcript_sequence}\n')
+                                # Log the transcript
+                                log_file.write(f'{transcript_id}\t{quantity}\t{transcript_sequence}\n')
 
-                            # Affix a poly A tail
-                            transcript_sequence += self.polya_tail
+        return transcript_sequences
 
-                            # Generate as many molecules of the transcript as dictated by the transcript's quantity.
-                            for _ in range(quantity):
-                                self.molecules.add(Molecule(Molecule.next_molecule_id, transcript_sequence, 1,
-                                                            cigar, transcript_id))
-                                Molecule.next_molecule_id += 1
+    def make_molecules(self, transcript_sequences):
+
+            # Generate the requested number of molecules randomly.
+            for _ in range(self.transcriptome_size):
+
+                # Protect against the possibility that we have no transcript sequence for a transcript id identified
+                # in the annotation.  The genome used should have all the chromosomes that are listed in the
+                # annotations.  Otherwise this could happen.
+                for _ in range(100):
+                    transcript_id = self.create_random_transcript_id()
+                    if transcript_id in transcript_sequences:
+                        break
+
+                transcript_sequence = transcript_sequences[transcript_id]
+
+                # Create an initial cigar sequence (all matches)
+                cigar = str(len(transcript_sequence)) + 'M'
+
+                # Affix a poly A tail
+                transcript_sequence += self.polya_tail
+
+                # Generate as many molecules of the transcript as dictated by the transcript's quantity.
+                self.molecules.add(Molecule(Molecule.next_molecule_id, transcript_sequence, 1,
+                                   cigar, transcript_id))
+                Molecule.next_molecule_id += 1
 
     @staticmethod
     def main():

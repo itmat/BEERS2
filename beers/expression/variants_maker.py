@@ -307,13 +307,13 @@ class VariantsMaker:
         start = timer()
         variants_maker.make_variants()
         end = timer()
-        sys.stderr.write(f"Variants Maker: {end - start} sec\n")
+        sys.stderr.write(f"Variants Finder: {end - start} sec\n")
 
 
 if __name__ == "__main__":
     sys.exit(VariantsMaker.main())
 
 '''Example call
-python variants_maker.py -a ../../data/preBEERS/test_human.txt
+python variants_maker.py -a ../../data/expression/GRCh38/Test_data.1002_baseline.All_unique_mappers.fw_only.sorted_to_match_fasta.txt
 '''
 
