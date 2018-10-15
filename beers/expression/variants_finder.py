@@ -142,7 +142,7 @@ class VariantsFinder:
 
             # Alignment Seqment reference_start is zero-based - so adding 1 to conform to convention.
             start = line.reference_start + 1
-            sequence = line.get_forward_sequence()
+            sequence = line.query_sequence
             cigar = line.cigarstring
             cigar, sequence = self.remove_clips(cigar, sequence)
             current_pos_in_genome = int(start)
@@ -163,6 +163,8 @@ class VariantsFinder:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
+                        if location == 204058:
+                            print(location, loc_on_read, sequence)
                         reads[Read(read_type, self.chromosome, location, sequence[loc_on_read - 1])] = \
                             reads.get(
                                 Read(read_type, self.chromosome, location, sequence[loc_on_read - 1]), 0) + 1
