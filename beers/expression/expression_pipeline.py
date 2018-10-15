@@ -4,7 +4,7 @@ import pysam
 import os
 import re
 from io import StringIO
-import expression
+from expression.variants_finder import VariantsFinder
 
 class ExpressionPipeline:
     def __init__(self, configuration):
@@ -15,7 +15,7 @@ class ExpressionPipeline:
             self.chromosomes.append(item['SN'])
 
         self.reference_genome_file_path = self.get_input_file_path(configuration, "reference_genome")
-        self.reference_genome_input_generator = self.file_input_generator(self.reference_genome_file_path)
+        self.reference_genome_input = self.file_input_generator(self.reference_genome_file_path)
 
         self.output_directory = configuration["output"]
 
@@ -53,8 +53,8 @@ class ExpressionPipeline:
                     reference_chromosome_sequence = sequence.getvalue()
                     sequence.close()
                     return reference_chromosome_sequence
-                identifier = re.sub(r'[ \t].*', '', line)
-                if identifier != chromosome:
+                    identifier = re.sub(r'[ \t].*\n', '', line)[1:]
+                if identifier == chromosome:
                     building_sequence = True
                 continue
             elif building_sequence:
@@ -68,12 +68,14 @@ class ExpressionPipeline:
         print("Execution of the Expression Pipeline Started...")
         for chromosome in self.chromosomes:
 
-            variants_finder = expression.VariantsFinder(self.alignment_file, chromosome, self.parameters)
-            #variants = variants_maker.find_variants()
-            reference_chromosome = self.retrieve_reference_chromosome_sequence(self.reference_genome_input_generator, chromosome)
-            #genome_maker = GenomeMaker(self.reference_genome, variants, self.parameters)
+            reference_sequence = \
+                self.retrieve_reference_chromosome_sequence(self.reference_genome_input, chromosome)
+            variants_finder = \
+                VariantsFinder(chromosome, self.alignment_file, reference_sequence, self.parameters["VariantsFinder"])
+            variants = variants_finder.collect_reads()
+
+            #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()
-            #self.reference_genome = None  # Should we dereference objects no longer needed to save memory?
             #variants = None  # Should we dereference objects no longer needed to save memory?
             #annotation_updates = []
             #transcript_distributions = []
@@ -92,7 +94,7 @@ class ExpressionPipeline:
             #r_rna = RibosomalRNA(self.parameters)
             #molecules.append(r_rna.generate_rRNA_sample())
         print("Execution of the Expression Pipeline Ended")
-        return molecules
+        #return molecules
 
     @staticmethod
     def main():
