@@ -163,8 +163,6 @@ class VariantsFinder:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        if location == 204058:
-                            print(location, loc_on_read, sequence)
                         reads[Read(read_type, self.chromosome, location, sequence[loc_on_read - 1])] = \
                             reads.get(
                                 Read(read_type, self.chromosome, location, sequence[loc_on_read - 1]), 0) + 1
