@@ -263,6 +263,9 @@ class Utils:
         will list exons in order by plus-strand coordinates, so this method
         reverses the order of exons for all minus-strand transcripts.
 
+        Note, this function will add a header to the output file, marked by a
+        '#' character prefix.
+
         See website for standard 9-column GTF specification:
         https://useast.ensembl.org/info/website/upload/gff.html
 
@@ -284,8 +287,8 @@ class Utils:
         with open(gtf_filename, 'r') as gtf_file, \
                 open(output_annot_filename, 'w') as output_annot_file:
 
-            #Print annot file header
-            output_annot_file.write(Utils.annot_output_format.replace('{', '').replace('}', ''))
+            #Print annot file header (note the '#' prefix)
+            output_annot_file.write("#" + Utils.annot_output_format.replace('{', '').replace('}', ''))
 
             #Regex patterns used to extract individual attributes from the 9th
             #column in the GTF file (the "attributes" column)
