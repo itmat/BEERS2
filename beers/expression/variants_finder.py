@@ -1,4 +1,5 @@
 import sys
+import os
 import argparse
 import pysam
 import re
@@ -40,17 +41,24 @@ class VariantsFinder:
     chr1:10128503 | C:29 | T:1 | IT:1 ITTT:3
     """
 
-    def __init__(self, chromosome, alignment_file, reference_sequence, parameters):
-        self.chromosome = chromosome
-        self.alignment_file = alignment_file
-        self.reference_sequence = reference_sequence
-        self.log_filename = parameters.get("log_filename","./varants.log")
+    def __init__(self, chromosome, alignment_file_path, reference_genome, parameters, output_directory_path):
+        self.alignment_file_path = alignment_file_path
+        self.alignment_file = pysam.AlignmentFile(self.alignment_file_path, "rb")
+        self.chromosomes = [chromosome] or self.get_chromosome_list()
+        self.reference_genome = reference_genome
         self.entropy_sort = True if parameters["sort_by_entropy"] else False
         self.depth_cutoff = parameters["cutoff_depth"] or 10
+        self.log_file_path = os.path.join(output_directory_path, parameters.get("log_filename","variants.log"))
         self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
         self.clip_at_end_pattern = re.compile("\d+[SH]$")
         self.variant_pattern = re.compile("(\d+)([NMID])")
         self.indel_pattern = re.compile("\|([^|]+)")
+
+    def get_chromosome_list(self):
+        chromosomes = []
+        for item in self.alignment_file.header['SQ']:
+            chromosomes.append(item['SN'])
+        return chromosomes
 
     def remove_clips(self, cigar, sequence):
         """
@@ -98,7 +106,7 @@ class VariantsFinder:
             # position.
             if read.position != position_info.position:
 
-                reference_base = self.reference_sequence[position_info.position - 1]
+                reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
                 if position_info.has_variant(reference_base):
                     variants.append(position_info)
 
@@ -115,7 +123,7 @@ class VariantsFinder:
 
         # Now that the reads are exhausted for this chromosome, dump the data from the current position information
         # object to the file.
-        reference_base = self.reference_sequence[position_info.position - 1]
+        reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
         if position_info.has_variant(reference_base):
             variants.append(position_info)
 
@@ -128,14 +136,15 @@ class VariantsFinder:
 
         return variants
 
-    def collect_reads(self):
+    def collect_reads(self, chromosome):
         """
         Iterate over the input txt file containing cigar, seq, start location, chromosome for each read and consolidate
         reads for each position on the genome.
         """
 
         reads = dict()
-        for line in self.alignment_file.fetch(self.chromosome):
+
+        for line in self.alignment_file.fetch(chromosome):
 
             # Remove unaligned reads, reverse reads, and non-unique alignments
             if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
@@ -164,9 +173,9 @@ class VariantsFinder:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        reads[Read(read_type, self.chromosome, location, sequence[loc_on_read - 1])] = \
+                        reads[Read(read_type, chromosome, location, sequence[loc_on_read - 1])] = \
                             reads.get(
-                                Read(read_type, self.chromosome, location, sequence[loc_on_read - 1]), 0) + 1
+                                Read(read_type, chromosome, location, sequence[loc_on_read - 1]), 0) + 1
                         loc_on_read += 1
                         current_pos_in_genome += 1
                     continue
@@ -176,8 +185,8 @@ class VariantsFinder:
                 # deletion of the same length at the same position will be added to this key.
                 if read_type == "D":
                     location = current_pos_in_genome
-                    reads[Read(read_type, self.chromosome, location, f'D{length}')] = \
-                        reads.get(Read(read_type, self.chromosome, location, f'D{length}'), 0) + 1
+                    reads[Read(read_type, chromosome, location, f'D{length}')] = \
+                        reads.get(Read(read_type, chromosome, location, f'D{length}'), 0) + 1
                     current_pos_in_genome += length
                     continue
 
@@ -187,14 +196,24 @@ class VariantsFinder:
                 if read_type == "I":
                     location = current_pos_in_genome
                     insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length]
-                    reads[Read(read_type, self.chromosome, location, f'I{insertion_sequence}')] = \
+                    reads[Read(read_type, chromosome, location, f'I{insertion_sequence}')] = \
                         reads.get(
-                            Read(read_type, self.chromosome, location, f'I{insertion_sequence}'), 0) + 1
+                            Read(read_type, chromosome, location, f'I{insertion_sequence}'), 0) + 1
                     loc_on_read += length
         return reads
 
     def find_variants(self):
-        return self.call_variants(self.collect_reads())
+        variants = []
+        for chromosome in self.chromosomes:
+            variants.extend(self.call_variants(self.collect_reads(chromosome)))
+            self.log_variants(variants)
+        return variants
+
+    def log_variants(self, variants):
+        with open(self.log_file_path, 'a') as log_file:
+            for variant in variants:
+                log_file.write(variant.__str__())
+
 
     @staticmethod
     def main():
@@ -203,8 +222,10 @@ class VariantsFinder:
         passing in the arguments and runs the process to find the variants inside a timer.
         """
         parser = argparse.ArgumentParser(description='Find Variants')
-        parser.add_argument('-m', '--chromosome',
-                            help="Chromosome for which variants are to be found.")
+        parser.add_argument('-m', '--chromosome', default=None,
+                            help='Optional override for one chromosome')
+        parser.add_argument('-o', '--output_directory',
+                            help='Path to output directory.')
         parser.add_argument('-a', '--alignment_file_path',
                             help="Path to alignment BAM file.")
         parser.add_argument('-g', '--reference_genome_filename',
@@ -220,41 +241,41 @@ class VariantsFinder:
         args = parser.parse_args()
         print(args)
 
-        alignment_file = pysam.AlignmentFile(args.alignment_file_path, "rb")
-        reference_chromosome_sequence = ''
-        with open(args.reference_genome_filename) as reference_genome_file:
-            building_sequence = False
-            sequence = StringIO()
-            for line in reference_genome_file:
-                if line.startswith(">"):
-                    if building_sequence:
-                        reference_chromosome_sequence = sequence.getvalue()
-                        sequence.close()
-                        break
-                    identifier = re.sub(r'[ \t].*\n', '', line)[1:]
-                    if identifier == args.chromosome:
-                        building_sequence = True
-                    continue
-                elif building_sequence:
-                    sequence.write(line.rstrip('\n').upper())
-            else:
-                print(f'Chromosome {args.chromosome} not found in reference genome supplied.')
-                sys.exit(1)
-
         parameters = {'sort_by_entropy': args.sort_by_entropy, 'cutoff_depth': args.cutoff_depth}
+        try:
+            os.mkdir(args.output_directory)
+        except
 
-        variants_finder = VariantsFinder(args.chromosome,
-                                         alignment_file,
-                                         reference_chromosome_sequence,
-                                         parameters)
+        variants_finder = VariantsFinder(
+                                         args.chromosome,
+                                         args.alignment_file_path,
+                                         create_reference_genome(args.reference_genome_filename),
+                                         parameters, args.output_directory)
         start = timer()
-        variants = variants_finder.find_variants()
-        with open(variants_finder.log_filename, 'w') as log_file:
-            for variant in variants:
-                log_file.write(variant.__str__())
+        variants_finder.find_variants()
         end = timer()
         sys.stderr.write(f"Variants Finder: {end - start} sec\n")
 
+
+def create_reference_genome(reference_genome_filename):
+    reference_genome = dict()
+    fasta_chromosome_pattern = re.compile(">([^\s]*)")
+    chromosome, sequence = '', None
+    building_sequence = False
+    with open(reference_genome_filename, 'r') as reference_genome_file:
+        for line in reference_genome_file:
+            if line.startswith(">"):
+                if building_sequence:
+                    reference_genome[chromosome] = sequence.getvalue()
+                    sequence.close()
+                chromosome_match = re.match(fasta_chromosome_pattern, line)
+                chromosome = chromosome_match.group(1)
+                building_sequence = True
+                sequence = StringIO()
+                continue
+            elif building_sequence:
+                sequence.write(line.rstrip('\n').upper())
+    return reference_genome
 
 class PositionInfo:
     """
@@ -338,6 +359,7 @@ if __name__ == "__main__":
 '''Example call
 python variants_finder.py \
  -m 19 \
+ -o ../../data/expression/GRCh38/output \
  -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
  -g ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa
 '''

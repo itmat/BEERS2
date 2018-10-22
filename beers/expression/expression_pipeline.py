@@ -8,15 +8,8 @@ from io import StringIO
 
 class ExpressionPipeline:
     def __init__(self, configuration):
-        self.alignment_file_path = self.get_input_file_path(configuration, "alignment")
-        self.chromosomes = []
         self.reference_genome = dict()
-        self.alignment_file = pysam.AlignmentFile(self.alignment_file_path, "rb")
-        for item in self.alignment_file.header['SQ']:
-            self.chromosomes.append(item['SN'])
-
         self.reference_genome_file_path = self.get_input_file_path(configuration, "reference_genome")
-
         self.output_directory_path = configuration["output"]["directory_path"]
 
         self.parameters = {}
@@ -58,12 +51,12 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
-        self.create_reference_genome()
-        for chromosome,sequence in self.reference_genome.items():
-            print(chromosome, sequence[:25])
+        #self.create_reference_genome()
+        #for chromosome,sequence in self.reference_genome.items():
+        #    print(chromosome, sequence[:25])
 
         #variants_finder = \
-        #        VariantsFinder(chromosomes, self.alignment_file, self.reference_genome, self.parameters["VariantsFinder"])
+        #        VariantsFinder(None, self.alignment_file_path, self.reference_genome, self.parameters["VariantsFinder"], self.output_directory_path)
         #    variants = variants_finder.collect_reads()
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
