@@ -44,6 +44,7 @@ class VariantsFinder:
         self.chromosome = chromosome
         self.alignment_file = alignment_file
         self.reference_sequence = reference_sequence
+        self.log_filename = parameters.get("log_filename","./varants.log")
         self.entropy_sort = True if parameters["sort_by_entropy"] else False
         self.depth_cutoff = parameters["cutoff_depth"] or 10
         self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
@@ -163,8 +164,6 @@ class VariantsFinder:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        if location == 204058:
-                            print(location, loc_on_read, sequence)
                         reads[Read(read_type, self.chromosome, location, sequence[loc_on_read - 1])] = \
                             reads.get(
                                 Read(read_type, self.chromosome, location, sequence[loc_on_read - 1]), 0) + 1
@@ -250,7 +249,7 @@ class VariantsFinder:
                                          parameters)
         start = timer()
         variants = variants_finder.find_variants()
-        with open("../../data/logs/variants_finder.log", 'w') as log_file:
+        with open(variants_finder.log_filename, 'w') as log_file:
             for variant in variants:
                 log_file.write(variant.__str__())
         end = timer()

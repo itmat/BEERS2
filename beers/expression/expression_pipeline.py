@@ -4,23 +4,23 @@ import pysam
 import os
 import re
 from io import StringIO
-from expression.variants_finder import VariantsFinder
+#from variants_finder import VariantsFinder
 
 class ExpressionPipeline:
     def __init__(self, configuration):
         self.alignment_file_path = self.get_input_file_path(configuration, "alignment")
         self.chromosomes = []
+        self.reference_genome = dict()
         self.alignment_file = pysam.AlignmentFile(self.alignment_file_path, "rb")
         for item in self.alignment_file.header['SQ']:
             self.chromosomes.append(item['SN'])
 
         self.reference_genome_file_path = self.get_input_file_path(configuration, "reference_genome")
-        self.reference_genome_input = self.file_input_generator(self.reference_genome_file_path)
 
-        self.output_directory = configuration["output"]
+        self.output_directory_path = configuration["output"]["directory_path"]
 
         self.parameters = {}
-        for item in configuration["expression_pipeline"]["processes"]:
+        for item in configuration["processes"]:
             self.parameters[item["class_name"]] = item.get("parameters", dict())
 
     def get_input_file_path(self, configuration, file_type):
@@ -34,45 +34,37 @@ class ExpressionPipeline:
         filename = configuration["input"]["files"][file_type]
         return os.path.join(input_directory_path, filename)
 
-    def file_input_generator(self, file_path):
-        """
-        Convenience method to obtain a generator for a given file_path
-        :return: generator - .next() returns next line or None at end of file.
-        """
-        with open(file_path, 'r') as input_file:
-            for line in input_file:
-                yield line
-        return None
-
-    def retrieve_reference_chromosome_sequence(self, generator, chromosome):
+    def create_reference_genome(self):
+        fasta_chromosome_pattern = re.compile(">([^\s]*)")
+        chromosome, sequence = '', None
         building_sequence = False
-        sequence = StringIO()
-        for line in generator:
-            if line.startswith(">"):
-                if building_sequence:
-                    reference_chromosome_sequence = sequence.getvalue()
-                    sequence.close()
-                    return reference_chromosome_sequence
-                    identifier = re.sub(r'[ \t].*\n', '', line)[1:]
-                if identifier == chromosome:
+        with open(self.reference_genome_file_path, 'r') as reference_genome_file:
+            for line in reference_genome_file:
+                if line.startswith(">"):
+                    if building_sequence:
+                        self.reference_genome[chromosome] = sequence.getvalue()
+                        sequence.close()
+                    chromosome_match = re.match(fasta_chromosome_pattern, line)
+                    chromosome = chromosome_match.group(1)
                     building_sequence = True
-                continue
-            elif building_sequence:
-                sequence.write(line.rstrip('\n').upper())
-        return None
+                    sequence = StringIO()
+                    continue
+                elif building_sequence:
+                    sequence.write(line.rstrip('\n').upper())
 
     def validate(self):
         pass
 
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
-        for chromosome in self.chromosomes:
 
-            reference_sequence = \
-                self.retrieve_reference_chromosome_sequence(self.reference_genome_input, chromosome)
-            variants_finder = \
-                VariantsFinder(chromosome, self.alignment_file, reference_sequence, self.parameters["VariantsFinder"])
-            variants = variants_finder.collect_reads()
+        self.create_reference_genome()
+        for chromosome,sequence in self.reference_genome.items():
+            print(chromosome, sequence[:25])
+
+        #variants_finder = \
+        #        VariantsFinder(chromosomes, self.alignment_file, self.reference_genome, self.parameters["VariantsFinder"])
+        #    variants = variants_finder.collect_reads()
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()
@@ -100,7 +92,7 @@ class ExpressionPipeline:
     def main():
         with open("../../config/config.json", "r+") as configuration_file:
             configuration = json.load(configuration_file)
-        pipeline = ExpressionPipeline(configuration)
+        pipeline = ExpressionPipeline(configuration["expression_pipeline"])
         pipeline.validate()
         pipeline.execute()
 
