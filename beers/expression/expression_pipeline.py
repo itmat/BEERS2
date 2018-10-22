@@ -10,8 +10,10 @@ class ExpressionPipeline:
     def __init__(self, configuration):
         self.reference_genome = dict()
         self.reference_genome_file_path = self.get_input_file_path(configuration, "reference_genome")
-        self.output_directory_path = configuration["output"]["directory_path"]
-
+        try:
+            self.output_directory_path = configuration["output"]["directory_path"]
+        except FileExistsError:
+            pass
         self.parameters = {}
         for item in configuration["processes"]:
             self.parameters[item["class_name"]] = item.get("parameters", dict())

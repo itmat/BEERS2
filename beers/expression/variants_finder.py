@@ -41,18 +41,29 @@ class VariantsFinder:
     chr1:10128503 | C:29 | T:1 | IT:1 ITTT:3
     """
 
+    DEFAULT_DEPTH_CUTOFF = 10
+    DEFAULT_MIN_THRESHOLD = 0.03
+    DEFAULT_READ_TOTAL_COUNT = 10
+
     def __init__(self, chromosome, alignment_file_path, reference_genome, parameters, output_directory_path):
         self.alignment_file_path = alignment_file_path
         self.alignment_file = pysam.AlignmentFile(self.alignment_file_path, "rb")
         self.chromosomes = [chromosome] or self.get_chromosome_list()
         self.reference_genome = reference_genome
         self.entropy_sort = True if parameters["sort_by_entropy"] else False
-        self.depth_cutoff = parameters["cutoff_depth"] or 10
-        self.log_file_path = os.path.join(output_directory_path, parameters.get("log_filename","variants.log"))
+        self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinder.DEFAULT_DEPTH_CUTOFF
+        self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinder.DEFAULT_MIN_THRESHOLD
+        self.min_read_total_count = parameters['min_read_total_count'] or VariantsFinder.DEFAULT_READ_TOTAL_COUNT
+        self.log_file_path = os.path.join(output_directory_path, parameters["log_filename"])
         self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
         self.clip_at_end_pattern = re.compile("\d+[SH]$")
         self.variant_pattern = re.compile("(\d+)([NMID])")
         self.indel_pattern = re.compile("\|([^|]+)")
+
+    def validate(self):
+        # TODO verify existance of log_filename parameter
+        pass
+
 
     def get_chromosome_list(self):
         chromosomes = []
@@ -106,6 +117,7 @@ class VariantsFinder:
             # position.
             if read.position != position_info.position:
 
+                position_info.filter_variants(self.min_abundance_threshold, self.min_read_total_count)
                 reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
                 if position_info.has_variant(reference_base):
                     variants.append(position_info)
@@ -205,9 +217,8 @@ class VariantsFinder:
     def find_variants(self):
         variants = []
         for chromosome in self.chromosomes:
-            variants.extend(self.call_variants(self.collect_reads(chromosome)))
+            variants = self.call_variants(self.collect_reads(chromosome))
             self.log_variants(variants)
-        return variants
 
     def log_variants(self, variants):
         with open(self.log_file_path, 'a') as log_file:
@@ -233,18 +244,37 @@ class VariantsFinder:
                                  "that contain no variants.")
         parser.add_argument('-s', '--sort_by_entropy', action='store_true',
                             help="Optional request to sort line in order of descreasing entropy.")
-        parser.add_argument('-c', '--cutoff_depth', type=int, default=10,
+        parser.add_argument('-c', '--cutoff_depth', type=int,
                             help="Integer to indicate minimum read depth a position must have for inclusion."
                                  " If the option is not selected, a default of 10 will be applied as the minimum"
                                  " read depth.  Note that this option is used only if the sort_by_entropy option is"
                                  " invoked.")
+        parser.add_argument('-t', '--min_threshold', type=float,
+                            help="For any position, if the percent abundance of the second most abundant variant"
+                                 "relative to the two most abundant variants falls below this threshold, the seond"
+                                 "most abundant variant will be discarded.  Defaults to 0.03 (3 percent)")
+        parser.add_argument('-r', '--min_read_total_count', type=int,
+                            help="For any position, if the total reads from the two most abundant variants"
+                                 " equals or exceeds this value, the second most abundant variant will be discarded"
+                                 " if it is a single read even if it passes the minimum threshold test.  Defaults to"
+                                 " 10.")
+        parser.add_argument('-l', '--log_filename',
+                            help='Filename for variant logging.')
         args = parser.parse_args()
         print(args)
 
-        parameters = {'sort_by_entropy': args.sort_by_entropy, 'cutoff_depth': args.cutoff_depth}
+        parameters = {
+            'sort_by_entropy': args.sort_by_entropy,
+            'cutoff_depth': args.cutoff_depth,
+            'log_filename': args.log_filename,
+            "min_threshold": args.min_threshold,
+            "min_read_total_count": args.min_read_total_count
+        }
+
         try:
             os.mkdir(args.output_directory)
-        except
+        except:
+            pass
 
         variants_finder = VariantsFinder(
                                          args.chromosome,
@@ -326,6 +356,24 @@ class PositionInfo:
         max_abundances = [scale * max_abundance for max_abundance in max_abundances]
         return -1 * max_abundances[0] * math.log2(max_abundances[0]) - max_abundances[1] * math.log2(max_abundances[1])
 
+    def filter_variants(self, min_abundance_threshold, min_read_total_count):
+        variants = []
+        if len(self.reads) > 1:
+            candidate_variants = {read[0]: int(read[1]) for read in self.reads}
+
+            for _ in range(2):
+                max_read = max(candidate_variants.items(), key=itemgetter(1))[0]
+                variants.append((max_read, candidate_variants[max_read]))
+                del candidate_variants[max_read]
+
+            total_reads = sum(read_count for _, read_count in variants)
+            if variants[1][1] / total_reads < min_abundance_threshold:
+                self.reads = [variants[0]]
+            elif total_reads >= min_read_total_count and variants[1][1] == 1:
+                self.reads = [variants[0]]
+            else:
+                self.reads = variants
+
     def has_variant(self, reference_base):
         """
         To have a variant, the position information must contain a single read description and that description may
@@ -360,6 +408,7 @@ if __name__ == "__main__":
 python variants_finder.py \
  -m 19 \
  -o ../../data/expression/GRCh38/output \
+ -l variants_data.log \
  -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
  -g ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa
 '''
