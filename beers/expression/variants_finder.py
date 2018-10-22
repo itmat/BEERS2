@@ -41,6 +41,7 @@ class VariantsFinder:
     chr1:10128503 | C:29 | T:1 | IT:1 ITTT:3
     """
 
+    DEFAULT_X_CHROMOSOME_NAME = 'chrX'
     DEFAULT_DEPTH_CUTOFF = 10
     DEFAULT_MIN_THRESHOLD = 0.03
     DEFAULT_READ_TOTAL_COUNT = 10
@@ -48,8 +49,9 @@ class VariantsFinder:
     def __init__(self, chromosome, alignment_file_path, reference_genome, parameters, output_directory_path):
         self.alignment_file_path = alignment_file_path
         self.alignment_file = pysam.AlignmentFile(self.alignment_file_path, "rb")
-        self.chromosomes = [chromosome] or self.get_chromosome_list()
+        self.chromosomes = [chromosome] if chromosome else self.get_chromosome_list()
         self.reference_genome = reference_genome
+        self.x_chomosome_name = parameters['x_chromosome_name'] or VariantsFinder.DEFAULT_X_CHROMOSOME_NAME
         self.entropy_sort = True if parameters["sort_by_entropy"] else False
         self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinder.DEFAULT_DEPTH_CUTOFF
         self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinder.DEFAULT_MIN_THRESHOLD
@@ -134,10 +136,11 @@ class VariantsFinder:
             position_info.add_read(read.description, reads[read])
 
         # Now that the reads are exhausted for this chromosome, dump the data from the current position information
-        # object to the file.
-        reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
-        if position_info.has_variant(reference_base):
-            variants.append(position_info)
+        # object to the file.  Note that there may be no variants.
+        if position_info:
+            reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
+            if position_info.has_variant(reference_base):
+                variants.append(position_info)
 
         # If the user selected the sort by entropy option, other the entropy_map entries in descending order
         # of entropy and print to std out.
@@ -216,9 +219,17 @@ class VariantsFinder:
 
     def find_variants(self):
         variants = []
+        gender = ''
         for chromosome in self.chromosomes:
+            print(f"Finding variants for chromosome {chromosome}")
             variants = self.call_variants(self.collect_reads(chromosome))
             self.log_variants(variants)
+            if chromosome == self.x_chomosome_name:
+                print(f"Number of X chromosome variants {len(variants)}")
+                gender = 'M' if len(variants) < 5000 else 'F'
+                print(f"Gender is {gender}")
+        return gender
+
 
     def log_variants(self, variants):
         with open(self.log_file_path, 'a') as log_file:
@@ -260,10 +271,13 @@ class VariantsFinder:
                                  " 10.")
         parser.add_argument('-l', '--log_filename',
                             help='Filename for variant logging.')
+        parser.add_argument('-n', '--x_chromosome_name',
+                            help="Enter the chromosome names for chromosome X.")
         args = parser.parse_args()
         print(args)
 
         parameters = {
+            'x_chromosome_name': args.x_chromosome_name,
             'sort_by_entropy': args.sort_by_entropy,
             'cutoff_depth': args.cutoff_depth,
             'log_filename': args.log_filename,
@@ -406,9 +420,10 @@ if __name__ == "__main__":
 
 '''Example call
 python variants_finder.py \
- -m 19 \
+ -m X \
+ -n X \
  -o ../../data/expression/GRCh38/output \
- -l variants_data.log \
+ -l variants_X.log \
  -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
  -g ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa
 '''

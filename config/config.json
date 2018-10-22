@@ -16,6 +16,7 @@
       {
         "class_name": "VariantsFinder",
         "parameters": {
+          "x_chromosome_name": "X",
           "cutoff_depth": 10,
           "sort_by_entropy": "False",
           "min_threshold": 0.03,
