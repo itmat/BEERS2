@@ -54,7 +54,7 @@ class VariantsFinder:
         self.chromosomes = [chromosome] if chromosome else self.get_chromosome_list()
         self.reference_genome = reference_genome
         self.x_chomosome_name = parameters['x_chromosome_name'] or VariantsFinder.DEFAULT_X_CHROMOSOME_NAME
-        self.entropy_sort = True if parameters["sort_by_entropy"] else False
+        self.entropy_sort = parameters["sort_by_entropy"]
         self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinder.DEFAULT_DEPTH_CUTOFF
         self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinder.DEFAULT_MIN_THRESHOLD
         self.min_read_total_count = parameters['min_read_total_count'] or VariantsFinder.DEFAULT_READ_TOTAL_COUNT

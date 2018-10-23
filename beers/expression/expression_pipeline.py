@@ -4,7 +4,7 @@ import pysam
 import os
 import re
 from io import StringIO
-from variants_finder import VariantsFinder
+from beers.expression.variants_finder import VariantsFinder
 
 class ExpressionPipeline:
     def __init__(self, configuration):
@@ -45,7 +45,7 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
-        #self.create_reference_genome()
+        self.create_reference_genome()
         #for chromosome,sequence in self.reference_genome.items():
         #    print(chromosome, sequence[:25])
 
@@ -53,7 +53,7 @@ class ExpressionPipeline:
 
             variants_finder = \
                 VariantsFinder(None, alignment_file_path, self.reference_genome, self.parameters["VariantsFinder"], self.output_directory_path)
-            self.gender = variants_finder.collect_reads()
+            self.gender = variants_finder.find_variants()
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()

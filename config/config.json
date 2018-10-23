@@ -20,7 +20,7 @@
         "parameters": {
           "x_chromosome_name": "X",
           "cutoff_depth": 10,
-          "sort_by_entropy": "False",
+          "sort_by_entropy": false,
           "min_threshold": 0.03,
           "min_read_total_count": 10
         }
