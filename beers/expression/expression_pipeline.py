@@ -4,12 +4,15 @@ import pysam
 import os
 import re
 from io import StringIO
-#from variants_finder import VariantsFinder
+from variants_finder import VariantsFinder
 
 class ExpressionPipeline:
     def __init__(self, configuration):
         self.reference_genome = dict()
-        self.reference_genome_file_path = self.get_input_file_path(configuration, "reference_genome")
+        input_directory_path = configuration["input"]["directory_path"]
+        self.reference_genome_file_path = os.path.join(input_directory_path, configuration["input"]["files"]["reference_genome"])
+        self.alignment_file_paths = [os.path.join(input_directory_path, entry)
+                                     for entry in configuration["input"]["files"]["alignment"]]
         try:
             self.output_directory_path = configuration["output"]["directory_path"]
         except FileExistsError:
@@ -17,17 +20,6 @@ class ExpressionPipeline:
         self.parameters = {}
         for item in configuration["processes"]:
             self.parameters[item["class_name"]] = item.get("parameters", dict())
-
-    def get_input_file_path(self, configuration, file_type):
-        """
-        Convenience method to obtain full path to input file of the given file type
-        :param configuration: dictionary idenitifying input directory and file name of given file type
-        :param file_type: alignment, reference_genome, annotation
-        :return: path to the input file of the given file type
-        """
-        input_directory_path = configuration["input"]["directory_path"]
-        filename = configuration["input"]["files"][file_type]
-        return os.path.join(input_directory_path, filename)
 
     def create_reference_genome(self):
         fasta_chromosome_pattern = re.compile(">([^\s]*)")
@@ -57,9 +49,11 @@ class ExpressionPipeline:
         #for chromosome,sequence in self.reference_genome.items():
         #    print(chromosome, sequence[:25])
 
-        #variants_finder = \
-        #        VariantsFinder(None, self.alignment_file_path, self.reference_genome, self.parameters["VariantsFinder"], self.output_directory_path)
-        #    variants = variants_finder.collect_reads()
+        for alignment_file_path in self.alignment_file_paths:
+
+            variants_finder = \
+                VariantsFinder(None, alignment_file_path, self.reference_genome, self.parameters["VariantsFinder"], self.output_directory_path)
+            self.gender = variants_finder.collect_reads()
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()

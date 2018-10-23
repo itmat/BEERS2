@@ -48,6 +48,8 @@ class VariantsFinder:
 
     def __init__(self, chromosome, alignment_file_path, reference_genome, parameters, output_directory_path):
         self.alignment_file_path = alignment_file_path
+        variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
+        self.variants_file_path = os.path.join(output_directory_path, variants_filename)
         self.alignment_file = pysam.AlignmentFile(self.alignment_file_path, "rb")
         self.chromosomes = [chromosome] if chromosome else self.get_chromosome_list()
         self.reference_genome = reference_genome
@@ -56,7 +58,6 @@ class VariantsFinder:
         self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinder.DEFAULT_DEPTH_CUTOFF
         self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinder.DEFAULT_MIN_THRESHOLD
         self.min_read_total_count = parameters['min_read_total_count'] or VariantsFinder.DEFAULT_READ_TOTAL_COUNT
-        self.log_file_path = os.path.join(output_directory_path, parameters["log_filename"])
         self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
         self.clip_at_end_pattern = re.compile("\d+[SH]$")
         self.variant_pattern = re.compile("(\d+)([NMID])")
@@ -230,11 +231,10 @@ class VariantsFinder:
                 print(f"Gender is {gender}")
         return gender
 
-
     def log_variants(self, variants):
-        with open(self.log_file_path, 'a') as log_file:
+        with open(self.variants_file_path, 'a') as variants_file:
             for variant in variants:
-                log_file.write(variant.__str__())
+                variants_file.write(variant.__str__())
 
 
     @staticmethod
@@ -269,8 +269,6 @@ class VariantsFinder:
                                  " equals or exceeds this value, the second most abundant variant will be discarded"
                                  " if it is a single read even if it passes the minimum threshold test.  Defaults to"
                                  " 10.")
-        parser.add_argument('-l', '--log_filename',
-                            help='Filename for variant logging.')
         parser.add_argument('-n', '--x_chromosome_name',
                             help="Enter the chromosome names for chromosome X.")
         args = parser.parse_args()
@@ -280,7 +278,6 @@ class VariantsFinder:
             'x_chromosome_name': args.x_chromosome_name,
             'sort_by_entropy': args.sort_by_entropy,
             'cutoff_depth': args.cutoff_depth,
-            'log_filename': args.log_filename,
             "min_threshold": args.min_threshold,
             "min_read_total_count": args.min_read_total_count
         }

@@ -4,7 +4,9 @@
     "input" : {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
       "files": {
-        "alignment": "Test_data.1002_baseline.sorted.bam",
+        "alignment": [
+          "Test_data.1002_baseline.sorted.bam"
+        ],
         "reference_genome": "Homo_sapiens.GRCh38.reference_genome.fa",
         "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt"
       }
