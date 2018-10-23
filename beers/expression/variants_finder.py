@@ -23,22 +23,20 @@ description: description of the variant (e.g., C, IAA, D5, etc.)
 class VariantsFinder:
     """
     This class creates a text file listing variants for those locations in the reference genome having variants.
-    The variants include snps and indels with the number of reads attribute to each variant.
-    The text-based input file has no header and the following columns:
-    1) CHROMOSOME (column 1 in a SAM file)
-    2) START (column 3 in a SAM file)
-    3) CIGAR  (column 4 in a SAM file)
-    4) SEQ  (column 10 in a SAM file)
-    The reads must be sorted by location
+    The variants include snps and indels with the number of reads attributed to each variant.
+    The relevant bam-formatted input file is expected to be indexed and sorted.
 
     This script outputs a file that gives the full breakdown at each
     location in the genome of the number of A's, C's, G's and T's as
     well as the number of each size of insertion and deletion.
     If it's an insertion the sequence of the insertion itself is given.
     So for example a line of output like the following means
-    29 reads had a C in that location, one had a T and
-    also one read had an insertion TT and three reads had an insertion TTT
-    chr1:10128503 | C:29 | T:1 | IT:1 ITTT:3
+    29 reads had a C in that location and three reads had an insertion of TTT.
+    chr1:10128503 | C:29 | ITTT:3
+
+    Note that only the top two variants are kept and of those the lesser variant's counts must meet
+    certain user criteria (minimum threshold, read total count) to be considered a variant.  Single
+    reads that match the corresponding base in the reference genome are not variants and as such are not kept.
     """
 
     DEFAULT_X_CHROMOSOME_NAME = 'chrX'
@@ -64,11 +62,14 @@ class VariantsFinder:
         self.indel_pattern = re.compile("\|([^|]+)")
 
     def validate(self):
-        # TODO verify existance of log_filename parameter
         pass
 
 
     def get_chromosome_list(self):
+        """
+        Use the BAM header to identify all the chromosomes in the alignment file provided.
+        :return: list of chromosomes
+        """
         chromosomes = []
         for item in self.alignment_file.header['SQ']:
             chromosomes.append(item['SN'])
@@ -219,6 +220,12 @@ class VariantsFinder:
         return reads
 
     def find_variants(self):
+        """
+        Entry point into variants_finder when accessed via imports.  Iterates over the chromosomes in the list
+        provided by the alignment file header and logs those variants found.  In the case of the X chromosome,
+        gender (M or F) is determined by the number of variants found for the X chromosome.
+        :return: gender information
+        """
         variants = []
         gender = ''
         for chromosome in self.chromosomes:
@@ -232,6 +239,11 @@ class VariantsFinder:
         return gender
 
     def log_variants(self, variants):
+        """
+        Logs the variants to a file in the user's designated output directory one chromosome at a time.  The filename
+        has the stem of the alignment filename suffixed with _variants.txt
+        :param variants: variants list for one chromosome.
+        """
         with open(self.variants_file_path, 'a') as variants_file:
             for variant in variants:
                 variants_file.write(variant.__str__())
@@ -240,7 +252,7 @@ class VariantsFinder:
     @staticmethod
     def main():
         """
-        CLI Entry point into the variants_finder program.  Parses the use input, created the VariantsFinder object,
+        CLI Entry point into the variants_finder program.  Parses the use input, creates the VariantsFinder object,
         passing in the arguments and runs the process to find the variants inside a timer.
         """
         parser = argparse.ArgumentParser(description='Find Variants')
@@ -299,6 +311,11 @@ class VariantsFinder:
 
 
 def create_reference_genome(reference_genome_filename):
+    """
+    Utility method needed for operation of CLI
+    :param reference_genome_filename: location of reference genome file.
+    :return: dictionary related reference genome chromosomes to their sequences
+    """
     reference_genome = dict()
     fasta_chromosome_pattern = re.compile(">([^\s]*)")
     chromosome, sequence = '', None
@@ -368,6 +385,17 @@ class PositionInfo:
         return -1 * max_abundances[0] * math.log2(max_abundances[0]) - max_abundances[1] * math.log2(max_abundances[1])
 
     def filter_variants(self, min_abundance_threshold, min_read_total_count):
+        """
+        Filters out from this position, reads that are not considered true variants.  At most, only the top two
+        variants are retained.  The lesser of those two variants may also be removed if it does not satisfy the
+        minimum abundance threshold and minumum read total count criteria.  The minimum abundance threshold criteria
+        specifies that the percent contribution of the lesser variant reads to the total reads be equal or greater
+        than the threshold provided.  For total read counts exceeding the minimum total read count value provided,
+        the lesser variant read count must exceed 1.  This latter criteria is the more restrictive one in the case
+        of low total read counts.
+        :param min_abundance_threshold:  criterion for minimum abundance threshold
+        :param min_read_total_count:  criterion for minimum read total count
+        """
         variants = []
         if len(self.reads) > 1:
             candidate_variants = {read[0]: int(read[1]) for read in self.reads}
