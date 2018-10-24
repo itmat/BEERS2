@@ -62,7 +62,6 @@ class VariantsFinder:
     def validate(self):
         pass
 
-
     def get_chromosome_list(self):
         """
         Use the BAM header to identify all the chromosomes in the alignment file provided.
@@ -225,7 +224,8 @@ class VariantsFinder:
                     loc_on_read += length
         return reads
 
-    def establish_gender(self, variants):
+    @staticmethod
+    def establish_gender(variants):
         print(f"Number of X chromosome variants {len(variants)}")
         total_heterozygous = 0
         for variant in variants:
@@ -236,7 +236,6 @@ class VariantsFinder:
         print(f"Gender is {gender}")
         return gender
 
-
     def find_variants(self):
         """
         Entry point into variants_finder when accessed via imports.  Iterates over the chromosomes in the list
@@ -244,7 +243,6 @@ class VariantsFinder:
         gender (M or F) is determined by the number of variants found for the X chromosome.
         :return: gender information
         """
-        variants = []
         gender = ''
         for chromosome in self.chromosomes:
             print(f"Finding variants for chromosome {chromosome}")
@@ -305,7 +303,7 @@ class VariantsFinder:
 
         try:
             os.mkdir(args.output_directory)
-        except:
+        except FileExistsError:
             pass
 
         variants_finder = VariantsFinder(
@@ -343,6 +341,7 @@ def create_reference_genome(reference_genome_filename):
             elif building_sequence:
                 sequence.write(line.rstrip('\n').upper())
     return reference_genome
+
 
 class PositionInfo:
     """
@@ -429,7 +428,7 @@ class PositionInfo:
 
             # Get reference read, if it exists
             reference_read = [(description, read_count) for description, read_count in filtered_reads
-                             if description == reference_base]
+                              if description == reference_base]
 
             # If the reference read exists and is not among the variants but has the same number of counts as
             # the second place read, replace the second place read with it.
