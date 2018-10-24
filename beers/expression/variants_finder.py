@@ -118,11 +118,7 @@ class VariantsFinder:
             # contain at least one variant.  In either case, create a new position information object for the new
             # position.
             if read.position != position_info.position:
-                if position_info:
-                    reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
-                    position_info.filter_reads(self.min_abundance_threshold, reference_base)
-                    if position_info:
-                        variants.append(position_info)
+                self.identify_variant(position_info, variants)
 
                 # If the sort by entropy option is selected, also add to the entropy map dictionary the position
                 # information entropy, keyed by the line content but only if the total number of reads exceeds the
@@ -137,11 +133,7 @@ class VariantsFinder:
 
         # Now that the reads are exhausted for this chromosome, dump the data from the current position information
         # object to the file.  Note that there may be no variants.
-        if position_info:
-            reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
-            position_info.filter_reads(self.min_abundance_threshold, reference_base)
-            if position_info:
-                variants.append(position_info)
+        self.identify_variant(position_info, variants)
 
         # If the user selected the sort by entropy option, other the entropy_map entries in descending order
         # of entropy and print to std out.
@@ -171,6 +163,7 @@ class VariantsFinder:
         """
 
         reads = dict()
+        ctr = 0
 
         for line in self.alignment_file.fetch(chromosome):
 
@@ -201,9 +194,11 @@ class VariantsFinder:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        reads[Read(read_type, chromosome, location, sequence[loc_on_read - 1])] = \
-                            reads.get(
-                                Read(read_type, chromosome, location, sequence[loc_on_read - 1]), 0) + 1
+                        key = Read(read_type, chromosome, location, sequence[loc_on_read - 1])
+                        reads[key] = reads.get(key, 0) + 1
+                        if location == 303315:
+                            ctr = ctr + 1
+                            print(ctr, stop-length, stop, key)
                         loc_on_read += 1
                         current_pos_in_genome += 1
                     continue
@@ -230,6 +225,18 @@ class VariantsFinder:
                     loc_on_read += length
         return reads
 
+    def establish_gender(self, variants):
+        print(f"Number of X chromosome variants {len(variants)}")
+        total_heterozygous = 0
+        for variant in variants:
+            if len(variant.reads) > 1:
+                total_heterozygous += 1
+        print(f"Number of X chromosome heterozygous variants {total_heterozygous}")
+        gender = 'M' if total_heterozygous < 5000 else 'F'
+        print(f"Gender is {gender}")
+        return gender
+
+
     def find_variants(self):
         """
         Entry point into variants_finder when accessed via imports.  Iterates over the chromosomes in the list
@@ -244,9 +251,7 @@ class VariantsFinder:
             variants = self.call_variants(self.collect_reads(chromosome))
             self.log_variants(variants)
             if chromosome == self.x_chomosome_name:
-                print(f"Number of X chromosome variants {len(variants)}")
-                gender = 'M' if len(variants) < 5000 else 'F'
-                print(f"Gender is {gender}")
+                gender = self.establish_gender(variants)
         return gender
 
     def log_variants(self, variants):
