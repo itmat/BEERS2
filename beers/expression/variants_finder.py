@@ -42,7 +42,6 @@ class VariantsFinder:
     DEFAULT_X_CHROMOSOME_NAME = 'chrX'
     DEFAULT_DEPTH_CUTOFF = 10
     DEFAULT_MIN_THRESHOLD = 0.03
-    DEFAULT_READ_TOTAL_COUNT = 10
 
     def __init__(self, chromosome, alignment_file_path, reference_genome, parameters, output_directory_path):
         self.alignment_file_path = alignment_file_path
@@ -55,7 +54,6 @@ class VariantsFinder:
         self.entropy_sort = parameters["sort_by_entropy"]
         self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinder.DEFAULT_DEPTH_CUTOFF
         self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinder.DEFAULT_MIN_THRESHOLD
-        self.min_read_total_count = parameters['min_read_total_count'] or VariantsFinder.DEFAULT_READ_TOTAL_COUNT
         self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
         self.clip_at_end_pattern = re.compile("\d+[SH]$")
         self.variant_pattern = re.compile("(\d+)([NMID])")
@@ -120,11 +118,11 @@ class VariantsFinder:
             # contain at least one variant.  In either case, create a new position information object for the new
             # position.
             if read.position != position_info.position:
-
-                position_info.filter_variants(self.min_abundance_threshold, self.min_read_total_count)
-                reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
-                if position_info.has_variant(reference_base):
-                    variants.append(position_info)
+                if position_info:
+                    reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
+                    position_info.filter_reads(self.min_abundance_threshold, reference_base)
+                    if position_info:
+                        variants.append(position_info)
 
                 # If the sort by entropy option is selected, also add to the entropy map dictionary the position
                 # information entropy, keyed by the line content but only if the total number of reads exceeds the
@@ -141,7 +139,8 @@ class VariantsFinder:
         # object to the file.  Note that there may be no variants.
         if position_info:
             reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
-            if position_info.has_variant(reference_base):
+            position_info.filter_reads(self.min_abundance_threshold, reference_base)
+            if position_info:
                 variants.append(position_info)
 
         # If the user selected the sort by entropy option, other the entropy_map entries in descending order
@@ -152,6 +151,18 @@ class VariantsFinder:
                 print(key, end='')
 
         return variants
+
+    def identify_variant(self, position_info, variants):
+        """
+        Helper method to filter position reads to identify variants
+        :param position_info: position being evaluated
+        :param variants: growing list of variants to which this position may be added if it contains variants
+        """
+        if position_info:
+            reference_base = self.reference_genome[position_info.chromosome][position_info.position - 1]
+            position_info.filter_reads(self.min_abundance_threshold, reference_base)
+            if position_info:
+                variants.append(position_info)
 
     def collect_reads(self, chromosome):
         """
@@ -248,7 +259,6 @@ class VariantsFinder:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
-
     @staticmethod
     def main():
         """
@@ -276,11 +286,6 @@ class VariantsFinder:
                             help="For any position, if the percent abundance of the second most abundant variant"
                                  "relative to the two most abundant variants falls below this threshold, the seond"
                                  "most abundant variant will be discarded.  Defaults to 0.03 (3 percent)")
-        parser.add_argument('-r', '--min_read_total_count', type=int,
-                            help="For any position, if the total reads from the two most abundant variants"
-                                 " equals or exceeds this value, the second most abundant variant will be discarded"
-                                 " if it is a single read even if it passes the minimum threshold test.  Defaults to"
-                                 " 10.")
         parser.add_argument('-n', '--x_chromosome_name',
                             help="Enter the chromosome names for chromosome X.")
         args = parser.parse_args()
@@ -290,8 +295,7 @@ class VariantsFinder:
             'x_chromosome_name': args.x_chromosome_name,
             'sort_by_entropy': args.sort_by_entropy,
             'cutoff_depth': args.cutoff_depth,
-            "min_threshold": args.min_threshold,
-            "min_read_total_count": args.min_read_total_count
+            "min_threshold": args.min_threshold
         }
 
         try:
@@ -384,45 +388,67 @@ class PositionInfo:
         max_abundances = [scale * max_abundance for max_abundance in max_abundances]
         return -1 * max_abundances[0] * math.log2(max_abundances[0]) - max_abundances[1] * math.log2(max_abundances[1])
 
-    def filter_variants(self, min_abundance_threshold, min_read_total_count):
+    def filter_reads(self, min_abundance_threshold, reference_base):
         """
-        Filters out from this position, reads that are not considered true variants.  At most, only the top two
-        variants are retained.  The lesser of those two variants may also be removed if it does not satisfy the
-        minimum abundance threshold and minumum read total count criteria.  The minimum abundance threshold criteria
-        specifies that the percent contribution of the lesser variant reads to the total reads be equal or greater
-        than the threshold provided.  For total read counts exceeding the minimum total read count value provided,
-        the lesser variant read count must exceed 1.  This latter criteria is the more restrictive one in the case
-        of low total read counts.
+        Filters out from this position, reads that are not considered true variants.  Any reads with read counts of
+        only 1 are excluded to start with. At most, only the top two remaining reads are retained.  The lesser of those
+        two reads may also be removed if it does not satisfy the minimum abundance threshold criterion.  The minimum
+        abundance threshold criterion specifies that the percent contribution of the lesser variant reads to the total
+        reads be equal or greater than the threshold provided.  In the event of a tie for one of both of those top
+        two slots, preference is given to the reference base if it is included in the tie. If at any point in
+        filtering, only one read remains and its description matches the reference base, it is removed, leaving no
+        variants.  Once complete, the reads for this position object contain only true variants (which may include
+        the reference base if there is one another true variant).
         :param min_abundance_threshold:  criterion for minimum abundance threshold
-        :param min_read_total_count:  criterion for minimum read total count
+        :param reference_base:  the base of the reference genome at this position.
         """
+
         variants = []
-        if len(self.reads) > 1:
-            candidate_variants = {read[0]: int(read[1]) for read in self.reads}
+
+        # Remove all reads with read counts of no more than 1
+        filtered_reads = [read for read in self.reads if read[1] > 1]
+
+        # If only a single read remains, remove if it matches the reference base - there are no variants
+        if len(filtered_reads) == 1 and filtered_reads[0][0] == reference_base:
+            pass
+
+        # If multiple reads remain, retain only the top 2 reads
+        elif len(filtered_reads) > 1:
+
+            candidate_variants = {filtered_read[0]: filtered_read[1] for filtered_read in filtered_reads}
 
             for _ in range(2):
                 max_read = max(candidate_variants.items(), key=itemgetter(1))[0]
                 variants.append((max_read, candidate_variants[max_read]))
                 del candidate_variants[max_read]
 
+            # Get reference read, if it exists
+            reference_read = [(description, read_count) for description, read_count in filtered_reads
+                             if description == reference_base]
+
+            # If the reference read exists and is not among the variants but has the same number of counts as
+            # the second place read, replace the second place read with it.
+            if reference_read and reference_read[0] not in variants and reference_read[0][1] == variants[-1][1]:
+                variants[-1] = reference_read[0]
+
+            # Remove the second place read if it does not satisfy the min_abundance_threshold criterion
             total_reads = sum(read_count for _, read_count in variants)
             if variants[1][1] / total_reads < min_abundance_threshold:
-                self.reads = [variants[0]]
-            elif total_reads >= min_read_total_count and variants[1][1] == 1:
-                self.reads = [variants[0]]
-            else:
-                self.reads = variants
+                if variants[0] != reference_base:
+                    variants = [variants[0]]
+                else:
+                    variants = []
 
-    def has_variant(self, reference_base):
+        # The only position reads remaining are variants
+        self.reads = variants
+
+    def __bool__(self):
         """
-        To have a variant, the position information must contain a single read description and that description may
-        not be identical to the base at that position in the reference genome.
-        :param reference_base: base at this position in the reference genome.
-        :return: True if the position information included at least one variant and false otherwise.
+        The object's truth value depends on the presence of reads.  Following a filter_reads step, that value will
+        essentially depend on the presence of variants.
+        :return: True if reads (variants) are present and false otherwise.
         """
-        if len(self.reads) > 1 or self.reads[0][0] != reference_base:
-            return True
-        return False
+        return True if self.reads else False
 
     def __str__(self):
         """
@@ -445,10 +471,8 @@ if __name__ == "__main__":
 
 '''Example call
 python variants_finder.py \
- -m X \
  -n X \
  -o ../../data/expression/GRCh38/output \
- -l variants_X.log \
  -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
  -g ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa
 '''
