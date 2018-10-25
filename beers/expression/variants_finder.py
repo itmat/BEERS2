@@ -10,7 +10,7 @@ import math
 from io import StringIO
 
 
-Read = namedtuple('Read', ['type', 'chromosome', 'position', 'description'])
+Read = namedtuple('Read', ['position', 'description'])
 """
 A named tuple that possesses all the attributes of a variant
 type:  match (M), deletion (D), insertion (I)
@@ -87,12 +87,13 @@ class VariantsFinder:
         cigar = re.sub(self.clip_at_end_pattern, "", cigar)
         return cigar, sequence
 
-    def call_variants(self, reads):
+    def call_variants(self, chromosome, reads):
         """
         Parses the reads dictionary (read named tuple:read count) for each chromosome - position to create
         a line with the variants and their counts delimited by pipes.  Dumping each chromosome's worth of
         data at a time is done to avoid too sizable a dictionary.  Additionally, if the user requests a sort by entropy,
         this function will do that ordering and send that data to stdout.
+        :param chromosome: chromosome under consideration here
         :param reads: dictionary of reads to read counts
         """
 
@@ -110,7 +111,7 @@ class VariantsFinder:
 
             # Initial iteration - set up position information object.
             if not position_info:
-                position_info = PositionInfo(read.chromosome, read.position)
+                position_info = PositionInfo(chromosome, read.position)
 
             # If the new position differs from the position of the position information currently being
             # consolidated, dump the current position information to the variants file if it is determined to
@@ -125,7 +126,7 @@ class VariantsFinder:
                 if self.entropy_sort and position_info.get_total_reads() >= int(self.depth_cutoff):
                         entropy_map[position_info.__str__()] = position_info.calculate_entropy()
 
-                position_info = PositionInfo(read.chromosome, read.position)
+                position_info = PositionInfo(chromosome, read.position)
 
             # Add the read description and read count to the position information
             position_info.add_read(read.description, reads[read])
@@ -140,7 +141,6 @@ class VariantsFinder:
             sorted_entropies = sorted(entropy_map.items(), key=itemgetter(1), reverse=True)
             for key, value in sorted_entropies:
                 print(key, end='')
-
         return variants
 
     def identify_variant(self, position_info, variants):
@@ -162,7 +162,6 @@ class VariantsFinder:
         """
 
         reads = dict()
-        ctr = 0
 
         for line in self.alignment_file.fetch(chromosome):
 
@@ -193,11 +192,8 @@ class VariantsFinder:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        key = Read(read_type, chromosome, location, sequence[loc_on_read - 1])
+                        key = Read(location, sequence[loc_on_read - 1])
                         reads[key] = reads.get(key, 0) + 1
-                        if location == 303315:
-                            ctr = ctr + 1
-                            print(ctr, stop-length, stop, key)
                         loc_on_read += 1
                         current_pos_in_genome += 1
                     continue
@@ -207,8 +203,8 @@ class VariantsFinder:
                 # deletion of the same length at the same position will be added to this key.
                 if read_type == "D":
                     location = current_pos_in_genome
-                    reads[Read(read_type, chromosome, location, f'D{length}')] = \
-                        reads.get(Read(read_type, chromosome, location, f'D{length}'), 0) + 1
+                    key = Read(location, f'D{length}')
+                    reads[key] = reads.get(key, 0) + 1
                     current_pos_in_genome += length
                     continue
 
@@ -218,9 +214,8 @@ class VariantsFinder:
                 if read_type == "I":
                     location = current_pos_in_genome
                     insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length]
-                    reads[Read(read_type, chromosome, location, f'I{insertion_sequence}')] = \
-                        reads.get(
-                            Read(read_type, chromosome, location, f'I{insertion_sequence}'), 0) + 1
+                    key = Read(location, f'I{insertion_sequence}')
+                    reads[key] = reads.get(key, 0) + 1
                     loc_on_read += length
         return reads
 
@@ -246,7 +241,7 @@ class VariantsFinder:
         gender = ''
         for chromosome in self.chromosomes:
             print(f"Finding variants for chromosome {chromosome}")
-            variants = self.call_variants(self.collect_reads(chromosome))
+            variants = self.call_variants(chromosome, self.collect_reads(chromosome))
             self.log_variants(variants)
             if chromosome == self.x_chomosome_name:
                 gender = self.establish_gender(variants)
@@ -475,6 +470,7 @@ if __name__ == "__main__":
 
 '''Example call
 python variants_finder.py \
+ -m X \
  -n X \
  -o ../../data/expression/GRCh38/output \
  -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
