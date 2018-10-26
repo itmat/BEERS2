@@ -24,8 +24,7 @@ class TranscriptMaker:
 
         self.parents = []
         self.parents.append(Files("m", maternal_quantities_filename, maternal_transcriptome_filename))
-        # TODO this should normally be uncommented
-        # self.parents.append(Files("p", paternal_quantities_filename, paternal_transcriptome_filename))
+        self.parents.append(Files("p", paternal_quantities_filename, paternal_transcriptome_filename))
 
         self.log_filename = log_filename
 
@@ -64,7 +63,10 @@ class TranscriptMaker:
                     fields = line.rstrip('\n').split('\t')
 
                     # Transcript id and counts - Tack on parent designator as prefix
-                    transcript_id, transcript_counts = parent.designator + '_' + fields[0], int(fields[1])
+                    transcript_id = parent.designator + '_' + fields[0]
+                    # Convert string to float first to avoid "invalid literal for int()" error,
+                    # since some entries in the dist file may have decimal values.
+                    transcript_counts = int(float(fields[1]))
 
                     # Skip over transcripts that have no counts.
                     if transcript_counts == 0:
@@ -86,11 +88,13 @@ class TranscriptMaker:
         # Map to stash transcript sequences keyed by transcript id.
         transcript_sequences = dict()
         for parent in self.parents:
-            transcriptome = json.load(parent.transcriptome_filename)
-            for transcript_id in transcriptome:
+            with open(parent.transcriptome_filename, 'r') as transcriptome_file:
 
-                # Make sure the contributions of each parent are distinguishable
-                transcript_sequences[parent.designator + "_" + transcript_id] = transcriptome[transcript_id]
+                transcriptome = json.load(parent.transcriptome_filename)
+
+                for transcript_id in transcriptome:
+                    # Make sure the contributions of each parent are distinguishable
+                    transcript_sequences[parent.designator + "_" + transcript_id] = transcriptome[transcript_id]
 
         # Dereference this variable since it can consume at lot of memory
         transcriptome = None
@@ -100,39 +104,45 @@ class TranscriptMaker:
 
     def make_molecules(self, transcript_sequences):
 
-            # Generate the requested number of molecules randomly.
-            for _ in range(self.transcriptome_size):
+        # Generate the requested number of molecules randomly.
+        for _ in range(self.transcriptome_size):
 
-                # Protect against the possibility that we have no transcript sequence for a transcript id selected.
-                for _ in range(100):
-                    transcript_id = self.create_random_transcript_id()
-                    if transcript_id in transcript_sequences:
-                        break
-                else:
-                    print("Cannot find a transcript id for which a sequence is available in 100 attempts.")
-                    sys.exit(1)
+            # Protect against the possibility that we have no transcript sequence for a transcript id selected.
+            for _ in range(100):
+                transcript_id = self.create_random_transcript_id()
+                if transcript_id in transcript_sequences:
+                    break
+            else:
+                print("Cannot find a transcript id for which a sequence is available in 100 attempts.")
+                sys.exit(1)
 
-                # Pick an immature transcript sequence 3% of the time.
-                transcript_sequence = np.random.choice(transcript_sequences[transcript_id], p = [0.97, 0.03])
+            # Pick an immature transcript sequence 3% of the time.
+            transcript_sequence = np.random.choice(transcript_sequences[transcript_id], p = [0.97, 0.03])
 
-                # Create an initial cigar sequence (all matches)
-                cigar = str(len(transcript_sequence)) + 'M'
+            # Create an initial cigar sequence (all matches)
+            cigar = str(len(transcript_sequence)) + 'M'
 
-                # Affix a poly A tail
-                transcript_sequence += self.polya_tail
+            # Affix a poly A tail
+            transcript_sequence += self.polya_tail
 
-                # Generate as many molecules of the transcript as dictated by the transcript's quantity.
-                self.molecules.add(Molecule(Molecule.next_molecule_id, transcript_sequence, 1,
-                                   cigar, transcript_id))
-                Molecule.next_molecule_id += 1
+            # Generate as many molecules of the transcript as dictated by the transcript's quantity.
+            self.molecules.add(Molecule(Molecule.next_molecule_id, transcript_sequence, 1,
+                               cigar, transcript_id))
+            Molecule.next_molecule_id += 1
 
     def serialize_molecules(self):
-        with open("molecules.pickle", 'rb') as molecules_file:
+        #Output pickled file
+        with open("molecules.pickle", 'wb') as molecules_file:
             pickle.dump(self.molecules, molecules_file)
+        #Output human-readable file
+        with open("molecules.txt", 'wt') as molecules_file:
+            for molecule in self.molecules:
+                molecules_file.write(f'{molecule}\n')
 
     @staticmethod
     def main():
         parser = argparse.ArgumentParser(description='Transcript_Maker')
+        # TODO accept output molecules filename or an output directory as an argument
         parser.add_argument('-q', '--maternal_quant_filename')
         parser.add_argument('-t', '--maternal_transcriptome_filename')
         parser.add_argument('-p', '--paternal_quant_filename')
