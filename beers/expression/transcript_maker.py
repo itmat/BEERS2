@@ -6,7 +6,7 @@ import numpy as np
 import pickle
 import bisect
 from collections import namedtuple
-from molecule import Molecule
+from beers.library_prep.molecule import Molecule
 
 Files = namedtuple('Files', ['designator', 'quantities_filename', 'transcriptome_filename'])
 
@@ -90,7 +90,7 @@ class TranscriptMaker:
         for parent in self.parents:
             with open(parent.transcriptome_filename, 'r') as transcriptome_file:
 
-                transcriptome = json.load(parent.transcriptome_filename)
+                transcriptome = json.load(transcriptome_file)
 
                 for transcript_id in transcriptome:
                     # Make sure the contributions of each parent are distinguishable
@@ -149,7 +149,7 @@ class TranscriptMaker:
         parser.add_argument('-f', '--paternal_transcriptome_filename')
         parser.add_argument('-l', '--log_filename')
         parser.add_argument('-d', '--seed')
-        parser.add_argument('-s', '--transcriptome_size', type='int')
+        parser.add_argument('-s', '--transcriptome_size', type=int)
         args = parser.parse_args()
         print(args)
         transcript_maker = TranscriptMaker(args.maternal_quant_filename,
