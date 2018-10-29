@@ -113,6 +113,7 @@ class TranscriptMaker:
                     sys.exit(1)
 
                 # Pick an immature transcript sequence 3% of the time.
+                # TODO - make this a parameter
                 transcript_sequence = np.random.choice(transcript_sequences[transcript_id], p = [0.97, 0.03])
 
                 # Create an initial cigar sequence (all matches)

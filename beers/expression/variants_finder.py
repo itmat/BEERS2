@@ -468,11 +468,20 @@ class PositionInfo:
 if __name__ == "__main__":
     sys.exit(VariantsFinder.main())
 
-'''Example call
+'''Example calls
 python variants_finder.py \
- -m X \
+ -m chrX \
  -n X \
  -o ../../data/expression/GRCh38/output \
  -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
  -g ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa
+ 
+python variants_finder.py \
+ -m chrX \
+ -n chrX \
+ -o ../../data/expression/mm9/test \
+ -a ../../data/expression/mm9/V4.ILB_9579.sorted.chrX_only.aligned.w.gsnap.v2018.bam \
+ -g ../../data/expression/mm9/mm9_genome_one-line-seqs.fa
+
+
 '''
