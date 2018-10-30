@@ -3,6 +3,7 @@
 import json
 import importlib
 import pickle
+import time
 
 import numpy as np
 
@@ -37,7 +38,11 @@ class Pipeline:
     def execute(self):
         sample = self.sample
         for step in self.steps:
+            start = time.time()
             sample = step.execute(sample)
+            elapsed_time = time.time() - start
+
+            self.print_summary(sample, elapsed_time)
 
     def log_sample(self):
         with open(self.log_filename, "w+") as log_file:
@@ -62,7 +67,21 @@ class Pipeline:
                     molecule = Molecule(i, sequence, 1, cigar)
                     molecules.append(molecule)
                     i += 1
+
+        self.original_ids = set(str(m.molecule_id) for m in molecules)
+
+        self.print_summary(molecules)
         return molecules
+
+    def print_summary(self, sample, elapsed_time=None):
+        '''Output a summary of the sample (number of molecules, time taken, etc.)'''
+        if elapsed_time is not None:
+            print(f"Step took {elapsed_time:.3} seconds")
+
+        print(f"Sample has {len(sample)} molecules")
+        parent_ids = set(str(m.molecule_id).split(".")[0] for m in sample)
+        percent_original_represented = len(self.original_ids.intersection(parent_ids))/len(self.original_ids)
+        print(f"Percent of the original ids that are still represented: {percent_original_represented:0.2%}")
 
     @staticmethod
     def main():
