@@ -1,5 +1,5 @@
-from .molecule import Molecule
-from ..utilities.utils import Utils
+from beers.library_prep.molecule import Molecule
+from beers.utilities.utils import Utils
 
 
 class FirstStrandSynthesisStep:
