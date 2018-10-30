@@ -28,7 +28,7 @@ class SizingStep:
             for molecule in sample:
                 seq_length = len(molecule.sequence)
                 retention_odds = self.dist_function(seq_length)
-                retained = np.random.choice([1, 0], 1, p=[retention_odds, 1 - retention_odds])[0]
+                retained = (np.random.random() < retention_odds)
                 note = ''
                 if retained:
                     retained_sample.append(molecule)
