@@ -117,5 +117,6 @@
     }
   ],
   "sample_file": "data/molecules.pickle",
-  "log_filename": "data/pipeline.log"
+  "log_filename": "data/pipeline.log",
+  "results_file": "data/final_output.pickle"
 }

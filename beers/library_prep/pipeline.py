@@ -25,6 +25,7 @@ class Pipeline:
             self.sample_file = config_json["sample_file"]
             self.sample = self.populate_molecules()
             self.seed = config_json["seed"]
+            self.results_filename = config_json["results_file"]
             self.log_filename = config_json["log_filename"]
             self.log_sample()
             np.random.seed(self.seed)
@@ -43,6 +44,11 @@ class Pipeline:
             elapsed_time = time.time() - start
 
             self.print_summary(sample, elapsed_time)
+
+        # Write final sample to a pickle file for inspection
+        with open(self.results_filename, "wb") as results_file:
+            pickle.dump(sample, results_file)
+        print(f"Output final sample to {self.results_filename}")
 
     def log_sample(self):
         with open(self.log_filename, "w+") as log_file:
@@ -82,6 +88,15 @@ class Pipeline:
         parent_ids = set(str(m.molecule_id).split(".")[0] for m in sample)
         percent_original_represented = len(self.original_ids.intersection(parent_ids))/len(self.original_ids)
         print(f"Percent of the original ids that are still represented: {percent_original_represented:0.2%}")
+
+        size_bin_cutoffs = [100,500,1000]
+        size_counts = [0]*(len(size_bin_cutoffs)+1)
+        for molecule in sample:
+            size_counts[np.searchsorted(size_bin_cutoffs, len(molecule))] += 1
+        print(f"Counts of molecules in size ranges:")
+        for i in range(len(size_bin_cutoffs)):
+            print(f" <{size_bin_cutoffs[i]}: {size_counts[i]}")
+        print(f">={size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
     def main():
