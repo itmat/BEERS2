@@ -144,6 +144,9 @@ class Molecule:
                  "transcript id": self.transcript_id})
         )
 
+    def __repr__(self):
+        return f"Molecule({self.molecule_id}, {self.sequence}, {self.start}, {self.cigar}, {self.transcript_id})"
+
     def log_entry(self, note = ''):
         return str(self.molecule_id) + "," + self.sequence + "," + str(self.start or '') + "," + (self.cigar or '') + "," + note + "\n"
 
