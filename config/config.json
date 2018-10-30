@@ -3,13 +3,12 @@
   "expression_pipeline": {
     "input" : {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
-      "files": {
+      "data": {
         "alignment": [
-          "Test_data.1015_baseline.sorted.bam",
-          "Test_data.1016_baseline.sorted.bam",
-          "Test_data.1021_baseline.sorted.bam",
-          "Test_data.1022_baseline.sorted.bam"
-
+          {"file": "Test_data.1015_baseline.sorted.bam", "gender": "M"},
+          {"file": "Test_data.1016_baseline.sorted.bam"},
+          {"file": "Test_data.1021_baseline.sorted.bam"},
+          {"file": "Test_data.1022_baseline.sorted.bam", "gender": "M"}
         ],
         "reference_genome": "Homo_sapiens.GRCh38.reference_genome.fa",
         "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt"

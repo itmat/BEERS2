@@ -10,9 +10,9 @@ class ExpressionPipeline:
     def __init__(self, configuration):
         self.reference_genome = dict()
         input_directory_path = configuration["input"]["directory_path"]
-        self.reference_genome_file_path = os.path.join(input_directory_path, configuration["input"]["files"]["reference_genome"])
-        self.alignment_file_paths = [os.path.join(input_directory_path, entry)
-                                     for entry in configuration["input"]["files"]["alignment"]]
+        self.reference_genome_file_path = os.path.join(input_directory_path, configuration["input"]["data"]["reference_genome"])
+        self.alignment_data = {os.path.join(input_directory_path, entry["file"]):entry.get("gender",None)
+                                     for entry in configuration["input"]["data"]["alignment"]}
         try:
             self.output_directory_path = configuration["output"]["directory_path"]
         except FileExistsError:
@@ -49,11 +49,12 @@ class ExpressionPipeline:
         #for chromosome,sequence in self.reference_genome.items():
         #    print(chromosome, sequence[:25])
 
-        for alignment_file_path in self.alignment_file_paths:
+        for alignment_file_path, alignment_file_gender in self.alignment_data.items():
 
             variants_finder = \
                 VariantsFinder(None, alignment_file_path, self.reference_genome, self.parameters["VariantsFinder"], self.output_directory_path)
-            self.gender = variants_finder.find_variants()
+            inferred_gender = variants_finder.find_variants()
+            gender = alignment_file_gender or inferred_gender
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()
