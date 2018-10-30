@@ -1,8 +1,9 @@
-from molecule import Molecule
-import numpy as np
 import sys
 from timeit import default_timer as timer
 
+import numpy as np
+
+from .molecule import Molecule
 
 class PolyAStep:
 

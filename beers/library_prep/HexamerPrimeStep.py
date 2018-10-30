@@ -1,5 +1,5 @@
-from molecule import Molecule
-from utils import Utils
+from .molecule import Molecule
+from ..utilities.utils import Utils
 
 class HexamerPrimeStep:
 

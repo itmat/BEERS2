@@ -1,10 +1,11 @@
-import numpy as np
-from molecule import Molecule
 import sys
-from utils import Utils
 from timeit import default_timer as timer
 from copy import copy
 
+import numpy as np
+
+from ..utilities.utils import Utils
+from .molecule import Molecule
 
 class PCRAmplificationStep:
 

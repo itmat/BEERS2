@@ -1,5 +1,5 @@
-from molecule import Molecule
-from utils import Utils
+from .molecule import Molecule
+from ..utilities.utils import Utils
 
 
 class FirstStrandSynthesisStep:
@@ -19,12 +19,13 @@ class FirstStrandSynthesisStep:
         with open(self.history_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in primed_sample:
-                cdna_seq = Utils.create_complement_strand(molecule)
+                cdna_seq = Utils.create_complement_strand(molecule.sequence)
 
                 for primer in molecule.bound_molecules:
                     start = len(molecule.sequence) - (primer.start + len(primer))
                     end = start + len(primer)
-                    cdna_seq[start:end]  = primer.sequence
+                    cdna_seq = cdna_seq[:start] + primer.sequence + cdna_seq[end:]
+                    #cdna_seq[start:end]  = primer.sequence
 
                 first_primer = molecule.bound_molecules[0]
                 cdna_start = len(molecule.sequence) - (first_primer.start + len(first_primer) )

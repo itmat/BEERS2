@@ -3,14 +3,15 @@ import re
 import sys
 import pandas as pd
 import time as time
-from molecule import Molecule
+from ..library_prep.molecule import Molecule
 
 class Utils:
     """
     Convenience methods that may find application in BEERS.
     """
 
-    base_complements = {"A": "T", "T": "A", "G": "C", "C": "G"}
+    base_complements = {"A": "T", "T": "A", "G": "C", "C": "G", "N":"N"}
+    # TODO: should we allow 'N's to be complemented?
 
     #Line format definition for annotation file
     annot_output_format = '{chrom}\t{strand}\t{txStart}\t{txEnd}\t{exonCount}\t{exonStarts}\t{exonEnds}\t{transcriptID}\t{geneID}\t{geneSymbol}\t{biotype}\n'

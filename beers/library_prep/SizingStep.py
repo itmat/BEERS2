@@ -1,10 +1,11 @@
 import sys
-from molecule import Molecule
+from timeit import default_timer as timer
+
 from scipy.stats import norm
 import numpy as np
-from timeit import default_timer as timer
 import pylab as pl
 
+from .molecule import Molecule
 
 class SizingStep:
 
