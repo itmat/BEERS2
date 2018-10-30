@@ -84,6 +84,14 @@
         }
     },
     {
+      "step_name":"SizingStep",
+      "log_file": "data/sizing_step.log",
+      "parameters": {
+        "mean_length":250,
+        "sd_length": 50
+      }
+    },
+    {
         "step_name":"HexamerPrimeStep",
         "log_file":"data/prime_step.log",
         "parameters": {}
@@ -92,14 +100,6 @@
         "step_name":"FirstStrandSynthesisStep",
         "log_file":"data/first_synthesis_step.log",
         "parameters": {}
-    },
-    {
-      "step_name":"SizingStep",
-      "log_file": "data/sizing_step.log",
-      "parameters": {
-        "mean_length":250,
-        "sd_length": 50
-      }
     },
     {
       "step_name": "PCRAmplificationStep",
