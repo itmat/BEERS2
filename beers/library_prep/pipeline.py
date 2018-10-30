@@ -37,13 +37,17 @@ class Pipeline:
             raise BeersValidationException("Validation error in step: see stderr for details.")
 
     def execute(self):
+        pipeline_start = time.time()
         sample = self.sample
         for step in self.steps:
-            start = time.time()
+            step_start = time.time()
             sample = step.execute(sample)
-            elapsed_time = time.time() - start
+            elapsed_time = time.time() - step_start
 
             self.print_summary(sample, elapsed_time)
+
+        pipeline_elapsed_time = time.time() - pipeline_start
+        print(f"Finished pipeline in {pipeline_elapsed_time:.1f} seconds")
 
         # Write final sample to a pickle file for inspection
         with open(self.results_filename, "wb") as results_file:
