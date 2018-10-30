@@ -1,18 +1,18 @@
-from .molecule import Molecule
-from ..utilities.utils import Utils
+from beers.library_prep.molecule import Molecule
+from beers.utilities.utils import Utils
 
-class HexamerPrimeStep:
+class FirstStrandPrimeStep:
 
     def __init__(self, log_file, parameters):
         self.history_filename = log_file
-        print("Hexamer_primer_step instantiated")
+        print("First_strand_primer_step instantiated")
 
     def execute(self, sample):
         """
         Starting with a basic implementation that assumes all fragments get
-        primed perfectly at their 3' ends.
+        primed perfectly at their 3' ends by random hexamers.
         """
-        print("Hexamer prime step starting")
+        print("First strand prime step starting")
         primer_length = 6
         primed_sample = []
         with open(self.history_filename, "w+") as log_file:
@@ -25,9 +25,9 @@ class HexamerPrimeStep:
                 molecule.bind(primer_molecule)
                 primed_sample.append(molecule)
                 log_file.write(molecule.log_entry("Primers bound - " + molecule.print_bound_molecules()))
-        print("Hexamer prime step complete")
+        print("First strand prime step complete")
         return primed_sample
 
     def validate(self):
-        print("Hexamer prime step validating parameters")
+        print("First strand prime step validating parameters")
         return True
