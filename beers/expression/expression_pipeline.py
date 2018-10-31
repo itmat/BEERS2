@@ -2,9 +2,8 @@ import sys
 import json
 import pysam
 import os
-import re
-from io import StringIO
 from beers.expression.variants_finder import VariantsFinder
+from beers.utilities.expression_utils import ExpressionUtils
 
 class ExpressionPipeline:
     def __init__(self, configuration):
@@ -26,31 +25,13 @@ class ExpressionPipeline:
         for item in configuration["processes"]:
             self.parameters[item["class_name"]] = item.get("parameters", dict())
 
-    def create_reference_genome(self):
-        fasta_chromosome_pattern = re.compile(">([^\s]*)")
-        chromosome, sequence = '', None
-        building_sequence = False
-        with open(self.reference_genome_file_path, 'r') as reference_genome_file:
-            for line in reference_genome_file:
-                if line.startswith(">"):
-                    if building_sequence:
-                        self.reference_genome[chromosome] = sequence.getvalue()
-                        sequence.close()
-                    chromosome_match = re.match(fasta_chromosome_pattern, line)
-                    chromosome = chromosome_match.group(1)
-                    building_sequence = True
-                    sequence = StringIO()
-                    continue
-                elif building_sequence:
-                    sequence.write(line.rstrip('\n').upper())
-
     def validate(self):
         pass
 
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
-        self.create_reference_genome()
+        self.reference_genome = ExpressionUtils.create_reference_genome(self.reference_genome_file_path)
         #for chromosome,sequence in self.reference_genome.items():
         #    print(chromosome, sequence[:25])
 
@@ -63,7 +44,7 @@ class ExpressionPipeline:
                                self.parameters["VariantsFinder"],
                                self.output_directory_path)
             inferred_gender = variants_finder.find_variants()
-            gender = sample.gender or inferred_gender
+            sample.gender = sample.gender or inferred_gender
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()
