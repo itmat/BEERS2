@@ -11,8 +11,13 @@ class ExpressionPipeline:
         self.reference_genome = dict()
         input_directory_path = configuration["input"]["directory_path"]
         self.reference_genome_file_path = os.path.join(input_directory_path, configuration["input"]["data"]["reference_genome"])
-        self.alignment_data = {os.path.join(input_directory_path, entry["file"]):entry.get("gender",None)
-                                     for entry in configuration["input"]["data"]["alignment"]}
+
+        self.samples = []
+        for index, entry in enumerate(configuration["input"]["data"]["alignment"]):
+            sample_name = os.path.splitext(entry["file"])[0]
+            alignment_file_path = os.path.join(input_directory_path, entry["file"])
+            self.samples.append(Sample(index, sample_name, alignment_file_path, entry.get("gender", None)))
+
         try:
             self.output_directory_path = configuration["output"]["directory_path"]
         except FileExistsError:
@@ -49,12 +54,16 @@ class ExpressionPipeline:
         #for chromosome,sequence in self.reference_genome.items():
         #    print(chromosome, sequence[:25])
 
-        for alignment_file_path, alignment_file_gender in self.alignment_data.items():
+        for sample in self.samples:
 
             variants_finder = \
-                VariantsFinder(None, alignment_file_path, self.reference_genome, self.parameters["VariantsFinder"], self.output_directory_path)
+                VariantsFinder(None,
+                               sample.alignment_file_path,
+                               self.reference_genome,
+                               self.parameters["VariantsFinder"],
+                               self.output_directory_path)
             inferred_gender = variants_finder.find_variants()
-            gender = alignment_file_gender or inferred_gender
+            gender = sample.gender or inferred_gender
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()
@@ -85,6 +94,14 @@ class ExpressionPipeline:
         pipeline = ExpressionPipeline(configuration["expression_pipeline"])
         pipeline.validate()
         pipeline.execute()
+
+class Sample:
+
+    def __init__(self, sample_id, sample_name, alignment_file_path, gender):
+        self.sample_id = sample_id
+        self.sample_name = sample_name
+        self.alignment_file_path = alignment_file_path
+        self.gender = gender
 
 if __name__ == "__main__":
     sys.exit(ExpressionPipeline.main())
