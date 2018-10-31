@@ -1,8 +1,10 @@
-import numpy
 import math
 import collections
-from molecule import Molecule
 import sys
+
+import numpy
+
+from .molecule import Molecule
 
 
 METHODS = {"uniform", "beta"}
