@@ -244,7 +244,7 @@ class VariantsFinder:
             if len(variant.reads) > 1:
                 total_heterozygous += 1
         print(f"Number of X chromosome heterozygous variants {total_heterozygous}")
-        gender = 'M' if total_heterozygous < 5000 else 'F'
+        gender = 'male' if total_heterozygous < 5000 else 'female'
         print(f"Gender is {gender}")
         return gender
 
