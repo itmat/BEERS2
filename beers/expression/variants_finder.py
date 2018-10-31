@@ -8,6 +8,8 @@ from collections import namedtuple
 from operator import attrgetter, itemgetter
 import math
 from io import StringIO
+from beers.utilities.expression_utils import ExpressionUtils
+
 
 
 Read = namedtuple('Read', ['position', 'description'])
@@ -162,6 +164,8 @@ class VariantsFinder:
         """
 
         reads = dict()
+        current_read_components = []
+        current_start = None
 
         for line in self.alignment_file.fetch(chromosome):
 
@@ -176,6 +180,19 @@ class VariantsFinder:
             cigar, sequence = self.remove_clips(cigar, sequence)
             current_pos_in_genome = int(start)
             loc_on_read = 1
+
+            # Dropping duplicate reads (assumed to be PCR artifacts)
+            if not current_start:
+                current_start = start
+                current_read_components.append((cigar, sequence))
+            elif start != current_start:
+                current_start = start
+                current_read_components = []
+                current_read_components.append((cigar, sequence))
+            elif (cigar, sequence) in current_read_components:
+                continue
+            else:
+                current_read_components.append((cigar, sequence))
 
             # Iterate over the variant types and lengths in the cigar string
             for match in re.finditer(self.variant_pattern, cigar):
@@ -304,38 +321,12 @@ class VariantsFinder:
         variants_finder = VariantsFinder(
                                          args.chromosome,
                                          args.alignment_file_path,
-                                         create_reference_genome(args.reference_genome_filename),
+                                         ExpressionUtils.create_reference_genome(args.reference_genome_filename),
                                          parameters, args.output_directory)
         start = timer()
         variants_finder.find_variants()
         end = timer()
         sys.stderr.write(f"Variants Finder: {end - start} sec\n")
-
-
-def create_reference_genome(reference_genome_filename):
-    """
-    Utility method needed for operation of CLI
-    :param reference_genome_filename: location of reference genome file.
-    :return: dictionary related reference genome chromosomes to their sequences
-    """
-    reference_genome = dict()
-    fasta_chromosome_pattern = re.compile(">([^\s]*)")
-    chromosome, sequence = '', None
-    building_sequence = False
-    with open(reference_genome_filename, 'r') as reference_genome_file:
-        for line in reference_genome_file:
-            if line.startswith(">"):
-                if building_sequence:
-                    reference_genome[chromosome] = sequence.getvalue()
-                    sequence.close()
-                chromosome_match = re.match(fasta_chromosome_pattern, line)
-                chromosome = chromosome_match.group(1)
-                building_sequence = True
-                sequence = StringIO()
-                continue
-            elif building_sequence:
-                sequence.write(line.rstrip('\n').upper())
-    return reference_genome
 
 
 class PositionInfo:
@@ -409,7 +400,7 @@ class PositionInfo:
 
         # If only a single read remains, remove if it matches the reference base - there are no variants
         if len(filtered_reads) == 1 and filtered_reads[0][0] == reference_base:
-            pass
+            variants = []
 
         # If multiple reads remain, retain only the top 2 reads
         elif len(filtered_reads) > 1:
@@ -433,7 +424,7 @@ class PositionInfo:
             # Remove the second place read if it does not satisfy the min_abundance_threshold criterion
             total_reads = sum(read_count for _, read_count in variants)
             if variants[1][1] / total_reads < min_abundance_threshold:
-                if variants[0] != reference_base:
+                if variants[0][0] != reference_base:
                     variants = [variants[0]]
                 else:
                     variants = []
@@ -470,7 +461,7 @@ if __name__ == "__main__":
 
 '''Example calls
 python variants_finder.py \
- -m chrX \
+ -m X \
  -n X \
  -o ../../data/expression/GRCh38/output \
  -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
