@@ -76,6 +76,9 @@ class ExpressionPipeline:
         pipeline.validate()
         pipeline.execute()
 
+class ExpressionPipelineException(Exception):
+    pass
+
 class Sample:
 
     def __init__(self, sample_id, sample_name, alignment_file_path, gender):
