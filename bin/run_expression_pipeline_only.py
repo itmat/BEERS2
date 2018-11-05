@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 from beers.expression.expression_pipeline import ExpressionPipeline
 
