@@ -3,7 +3,7 @@ import re
 import sys
 import pandas as pd
 import time as time
-from ..library_prep.molecule import Molecule
+from beers.molecule import Molecule
 
 class Utils:
     """
@@ -432,6 +432,20 @@ class Utils:
             candidate_seed = candidate_seed & 0xffffffff
         return candidate_seed
 
+    @staticmethod
+    def convert_to_camel_case(snake_case_str):
+        """
+        Helper method to convert snake case string to camel case (with lead char capitalized).
+        :param snake_case_str: snake case string to convert to camel case
+        :return: camel case version of string
+        """
+        positions = [0]
+        matches = re.finditer("_", snake_case_str)
+        positions.extend(match.start() + 1 for match in matches)
+        camel_case_str = "".join(char.upper() if pos in positions else char for pos, char in enumerate(snake_case_str))
+        camel_case_str = camel_case_str.replace("_", "")
+        return camel_case_str
+
 class BeersUtilsException(Exception):
     """Base class for other Utils exceptions."""
     pass
@@ -465,4 +479,5 @@ if __name__ == "__main__":
 
     #print(Utils.generate_seed())
 
-    pass
+    print(Utils.convert_to_camel_case("first_strand_prime_step"))
+    #pass
