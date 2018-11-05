@@ -5,10 +5,8 @@
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
       "data": {
         "alignment": [
-          {"file": "Test_data.1015_baseline.sorted.bam", "gender": "male"},
-          {"file": "Test_data.1016_baseline.sorted.bam"},
-          {"file": "Test_data.1021_baseline.sorted.bam"},
-          {"file": "Test_data.1022_baseline.sorted.bam", "gender": "male"}
+          {"file": "Test_data.1002_baseline.sorted.bam", "gender": "female"},
+          {"file": "Test_data.1015_baseline.sorted.bam", "gender": "male"}
         ],
         "reference_genome": "Homo_sapiens.GRCh38.reference_genome.fa",
         "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt"
@@ -26,6 +24,12 @@
           "sort_by_entropy": false,
           "min_threshold": 0.03,
           "min_read_total_count": 10
+        }
+      },
+      {
+        "class_name": "Beagle",
+        "parameters": {
+          "command": "java -classpath /home/crislawrence/eclipse-workspace/Stubs/bin org.crislawrence.stubs.MockProcess 5"
         }
       },
       {

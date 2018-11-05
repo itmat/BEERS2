@@ -2,7 +2,9 @@ import sys
 import json
 import pysam
 import os
+import subprocess
 from beers.expression.variants_finder import VariantsFinder
+from beers.expression.beagle import Beagle
 from beers.utilities.expression_utils import ExpressionUtils
 
 class ExpressionPipeline:
@@ -38,13 +40,23 @@ class ExpressionPipeline:
         for sample in self.samples:
 
             variants_finder = \
-                VariantsFinder(None,
+                VariantsFinder('X',
                                sample.alignment_file_path,
                                self.reference_genome,
                                self.parameters["VariantsFinder"],
                                self.output_directory_path)
             inferred_gender = variants_finder.find_variants()
             sample.gender = sample.gender or inferred_gender
+
+            # Variants to VCF conversion goes here.
+
+        for sample in self.samples:
+
+            beagle = Beagle(self.parameters["Beagle"])
+            outcome = beagle.execute()
+            if outcome != 0:
+                sys.stderr.write("Beagle process failed.\n")
+                sys.exit(1)
 
             #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
             #genomes = genome_maker.make_genomes()
@@ -69,8 +81,8 @@ class ExpressionPipeline:
         #return molecules
 
     @staticmethod
-    def main():
-        with open("../../config/config.json", "r+") as configuration_file:
+    def main(configuration_file_path):
+        with open(configuration_file_path, "r+") as configuration_file:
             configuration = json.load(configuration_file)
         pipeline = ExpressionPipeline(configuration["expression_pipeline"])
         pipeline.validate()
@@ -88,4 +100,4 @@ class Sample:
         self.gender = gender
 
 if __name__ == "__main__":
-    sys.exit(ExpressionPipeline.main())
+    sys.exit(ExpressionPipeline.main("../../config/config.json"))
