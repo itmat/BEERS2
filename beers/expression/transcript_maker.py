@@ -6,7 +6,7 @@ import numpy as np
 import pickle
 import bisect
 from collections import namedtuple
-from molecule import Molecule
+from beers.molecule import Molecule
 
 Files = namedtuple('Files', ['designator', 'quantities_filename', 'transcriptome_filename'])
 

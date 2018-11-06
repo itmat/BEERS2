@@ -1,15 +1,16 @@
 import sys
 import json
-import pysam
 import os
-import subprocess
+import numpy as np
 from beers.expression.variants_finder import VariantsFinder
 from beers.expression.beagle import Beagle
 from beers.utilities.expression_utils import ExpressionUtils
+from beers.utilities.general_utils import GeneralUtils
 
 class ExpressionPipeline:
     def __init__(self, configuration):
         self.reference_genome = dict()
+        pipeline_configuration = configuration['expression_pipeline']
         input_directory_path = configuration["input"]["directory_path"]
         self.reference_genome_file_path = os.path.join(input_directory_path, configuration["input"]["data"]["reference_genome"])
 
@@ -84,7 +85,9 @@ class ExpressionPipeline:
     def main(configuration_file_path):
         with open(configuration_file_path, "r+") as configuration_file:
             configuration = json.load(configuration_file)
-        pipeline = ExpressionPipeline(configuration["expression_pipeline"])
+        seed = configuration.get('seed', GeneralUtils.generate_seed())
+        np.random.seed(seed)
+        pipeline = ExpressionPipeline(configuration)
         pipeline.validate()
         pipeline.execute()
 

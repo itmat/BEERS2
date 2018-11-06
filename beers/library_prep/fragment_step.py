@@ -4,7 +4,7 @@ import sys
 
 import numpy
 
-from .molecule import Molecule
+from beers.molecule import Molecule
 
 
 METHODS = {"uniform", "beta"}

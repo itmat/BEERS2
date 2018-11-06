@@ -4,8 +4,8 @@ from copy import copy
 
 import numpy as np
 
-from ..utilities.utils import Utils
-from .molecule import Molecule
+from beers.utilities.library_prep_utils import Utils
+from beers.molecule import Molecule
 
 class PCRAmplificationStep:
 
@@ -13,14 +13,14 @@ class PCRAmplificationStep:
     # a virtually runaway population of molecule objects.
     MAX_CYCLE_NUMBER = 12
 
-    def __init__(self, log_filename, parameters):
+    def __init__(self, step_log_file_path, parameters):
         """
         Instantiates the step with a log file name and a list of parameters.  For PCR Amplification, the only
         parameter at this point is the number of cycles.
-        :param log_filename: path to log file
+        :param step_log_file_path: path to log file
         :param parameters: parameter json object
         """
-        self.log_filename = log_filename
+        self.log_filename = step_log_file_path
         self.number_cycles = parameters.get("number_cycles")
 
         # The sample id counter maintains a counter for each of the molecules input into this step so that
@@ -128,10 +128,10 @@ if __name__ == "__main__":
     np.random.seed(100)
 
     # Taking advantage of an existing log file to grab molecules.
-    input_sample = Utils.convert_log_data_into_molecules("../../data/sizing_step.log")
+    input_sample = Utils.convert_log_data_into_molecules("../../data/tests/sizing_step_output_data.log")
 
     # Copying these molecules into a separate log file
-    input_data_log_file = "../../data/pcr_amplification_step_input_data.log"
+    input_data_log_file = "../../data/tests/pcr_amplification_step_input_data.log"
     with open(input_data_log_file, "w+") as input_data_log:
         input_data_log.write(Molecule.header)
         for rna_molecule in input_sample:
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
     # Selecting step log file and parameter info and using both to instantiate a step
     # object (not bothering with validation)
-    output_data_log_file = "../../data/pcr_amplification_step_output_data.log"
+    output_data_log_file = "../../data/tests/pcr_amplification_step_output_data.log"
     input_parameters = {
         "number_cycles": 8
     }

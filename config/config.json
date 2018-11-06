@@ -62,65 +62,70 @@
       }
     ]
   },
-  "library_prep_pipeline": [
-    {
-      "step_name":"PolyAStep",
-      "log_file": "data/polyA_selection_step.log",
-      "parameters": {
-        "min_retention_prob": 0.01,
-        "max_retention_prob": 0.99,
-        "length_retention_prob": 0.04,
-        "min_breakage_prob": 0.005,
-        "max_breakage_prob": 0.98,
-        "breakpoint_prob": 0.0001
-      }
-    },
-    {
-        "step_name":"FragmentStep",
-        "log_file":"data/fragment_step.log",
+  "library_prep_pipeline": {
+    "steps": [
+      {
+        "step_name": "polya_step.PolyAStep",
+        "log_filename": "polya_selection_step.log",
+        "parameters": {
+          "min_polya_tail_length": 5,
+          "min_retention_prob": 0.01,
+          "max_retention_prob": 0.99,
+          "length_retention_prob": 0.04,
+          "min_breakage_prob": 0.005,
+          "max_breakage_prob": 0.98,
+          "breakpoint_prob": 0.0001
+        }
+      },
+      {
+        "step_name": "fragment_step.FragmentStep",
+        "log_filename": "fragment_step.log",
         "parameters": {
           "method": "beta",
-            "lambda": 0.001,
-            "runtime": 1,
-	      "beta_N": 2,
-	      "beta_A": 5,
-	      "beta_B": 5
+          "lambda": 0.001,
+          "runtime": 1,
+          "beta_N": 2,
+          "beta_A": 5,
+          "beta_B": 5
         }
-    },
-    {
-      "step_name":"SizingStep",
-      "log_file": "data/sizing_step.log",
-      "parameters": {
-        "mean_length":250,
-        "sd_length": 50
+      },
+      {
+        "step_name": "sizing_step.SizingStep",
+        "log_filename": "sizing_step.log",
+        "parameters": {
+          "min_length": 100,
+          "max_length": 400
+        }
+      },
+      {
+        "step_name": "pcr_amplification_step.PCRAmplificationStep",
+        "log_filename": "pcr_amplification_step.log",
+        "parameters": {
+          "number_cycles": 4
+        }
       }
+    ],
+    "input": {
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
+      "sample_filename": "molecules.pickle"
     },
-    {
-        "step_name":"HexamerPrimeStep",
-        "log_file":"data/prime_step.log",
+    "output": {
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
+      "log_filename": "library_prep_pipeline.log",
+      "results_filename": "final_output.pickle"
+    }
+  },
+  "sequence_pipeline": {
+    "steps": [
+      {
+        "step_name": "sequence_by_synthesis.SequenceBySynthesis",
+        "log_file": "sequence_by_synthesis_step.log",
         "parameters": {}
-    },
-    {
-        "step_name":"FirstStrandSynthesisStep",
-        "log_file":"data/first_synthesis_step.log",
-        "parameters": {}
-    },
-    {
-      "step_name": "PCRAmplificationStep",
-      "log_file": "data/pcr_amplification_step.log",
-      "parameters": {
-        "number_cycles": 2
       }
+    ],
+    "output": {
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38/output",
+      "log_filename": "sequence_pipeline.log"
     }
-  ],
-  "sequence_pipeline": [
-    {
-      "step_name": "SequenceBySynthesis",
-      "log_file": "data/sequence_step.log",
-      "parameters": {}
-    }
-  ],
-  "sample_file": "data/molecules.pickle",
-  "log_filename": "data/pipeline.log",
-  "results_file": "data/final_output.pickle"
+  }
 }

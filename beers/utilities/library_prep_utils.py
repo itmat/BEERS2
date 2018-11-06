@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import pandas as pd
-import time as time
 from beers.molecule import Molecule
 
 class Utils:
@@ -419,20 +418,6 @@ class Utils:
         return output_annot_filename
 
     @staticmethod
-    def generate_seed():
-        """
-        Provides an integer of 32 bits or less using a seconds based timestamp.  If the timestamp exceeds 32 bits, the
-        integer obtained from the lowest 32 bits is returned
-        :return: a 32 bit integer seed for the numpy random number generator.
-        """
-        candidate_seed = int(time.time())
-
-        # If the timestamp bit length exceeds 32 bits, mask out all but the lowest 32 bits.
-        if candidate_seed.bit_length() > 32:
-            candidate_seed = candidate_seed & 0xffffffff
-        return candidate_seed
-
-    @staticmethod
     def convert_to_camel_case(snake_case_str):
         """
         Helper method to convert snake case string to camel case (with lead char capitalized).
@@ -479,5 +464,5 @@ if __name__ == "__main__":
 
     #print(Utils.generate_seed())
 
-    print(Utils.convert_to_camel_case("first_strand_prime_step"))
-    #pass
+    #print(Utils.convert_to_camel_case("first_strand_prime_step"))
+    pass
