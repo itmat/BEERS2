@@ -234,6 +234,7 @@ def generate_graphs(info):
     figure_polya_lengths = {
         'data': polya_seq_lengths,
         'layout': go.Layout(
+                height=350,
                 barmode='overlay',
                 title='Pre-Post Poly A Sequence Lengths',
                 hovermode='closest')
@@ -242,6 +243,7 @@ def generate_graphs(info):
     figure_frag_lengths = {
         'data': frag_seq_lengths,
         'layout': go.Layout(
+            height=350,
             barmode='overlay',
             title='Pre-Post Fragmentation Sequence Lengths',
             hovermode='closest')
@@ -250,6 +252,7 @@ def generate_graphs(info):
     figure_first_strand_prime_lengths = {
         'data': first_strand_prime_seq_lengths,
         'layout': go.Layout(
+            height=350,
             barmode='overlay',
             title='Pre-Post First Strand Prime Sequence Lengths',
             hovermode='closest')
@@ -258,6 +261,7 @@ def generate_graphs(info):
     figure_first_strand_syn_lengths = {
         'data': first_strand_syn_seq_lengths,
         'layout': go.Layout(
+            height=350,
             barmode='overlay',
             title='Pre-Post First Strand Synthesis Sequence Lengths',
             hovermode='closest')
@@ -266,6 +270,7 @@ def generate_graphs(info):
     figure_second_strand_prime_lengths = {
         'data': second_strand_prime_seq_lengths,
         'layout': go.Layout(
+            height=350,
             barmode='overlay',
             title='Pre-Post Second Strand Prime Sequence Lengths',
             hovermode='closest')
@@ -274,6 +279,7 @@ def generate_graphs(info):
     figure_second_strand_syn_lengths = {
         'data': second_strand_syn_seq_lengths,
         'layout': go.Layout(
+            height=350,
             barmode='overlay',
             title='Pre-Post Second Strand Synthesis Sequence Lengths',
             hovermode='closest')
@@ -282,6 +288,7 @@ def generate_graphs(info):
     figure_sizing_lengths = {
         'data': sizing_seq_lengths,
         'layout': go.Layout(
+            height=350,
             barmode='overlay',
             title='Pre-Post Sizing Sequence Lengths',
             hovermode='closest')
@@ -290,6 +297,7 @@ def generate_graphs(info):
     figure_pcr_amp_lengths = {
         'data': pcr_amp_seq_lengths,
         'layout': go.Layout(
+            height=350,
             barmode='overlay',
             title='Pre-Post PCR Amplification Sequence Lengths',
             hovermode='closest')
@@ -298,6 +306,7 @@ def generate_graphs(info):
     figure_seq_lengths = {
         'data': data_seq_lengths,
         'layout': go.Layout(
+                height=500,
                 barmode='overlay',
                 title='Sequence Lengths',
                 hovermode='closest')
@@ -307,14 +316,38 @@ def generate_graphs(info):
     app.layout = html.Div([
         html.H1("Pipeline Sequence Length Data", style={"text-align": "center", "marginTop": 5, "marginBottom": 5}),
         html.P("Starter Molecules: " +  info['molecule_info']),
-        dcc.Graph(id='polya_lengths', figure=figure_polya_lengths),
-        dcc.Graph(id='frag_lengths', figure=figure_frag_lengths),
-        dcc.Graph(id='first_strand_prime_lengths', figure=figure_first_strand_prime_lengths),
-        dcc.Graph(id='first_strand_syn_lengths', figure=figure_first_strand_syn_lengths),
-        dcc.Graph(id='second_strand_prime_lengths', figure=figure_second_strand_prime_lengths),
-        dcc.Graph(id='second_strand_syn_lengths', figure=figure_second_strand_syn_lengths),
-        dcc.Graph(id='sizing_lengths', figure=figure_sizing_lengths),
-        dcc.Graph(id='pcr_amp_lengths', figure=figure_pcr_amp_lengths),
+        html.Div([
+            html.Div([
+                dcc.Graph(id='polya_lengths', figure=figure_polya_lengths)
+            ], style= {'width': '45%', 'display': 'inline-block'}),
+            html.Div([
+                dcc.Graph(id='frag_lengths', figure=figure_frag_lengths)
+            ], style= {'width': '45%', 'display': 'inline-block'})
+        ]),
+        html.Div([
+            html.Div([
+                dcc.Graph(id='first_strand_prime_lengths', figure=figure_first_strand_prime_lengths)
+            ], style={'width': '45%', 'display': 'inline-block'}),
+            html.Div([
+                dcc.Graph(id='first_strand_syn_lengths', figure=figure_first_strand_syn_lengths)
+            ], style={'width': '45%', 'display': 'inline-block'})
+        ]),
+        html.Div([
+            html.Div([
+                dcc.Graph(id='second_strand_prime_lengths', figure=figure_second_strand_prime_lengths)
+            ], style={'width': '45%', 'display': 'inline-block'}),
+            html.Div([
+                dcc.Graph(id='second_strand_syn_lengths', figure=figure_second_strand_syn_lengths),
+            ], style={'width': '45%', 'display': 'inline-block'})
+        ]),
+        html.Div([
+            html.Div([
+                dcc.Graph(id='sizing_lengths', figure=figure_sizing_lengths)
+            ], style={'width': '45%', 'display': 'inline-block'}),
+            html.Div([
+                dcc.Graph(id='pcr_amp_lengths', figure=figure_pcr_amp_lengths)
+            ], style={'width': '45%', 'display': 'inline-block'})
+        ]),
         dcc.Graph(id='seq_lengths', figure=figure_seq_lengths),
     ])
 
