@@ -68,13 +68,13 @@
         "step_name": "polya_step.PolyAStep",
         "log_filename": "polya_selection_step.log",
         "parameters": {
-          "min_polya_tail_length": 5,
-          "min_retention_prob": 0.01,
-          "max_retention_prob": 0.99,
-          "length_retention_prob": 0.04,
-          "min_breakage_prob": 0.005,
-          "max_breakage_prob": 0.98,
-          "breakpoint_prob": 0.0001
+          "min_polya_tail_length": 40,
+          "min_retention_prob": 0.0,
+          "max_retention_prob": 1.0,
+          "length_retention_prob": 1.0,
+          "min_breakage_prob": 0.0,
+          "max_breakage_prob": 1.0,
+          "breakpoint_prob": 0.0
         }
       },
       {
@@ -88,6 +88,26 @@
           "beta_A": 5,
           "beta_B": 5
         }
+      },
+      {
+        "step_name": "first_strand_prime_step.FirstStrandPrimeStep",
+        "log_filename": "first_strand_prime_step.log",
+        "parameters": {}
+      },
+       {
+        "step_name": "first_strand_synthesis_step.FirstStrandSynthesisStep",
+        "log_filename": "first_strand_synthesis_step.log",
+        "parameters": {}
+      },
+       {
+        "step_name": "second_strand_prime_step.SecondStrandPrimeStep",
+        "log_filename": "second_strand_prime_step.log",
+        "parameters": {}
+      },
+       {
+        "step_name": "second_strand_synthesis_step.SecondStrandSynthesisStep",
+        "log_filename": "second_strand_synthesis_step.log",
+        "parameters": {}
       },
       {
         "step_name": "sizing_step.SizingStep",

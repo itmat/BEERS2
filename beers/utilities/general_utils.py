@@ -1,4 +1,6 @@
 import time as time
+import pickle
+from beers.molecule import Molecule
 
 class GeneralUtils:
 
@@ -15,3 +17,16 @@ class GeneralUtils:
         if candidate_seed.bit_length() > 32:
             candidate_seed = candidate_seed & 0xffffffff
         return candidate_seed
+
+    @staticmethod
+    def reset_molecule_ids(sample_file_path):
+        with open(sample_file_path, 'rb') as sample_file:
+            molecules = list(pickle.load(sample_file))
+        for molecule in molecules:
+            molecule.molecule_id = Molecule.next_molecule_id
+            Molecule.next_molecule_id += 1
+        with open(sample_file_path, "wb") as sample_file:
+            pickle.dump(molecules, sample_file)
+
+if __name__ == "__main__":
+    GeneralUtils.reset_molecule_ids("/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecules.pickle")

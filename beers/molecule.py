@@ -129,7 +129,7 @@ class Molecule:
         """
         bound_molecule_string = ""
         for bound_molecule in self.bound_molecules:
-            bound_molecule_string += f"id:{bound_molecule.molecule_id},sequence:{bound_molecule.sequence},start:{bound_molecule.start};"
+            bound_molecule_string += f"id:{bound_molecule.molecule_id}, sequence:{bound_molecule.sequence}, start:{bound_molecule.start};"
         return bound_molecule_string
 
     def __len__(self):
@@ -148,7 +148,7 @@ class Molecule:
         return f"Molecule({self.molecule_id}, {self.sequence}, {self.start}, {self.cigar}, {self.transcript_id})"
 
     def log_entry(self, note = ''):
-        return str(self.molecule_id) + "," + self.sequence + "," + str(self.start or '') + "," + (self.cigar or '') + "," + note + "\n"
+        return "'" + str(self.molecule_id) + "'" + "," + self.sequence + "," + str(self.start or '') + "," + (self.cigar or '') + "," + "'" + note + "'" + "\n"
 
     @staticmethod
     def new_id(parent_id=""):
