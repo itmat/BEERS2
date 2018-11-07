@@ -105,8 +105,8 @@ class LibraryPrepPipeline:
             size_counts[np.searchsorted(size_bin_cutoffs, len(molecule))] += 1
         print(f"Counts of molecules in size ranges:")
         for i in range(len(size_bin_cutoffs)):
-            print(f" <{size_bin_cutoffs[i]}: {size_counts[i]}")
-        print(f">={size_bin_cutoffs[-1]}: {size_counts[-1]}")
+            print(f" <={size_bin_cutoffs[i]}: {size_counts[i]}")
+        print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
     def main(configuration_file_path):

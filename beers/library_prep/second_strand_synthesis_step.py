@@ -1,5 +1,5 @@
-from beers.library_prep.molecule import Molecule
-from beers.utilities.utils import Utils
+from beers.molecule import Molecule
+from beers.utilities.library_prep_utils import Utils
 
 
 class SecondStrandSynthesisStep:
