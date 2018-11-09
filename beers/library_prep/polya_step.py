@@ -1,19 +1,22 @@
-from molecule import Molecule
-import numpy as np
 import sys
+import pickle
 from timeit import default_timer as timer
 
+import numpy as np
+
+from beers.molecule import Molecule
 
 class PolyAStep:
 
-    def __init__(self, log_filename, parameters):
-        self.log_filename = log_filename
-        self.min_retention_prob = parameters.get("min_retention_prob")
-        self.max_retention_prob = parameters.get("max_retention_prob")
-        self.length_retention_prob = parameters.get("length_retention_prob")
-        self.min_breakage_prob = parameters.get("min_breakage_prob")
-        self.max_breakage_prob = parameters.get("max_breakage_prob")
-        self.breakpoint_prob = parameters.get("breakpoint_prob")
+    def __init__(self, step_log_file_path, parameters):
+        self.log_filename = step_log_file_path
+        self.min_polya_tail_length = parameters.get("min_polya_tail_length", 5)
+        self.min_retention_prob = parameters.get("min_retention_prob", 0.0)
+        self.max_retention_prob = parameters.get("max_retention_prob", 1.0)
+        self.length_retention_prob = parameters.get("length_retention_prob", 0.2)
+        self.min_breakage_prob = parameters.get("min_breakage_prob", 0.0)
+        self.max_breakage_prob = parameters.get("max_breakage_prob", 0.0)
+        self.breakpoint_prob = parameters.get("breakpoint_prob", 0.0)
         print("Poly A selection step instantiated")
 
     def execute(self, sample):
@@ -32,6 +35,7 @@ class PolyAStep:
 
                 # Weighted distribution based on tail length
                 tail_length = molecule.poly_a_tail_length()
+                tail_length = tail_length if tail_length > self.min_polya_tail_length else 0
                 retention_odds = min(self.min_retention_prob + self.length_retention_prob * tail_length,
                                      self.max_retention_prob)
                 retained = np.random.choice([1, 0], 1, p=[retention_odds, 1 - retention_odds])[0]
@@ -86,30 +90,24 @@ class PolyAStep:
 if __name__ == "__main__":
     np.random.seed(100)
     molecules = []
-    i = 0
-    with open("../../data/molecules.txt", 'r') as sample_file:
-        sequences = sample_file.readlines()
-        for text in sequences:
-            sequence = text.rstrip()
-            cigar = str(len(sequence)) + 'M'
-            rna_molecule = Molecule(i, sequence, 1, cigar)
-            molecules.append(rna_molecule)
-            i += 1
-    input_data_log_file = "../../data/polyA_step_input_data.log"
+    with open("../../data/tests/molecules.pickle", 'rb') as sample_file:
+        molecules = list(pickle.load(sample_file))
+    input_data_log_file = "../../data/tests/polya_step_input_data.log"
     with open(input_data_log_file, "w+") as input_data_log:
         input_data_log.write(Molecule.header)
         for rna_molecule in molecules:
             input_data_log.write(rna_molecule.log_entry())
-    output_data_log_file = "../../data/polyA_step_output_data.log"
+    step_log_file_path = "../../data/tests/polya_step_output_data.log"
     input_parameters = {
-        "min_retention_prob": 0.01,
-        "max_retention_prob": 0.99,
-        "length_retention_prob": 0.04,
-        "min_breakage_prob": 0.0005,
-        "max_breakage_prob": 0.98,
-        "breakpoint_prob": 0.0001
+        "min_polya_tail_length": 40,
+        "min_retention_prob": 0.0,
+        "max_retention_prob": 1.0,
+        "length_retention_prob": 0.2,
+        "min_breakage_prob": 0.0,
+        "max_breakage_prob": 0.0,
+        "breakpoint_prob": 0.0
       }
-    step = PolyAStep(output_data_log_file, input_parameters)
+    step = PolyAStep(step_log_file_path, input_parameters)
     start = timer()
     step.execute(molecules)
     end = timer()

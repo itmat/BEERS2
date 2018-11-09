@@ -108,8 +108,6 @@ def generate_graphs(input_log, output_log, info):
     app.layout = html.Div([
         html.H1("Poly A Selection Step Data", style={"text-align": "center", "marginTop": 5, "marginBottom": 5}),
         html.P("Molecules: " +  info['molecule_info']),
-        html.P("Model: " + info['model_info']),
-        html.P("Parameters: " + info['param_info']),
         dcc.Graph(id='seq_lengths', figure=figure_seq_lengths),
         dcc.Graph(id='tail_lengths', figure=figure_tail_lengths),
         dcc.Graph(id='start_positions', figure=figure_start_positions)
@@ -118,9 +116,7 @@ def generate_graphs(input_log, output_log, info):
 
 if __name__ == '__main__':
     info = {
-        "molecule_info": "500K, Size 5K, 10% with ~ 200 Poly A",
-        "model_info": "Breakpoint - Geometric Distribution",
-        "param_info": "min_retention_prob: 0.01, max_retention_prob: 0.99, length_retention_prob: 0.04, min_breakage_prob: 0.005, max_breakage_prob: 0.98, breakpoint_prob: 0.0001"
+        "molecule_info": "10K, actual transcripts, all polyA"
     }
-    generate_graphs("../../data/original_sample.log","../../data/polyA_step_output_data.log", info)
+    generate_graphs("../../data/tests/polya_step_input_data.log","../../data/tests/polya_step_output_data.log", info)
     app.run_server()

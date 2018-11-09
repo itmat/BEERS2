@@ -4,3 +4,6 @@ data
 __pycache__
 *.pyc
 *.html
+beers/personal
+venv*
+beers.egg-info

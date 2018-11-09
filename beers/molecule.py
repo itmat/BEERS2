@@ -6,7 +6,8 @@ class Molecule:
 
     next_molecule_id = 1 # Static variable for creating increasing molecule id's
     header = "id,sequence,start,cigar,note\n"
-    disallowed = re.compile((r'[^AGTC]'))
+    disallowed = re.compile((r'[^AGTCN]'))
+    # TODO: we are currently allowing 'N' as a base, but should probably not in the future
 
     def __init__(self, molecule_id, sequence, start=None, cigar=None, transcript_id=None):
         self.molecule_id = molecule_id
@@ -19,8 +20,9 @@ class Molecule:
         self.bound_molecules = []
 
     def validate(self):
-        if Molecule.disallowed.search(self.sequence):
-            print(f"The molecule having an id of {self.molecule_id} has a disallowed base.", file=sys.stderr)
+        match =  Molecule.disallowed.search(self.sequence)
+        if match:
+            print(f"The molecule having an id of {self.molecule_id} has a disallowed base '{match.group()}'.", file=sys.stderr)
             return False
         return True
 
@@ -127,7 +129,7 @@ class Molecule:
         """
         bound_molecule_string = ""
         for bound_molecule in self.bound_molecules:
-            bound_molecule_string += f"id:{bound_molecule.molecule_id},sequence:{bound_molecule.sequence},start:{bound_molecule.start};"
+            bound_molecule_string += f"id:{bound_molecule.molecule_id}, sequence:{bound_molecule.sequence}, start:{bound_molecule.start};"
         return bound_molecule_string
 
     def __len__(self):
@@ -142,8 +144,11 @@ class Molecule:
                  "transcript id": self.transcript_id})
         )
 
+    def __repr__(self):
+        return f"Molecule({self.molecule_id}, {self.sequence}, {self.start}, {self.cigar}, {self.transcript_id})"
+
     def log_entry(self, note = ''):
-        return str(self.molecule_id) + "," + self.sequence + "," + str(self.start or '') + "," + (self.cigar or '') + "," + note + "\n"
+        return "'" + str(self.molecule_id) + "'" + "," + self.sequence + "," + str(self.start or '') + "," + (self.cigar or '') + "," + "'" + note + "'" + "\n"
 
     @staticmethod
     def new_id(parent_id=""):

@@ -2,7 +2,6 @@ import os
 import re
 import sys
 import pandas as pd
-import time as time
 from beers.molecule import Molecule
 
 class Utils:
@@ -10,7 +9,8 @@ class Utils:
     Convenience methods that may find application in BEERS.
     """
 
-    base_complements = {"A": "T", "T": "A", "G": "C", "C": "G"}
+    base_complements = {"A": "T", "T": "A", "G": "C", "C": "G", "N":"N"}
+    # TODO: should we allow 'N's to be complemented?
 
     #Line format definition for annotation file
     annot_output_format = '{chrom}\t{strand}\t{txStart}\t{txEnd}\t{exonCount}\t{exonStarts}\t{exonEnds}\t{transcriptID}\t{geneID}\t{geneSymbol}\t{biotype}\n'
@@ -421,18 +421,18 @@ class Utils:
         return output_annot_filename
 
     @staticmethod
-    def generate_seed():
+    def convert_to_camel_case(snake_case_str):
         """
-        Provides an integer of 32 bits or less using a seconds based timestamp.  If the timestamp exceeds 32 bits, the
-        integer obtained from the lowest 32 bits is returned
-        :return: a 32 bit integer seed for the numpy random number generator.
+        Helper method to convert snake case string to camel case (with lead char capitalized).
+        :param snake_case_str: snake case string to convert to camel case
+        :return: camel case version of string
         """
-        candidate_seed = int(time.time())
-
-        # If the timestamp bit length exceeds 32 bits, mask out all but the lowest 32 bits.
-        if candidate_seed.bit_length() > 32:
-            candidate_seed = candidate_seed & 0xffffffff
-        return candidate_seed
+        positions = [0]
+        matches = re.finditer("_", snake_case_str)
+        positions.extend(match.start() + 1 for match in matches)
+        camel_case_str = "".join(char.upper() if pos in positions else char for pos, char in enumerate(snake_case_str))
+        camel_case_str = camel_case_str.replace("_", "")
+        return camel_case_str
 
 class BeersUtilsException(Exception):
     """Base class for other Utils exceptions."""
@@ -452,7 +452,7 @@ if __name__ == "__main__":
 
     # Utils.remove_cigars_with_n_from_bam_file("../../data/preBEERS/Illumina.UNT_9575.Aligned.out.chr19_only.sorted.bam")
 
-    # Utils.scrub_genome_fasta_file("../../data/preBEERS/hg19/reference_genome.fa")
+    # Utils.scrub_genome_fasta_file("../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa")
 
     # list1 = [1, 5, 10, 3, 4]
     # list2 = [2, 1, 4, 11, 7, 6]
@@ -465,4 +465,7 @@ if __name__ == "__main__":
     #                                      '.fw_only_variants.txt',
     #                                      delimiters=(' ', ':')))
 
-    print(Utils.generate_seed())
+    #print(Utils.generate_seed())
+
+    #print(Utils.convert_to_camel_case("first_strand_prime_step"))
+    pass

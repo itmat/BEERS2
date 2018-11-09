@@ -31,7 +31,7 @@ class Quantify:
 
         self.geneinfo_filename = geneinfo_filename
         self.aligned_filename = aligned_filename
-        self.output_directory = output_directory + '/'
+        self.output_directory = output_directory
         # Create output director for the feature quantified files
         try:
             os.mkdir(self.output_directory)
@@ -41,28 +41,28 @@ class Quantify:
         aligned_file = os.path.basename(aligned_filename)
 
         # Create transcript distribution file and ensure that it doesn't currently exist
-        self.transcript_dist_filename = output_directory + aligned_file.split('.')[0] + '_transcript_dist.txt'
+        self.transcript_dist_filename = os.path.join(output_directory, aligned_file.split('.')[0] + '_transcript_dist.txt')
         try:
             os.remove(self.transcript_dist_filename)
         except OSError:
             pass
 
         # Create gene distribution file and ensure that it doesn't currently exist
-        self.gene_dist_filename = output_directory + aligned_file.split('.')[0] + '_gene_dist.txt'
+        self.gene_dist_filename = os.path.join(output_directory, aligned_file.split('.')[0] + '_gene_dist.txt')
         try:
             os.remove(self.gene_dist_filename)
         except OSError:
             pass
 
         # Create intronic region distribution file and ensure that it doesn't currently exist
-        self.intron_dist_filename =  output_directory + aligned_file.split('.')[0] + '_intron_dist.txt'
+        self.intron_dist_filename =  os.path.join(output_directory, aligned_file.split('.')[0] + '_intron_dist.txt')
         try:
             os.remove(self.intron_dist_filename)
         except OSError:
             pass
 
         # Create intergenic region distribution file and ensure that it doesn't currently exist
-        self.intergenic_dist_filename =  output_directory + aligned_file.split('.')[0] + '_intergenic_dist.txt'
+        self.intergenic_dist_filename =  os.path.join(output_directory, aligned_file.split('.')[0] + '_intergenic_dist.txt')
         try:
             os.remove(self.intergenic_dist_filename)
         except OSError:
