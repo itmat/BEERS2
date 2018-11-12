@@ -90,14 +90,6 @@
         }
       },
       {
-        "step_name": "sizing_step.SizingStep",
-        "log_filename": "sizing_step.log",
-        "parameters": {
-          "min_length": 100,
-          "max_length": 400
-        }
-      },
-      {
         "step_name": "first_strand_prime_step.FirstStrandPrimeStep",
         "log_filename": "first_strand_prime_step.log",
         "parameters": {}
@@ -116,6 +108,14 @@
         "step_name": "second_strand_synthesis_step.SecondStrandSynthesisStep",
         "log_filename": "second_strand_synthesis_step.log",
         "parameters": {}
+      },
+      {
+        "step_name": "sizing_step.SizingStep",
+        "log_filename": "sizing_step.log",
+        "parameters": {
+          "min_length": 100,
+          "max_length": 400
+        }
       },
       {
         "step_name": "pcr_amplification_step.PCRAmplificationStep",
