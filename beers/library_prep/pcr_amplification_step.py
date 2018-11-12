@@ -1,6 +1,7 @@
 import sys
 from timeit import default_timer as timer
 from copy import copy
+import pickle
 
 import numpy as np
 
@@ -11,7 +12,7 @@ class PCRAmplificationStep:
 
     # Putting an upper bound on the number of allowed PCR amplification cycles to avoid accidentally launching
     # a virtually runaway population of molecule objects.
-    MAX_CYCLE_NUMBER = 12
+    MAX_CYCLE_NUMBER = 16
 
     def __init__(self, step_log_file_path, parameters):
         """
@@ -24,7 +25,7 @@ class PCRAmplificationStep:
         self.number_cycles = parameters.get("number_cycles")
 
         # The sample id counter maintains a counter for each of the molecules input into this step so that
-        # unique ids may be assigned to those molecule's descendents.
+        # unique ids may be assigned to those molecule's descendants.
         self.sample_id_ctr = dict()
 
     def execute(self, molecule_packet):
@@ -91,8 +92,6 @@ class PCRAmplificationStep:
         :param ancestor_id: parent id of the new molecule (which may or may not be from the input sample)
         """
 
-        # At most, we will need to iterate twice (once if the new molecule has an original molecule as its
-        # parent and twice if the new molecule is the offspring of a new molecule created in a prior cycle.
         for _ in range(2):
 
             # If the current ancestor's id is in the sample id counter, we are at the id of the input molecule.
@@ -100,13 +99,13 @@ class PCRAmplificationStep:
 
                 # The sample id counter has the number we can assign to the new id of this molecule, after
                 # which, we bump the sample id counter and return
-                new_molecule.id = str(ancestor_id) + "." + str(self.sample_id_ctr[ancestor_id])
+                new_molecule.molecule_id = str(ancestor_id) + "." + str(self.sample_id_ctr[ancestor_id])
                 self.sample_id_ctr[ancestor_id] += 1
                 break
 
             # Otherwise, we need to back up the id string to the last occurence of the dot and check again.
-            index = ancestor_id[:ancestor_id.rfind(".")]
-            assert index < 0, f"cannot locate the ancestor of {new_molecule.molecule_id}"
+            index = ancestor_id.rfind(".")
+            assert index > 0, f"cannot locate the ancestor of {new_molecule.molecule_id}"
             ancestor_id = ancestor_id[:index]
         assert True, f"cannot locate the ancestor of {new_molecule.molecule_id}"
 
@@ -128,26 +127,31 @@ if __name__ == "__main__":
     # Single step test - using a seed to allow reproducible runs.
     np.random.seed(100)
 
+    # Getting original molecule packet (to preserve original sample metadata in case it is needed)
+    with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
+        molecule_packet = pickle.load(molecule_packet_file)
+
     # Taking advantage of an existing log file to grab molecules.
-    input_sample = Utils.convert_log_data_into_molecules("../../data/tests/sizing_step_output_data.log")
+    molecule_packet.molecules = \
+        Utils.convert_log_data_into_molecules("../../data/tests/adapter_ligation_step_output_data.log")
 
     # Copying these molecules into a separate log file
     input_data_log_file = "../../data/tests/pcr_amplification_step_input_data.log"
     with open(input_data_log_file, "w+") as input_data_log:
         input_data_log.write(Molecule.header)
-        for rna_molecule in input_sample:
+        for rna_molecule in molecule_packet.molecules:
             input_data_log.write(rna_molecule.log_entry())
 
     # Selecting step log file and parameter info and using both to instantiate a step
     # object (not bothering with validation)
     output_data_log_file = "../../data/tests/pcr_amplification_step_output_data.log"
     input_parameters = {
-        "number_cycles": 8
+        "number_cycles": 3
     }
     step = PCRAmplificationStep(output_data_log_file, input_parameters)
 
     # Executing the step and noting the time taken.
     start = timer()
-    result = step.execute(input_sample)
+    result = step.execute(molecule_packet)
     end = timer()
-    print(f"PCRAmplification Step: {end - start} sec for {len(result)} molecules.")
+    print(f"PCRAmplification Step: {end - start} sec for {len(result.molecules)} molecules.")

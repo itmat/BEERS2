@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 from timeit import default_timer as timer
 
+
 class AdapterLigationStep:
 
     def __init__(self, step_log_file_path, parameters):

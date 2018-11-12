@@ -42,7 +42,8 @@ class Utils:
 
         # Use the fields in the log file to construct molecule objects
         for index, row in log_retained_df.iterrows():
-            molecule = Molecule(row["id"], row["sequence"], row["start"], row["cigar"])
+            molecule_id = row["id"].strip("'")
+            molecule = Molecule(molecule_id, row["sequence"], row["start"], row["cigar"])
             molecules.append(molecule)
         return molecules
 
