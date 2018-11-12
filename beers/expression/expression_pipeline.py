@@ -12,21 +12,22 @@ class ExpressionPipeline:
     def __init__(self, configuration):
         self.reference_genome = dict()
         pipeline_configuration = configuration['expression_pipeline']
-        input_directory_path = configuration["input"]["directory_path"]
-        self.reference_genome_file_path = os.path.join(input_directory_path, configuration["input"]["data"]["reference_genome"])
+        input_directory_path = pipeline_configuration["input"]["directory_path"]
+        self.reference_genome_file_path = \
+            rmos.path.join(input_directory_path, pipeline_configuration["input"]["data"]["reference_genome"])
 
         self.samples = []
-        for index, entry in enumerate(configuration["input"]["data"]["alignment"]):
+        for index, entry in enumerate(pipeline_configuration["input"]["data"]["alignment"]):
             sample_name = os.path.splitext(entry["file"])[0]
             alignment_file_path = os.path.join(input_directory_path, entry["file"])
             self.samples.append(Sample(index, sample_name, alignment_file_path, entry.get("gender", None)))
 
         try:
-            self.output_directory_path = configuration["output"]["directory_path"]
+            self.output_directory_path = pipeline_configuration["output"]["directory_path"]
         except FileExistsError:
             pass
         self.parameters = {}
-        for item in configuration["processes"]:
+        for item in pipeline_configuration["processes"]:
             self.parameters[item["class_name"]] = item.get("parameters", dict())
 
     def validate(self):
