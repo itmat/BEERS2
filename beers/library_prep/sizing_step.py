@@ -26,12 +26,12 @@ class SizingStep:
             self.upper_breakpoint = self.mean_length + 6 * self.sd_length
         print("Sizing step instantiated")
 
-    def execute(self, sample):
+    def execute(self, molecule_packet):
         print("Sizing step starting")
-        retained_sample = []
+        retained_molecules = []
         with open(self.log_filename, "w+") as log_file:
             log_file.write(Molecule.header)
-            for molecule in sample:
+            for molecule in molecule_packet.molecules:
                 seq_length = len(molecule.sequence)
                 if self.idealized:
                     retained = self.min_length <= seq_length <= self.max_length
@@ -40,13 +40,14 @@ class SizingStep:
                     retained = (np.random.random() < retention_odds)
                 note = ''
                 if retained:
-                    retained_sample.append(molecule)
+                    retained_molecules.append(molecule)
                     note += 'retained'
                 else:
                     note += 'removed'
                 log_file.write(molecule.log_entry(note))
         print("Sizing step complete")
-        return retained_sample
+        molecule_packet.molecules = retained_molecules
+        return molecule_packet
 
     def dist_function(self, x):
         y = self.normalize_coefficient * self.dist.pdf(x)
@@ -68,12 +69,12 @@ class SizingStep:
 if __name__ == "__main__":
     np.random.seed(100)
     molecules = []
-    with open("../../data/tests/molecules.pickle", 'rb') as sample_file:
-        molecules = list(pickle.load(sample_file))
+    with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
+        molecule_packet = pickle.load(molecule_packet_file)
     input_data_log_file = "../../data/tests/sizing_step_input_data.log"
     with open(input_data_log_file, "w+") as input_data_log:
         input_data_log.write(Molecule.header)
-        for rna_molecule in molecules:
+        for rna_molecule in molecule_packet.molecules:
             input_data_log.write(rna_molecule.log_entry())
     output_data_log_file = "../../data/tests/sizing_step_output_data.log"
     input_parameters = {
@@ -83,6 +84,6 @@ if __name__ == "__main__":
     step = SizingStep(output_data_log_file, input_parameters)
     #step.display_dist_function()
     start = timer()
-    step.execute(molecules)
+    step.execute(molecule_packet)
     end = timer()
-    print(f"Sizing Step: {end - start} for {len(molecules)} molecules.")
+    print(f"Sizing Step: {end - start} for {len(molecule_packet.molecules)} molecules.")

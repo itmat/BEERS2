@@ -19,19 +19,20 @@ class PolyAStep:
         self.breakpoint_prob = parameters.get("breakpoint_prob", 0.0)
         print("Poly A selection step instantiated")
 
-    def execute(self, sample):
+    def execute(self, molecule_packet):
         """
         Remove nearly all molecules that don't have a poly A tail.  Most molecules with a poly A tail are retained.
         Some bleed over modeled to occur in both directions.  Additionally, retained molecules have a chance of being
         truncated on the 5' end.
-        :param sample: rna molecules subject to the poly A selection step
-        :return: rna molecules, possibly modified, that remain following the poly A selection step.
+        :param molecule_packet: rna molecules subject to the poly A selection step
+        :return: molecule packet containing rna molecules, possibly modified, that remain following the poly A
+         selection step.
         """
         print("Poly A selection step starting")
-        retained_sample = []
+        retained_molecules = []
         with open(self.log_filename, "w+") as log_file:
             log_file.write(Molecule.header)
-            for molecule in sample:
+            for molecule in molecule_packet.molecules:
 
                 # Weighted distribution based on tail length
                 tail_length = molecule.poly_a_tail_length()
@@ -41,14 +42,15 @@ class PolyAStep:
                 retained = np.random.choice([1, 0], 1, p=[retention_odds, 1 - retention_odds])[0]
                 note = ''
                 if retained:
-                    retained_sample.append(molecule)
+                    retained_molecules.append(molecule)
                     note += 'retained'
                     note = self.apply_three_prime_bias(molecule, tail_length, note)
                 else:
                     note += 'removed'
                 log_file.write(molecule.log_entry(note))
         print("Poly A selection step complete")
-        return retained_sample
+        molecule_packet.molecules = retained_molecules
+        return molecule_packet
 
     def apply_three_prime_bias(self, molecule, tail_length, note):
         """
@@ -89,13 +91,12 @@ class PolyAStep:
 
 if __name__ == "__main__":
     np.random.seed(100)
-    molecules = []
-    with open("../../data/tests/molecules.pickle", 'rb') as sample_file:
-        molecules = list(pickle.load(sample_file))
+    with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
+        molecule_packet = pickle.load(molecule_packet_file)
     input_data_log_file = "../../data/tests/polya_step_input_data.log"
     with open(input_data_log_file, "w+") as input_data_log:
         input_data_log.write(Molecule.header)
-        for rna_molecule in molecules:
+        for rna_molecule in molecule_packet.molecules:
             input_data_log.write(rna_molecule.log_entry())
     step_log_file_path = "../../data/tests/polya_step_output_data.log"
     input_parameters = {
@@ -109,6 +110,6 @@ if __name__ == "__main__":
       }
     step = PolyAStep(step_log_file_path, input_parameters)
     start = timer()
-    step.execute(molecules)
+    step.execute(molecule_packet)
     end = timer()
-    print(f"PolyA Selection Step: {end - start} for {len(molecules)} molecules.")
+    print(f"PolyA Selection Step: {end - start} for {len(molecule_packet.molecules)} molecules.")

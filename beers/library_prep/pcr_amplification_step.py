@@ -27,21 +27,21 @@ class PCRAmplificationStep:
         # unique ids may be assigned to those molecule's descendents.
         self.sample_id_ctr = dict()
 
-    def execute(self, sample):
+    def execute(self, molecule_packet):
         """
         For each cycle, duplicates each molecule from the current list of molecules (including those created in
         prior cycles) and assigns a unique id.
-        :param sample: molecules from the prior step
-        :return: molecules from this step
+        :param molecule_packet: packet containing sample info and molecules from the prior step
+        :return: original molecule packet but with molecules from this step
         """
         print("PCR Amplication step starting")
 
         # Initialize the sample id counter for all starting molecules, using the molecule id as the key.
-        self.sample_id_ctr = dict.fromkeys([molecule.molecule_id for molecule in sample], 0)
+        self.sample_id_ctr = dict.fromkeys([molecule.molecule_id for molecule in molecule_packet.molecules], 0)
 
         # The sample represents the input.  The molecules variable starts with the sample input and will grow
         # with each completed cycle.
-        molecules = sample
+        molecules = molecule_packet.molecules
 
         # Open the log file for writing only (overwrite any existing log file of the same name/location)"
         with open(self.log_filename, "w") as log_file:
@@ -76,7 +76,8 @@ class PCRAmplificationStep:
                 log_file.write(molecule.log_entry())
 
         # Return the new list of molecules
-        return molecules
+        molecule_packet.molecules = molecules
+        return molecule_packet
 
     def assign_id(self, new_molecule, ancestor_id):
         """

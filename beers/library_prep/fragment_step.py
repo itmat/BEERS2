@@ -5,6 +5,7 @@ import sys
 import numpy
 
 from beers.molecule import Molecule
+from beers.molecule_packet import MoleculePacket
 
 
 METHODS = {"uniform", "beta"}
@@ -38,8 +39,9 @@ class FragmentStep:
             self.beta_B = parameters["beta_B"]
             self.beta_N = parameters["beta_N"]
 
-    def execute(self, sample):
+    def execute(self, molecule_packet):
         print("Fragment Step acting on sample")
+        sample = molecule_packet.molecules
         if self.method == "uniform":
             fragment_locations = fast_compute_fragment_locations(sample, self.lambda_, self.runtime)
         elif self.method == "beta":
@@ -53,7 +55,8 @@ class FragmentStep:
             for molecule in result:
                 log_file.write(molecule.log_entry())
 
-        return result
+        molecule_packet.molecules = result
+        return molecule_packet
 
     def validate(self):
         if self.lambda_ <= 0:

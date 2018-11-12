@@ -1,6 +1,8 @@
 import time as time
 import pickle
 from beers.molecule import Molecule
+from beers.molecule_packet import MoleculePacket
+from beers.sample import Sample
 
 class GeneralUtils:
 
@@ -28,5 +30,16 @@ class GeneralUtils:
         with open(sample_file_path, "wb") as sample_file:
             pickle.dump(molecules, sample_file)
 
+    @staticmethod
+    def create_pickled_molecule_packet(molecule_packet_id, sample, molecules, molecule_packet_file_path):
+        molecule_packet = MoleculePacket(molecule_packet_id, sample, molecules)
+        with open(molecule_packet_file_path, 'wb') as molecule_packet_file:
+            pickle.dump(molecule_packet, molecule_packet_file)
+
+
 if __name__ == "__main__":
-    GeneralUtils.reset_molecule_ids("/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecules.pickle")
+    #GeneralUtils.reset_molecule_ids("/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecules.pickle")
+    with open("/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecules.pickle", 'rb') as sample_file:
+        molecules = list(pickle.load(sample_file))
+    sample = Sample(1, "test_sample", "", "female")
+    GeneralUtils.create_pickled_molecule_packet(1, sample, molecules, "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecule_packet.pickle")

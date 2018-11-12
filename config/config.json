@@ -127,7 +127,7 @@
     ],
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
-      "sample_filename": "molecules.pickle"
+      "molecule_packet_filename": "molecule_packet.pickle"
     },
     "output": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",

@@ -7,7 +7,7 @@ class SecondStrandPrimeStep:
         self.history_filename = log_file
         print("Second_strand_primer_step instantiated")
 
-    def execute(self, sample):
+    def execute(self, molecule_packet):
         """
         Starting with a basic implementation that assumes all fragments get
         primed perfectly at their 3' ends by random hexamers.
@@ -17,7 +17,7 @@ class SecondStrandPrimeStep:
         primed_sample = []
         with open(self.history_filename, "w+") as log_file:
             log_file.write(Molecule.header)
-            for molecule in sample:
+            for molecule in molecule_packet.molecules:
                 primer_sequence = Utils.create_complement_strand(molecule.sequence[-primer_length:])
                 primer_start = len(molecule) - primer_length
                 primer_num = 1
@@ -26,7 +26,8 @@ class SecondStrandPrimeStep:
                 primed_sample.append(molecule)
                 log_file.write(molecule.log_entry("Primers bound - " + molecule.print_bound_molecules()))
         print("Second strand prime step complete")
-        return primed_sample
+        molecule_packet.molecules = primed_sample
+        return molecule_packet
 
     def validate(self):
         print("Second strand prime step validating parameters")

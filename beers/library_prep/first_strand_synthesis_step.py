@@ -8,7 +8,7 @@ class FirstStrandSynthesisStep:
         self.history_filename = log_file
         print("First Strand cDNA Synthesis Step instantiated.")
 
-    def execute(self, primed_sample):
+    def execute(self, molecule_packet):
         """
 
 
@@ -18,7 +18,7 @@ class FirstStrandSynthesisStep:
         cdna_sample = []
         with open(self.history_filename, "w+") as log_file:
             log_file.write(Molecule.header)
-            for molecule in primed_sample:
+            for molecule in molecule_packet.molecules:
                 cdna_seq = Utils.create_complement_strand(molecule.sequence)
 
                 for primer in molecule.bound_molecules:
@@ -34,7 +34,8 @@ class FirstStrandSynthesisStep:
                 log_file.write(cdna_molecule.log_entry())
 
             print("First strand cDNA synthesis step complete.")
-            return cdna_sample
+            molecule_packet.molecules = cdna_sample
+            return molecule_packet
 
 
 

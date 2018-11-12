@@ -6,6 +6,7 @@ from beers.expression.variants_finder import VariantsFinder
 from beers.expression.beagle import Beagle
 from beers.utilities.expression_utils import ExpressionUtils
 from beers.utilities.general_utils import GeneralUtils
+from beers.sample import Sample
 
 class ExpressionPipeline:
     def __init__(self, configuration):
@@ -94,13 +95,6 @@ class ExpressionPipeline:
 class ExpressionPipelineException(Exception):
     pass
 
-class Sample:
-
-    def __init__(self, sample_id, sample_name, alignment_file_path, gender):
-        self.sample_id = sample_id
-        self.sample_name = sample_name
-        self.alignment_file_path = alignment_file_path
-        self.gender = gender
 
 if __name__ == "__main__":
     sys.exit(ExpressionPipeline.main("../../config/config.json"))
