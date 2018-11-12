@@ -55,6 +55,11 @@ def generate_graphs(info):
     sizing_retained_df['seq_length'] = sizing_retained_df.apply(lambda row: len(row['sequence']), axis=1)
     print(f"Sizing:\n{sizing_df.head(1)}\n")
 
+    # Post Adapter Ligation data
+    ligate_df = pd.read_csv("../../data/library_prep/output/adapter_ligation_step.log", quotechar="'")
+    ligate_df['seq_length'] = ligate_df.apply(lambda row: len(row['sequence']), axis=1)
+    print(f"Adapter Ligration:\n{ligate_df.head(1)}\n")
+
     # Post PCR Amplification data
     pcr_amp_df = pd.read_csv("../../data/library_prep/output/pcr_amplification_step.log", quotechar="'")
     pcr_amp_df['seq_length'] = pcr_amp_df.apply(lambda row: len(row['sequence']), axis=1)
@@ -68,7 +73,8 @@ def generate_graphs(info):
     print(f"Total Sequences Post second strand prime: {len(second_strand_prime_df)}")
     print(f"Total Sequences Post second strand synthesis: {len(second_strand_syn_df)}")
     print(f"Total Sequences Post sizing: {len(sizing_retained_df)}")
-    print(f"Total Sequences Post PCR Amplification: {len(pcr_amp_df)}")
+    print(f"Total Sequences Post adapter ligation: {len(ligate_df)}")
+    print(f"Total Sequences Post PCR amplification: {len(pcr_amp_df)}")
 
 
     # Histogram comparing sequence lengths before and after step
@@ -173,6 +179,21 @@ def generate_graphs(info):
             x=sizing_retained_df['seq_length'],
             opacity=0.75,
             name="Post Sizing Step",
+            xbins=dict(start=0, end=4000, size=20)
+        ),
+    ]
+
+    ligate_seq_lengths = [
+        go.Histogram(
+            x=sizing_retained_df['seq_length'],
+            opacity=0.75,
+            name="Pre Adapter Ligation Step",
+            xbins=dict(start=0, end=4000, size=20)
+        ),
+        go.Histogram(
+            x=ligate_df['seq_length'],
+            opacity=0.75,
+            name="Post Adapter Ligation Step",
             xbins=dict(start=0, end=4000, size=20)
         ),
     ]
@@ -294,6 +315,15 @@ def generate_graphs(info):
             hovermode='closest')
     }
 
+    figure_ligate_lengths = {
+        'data': ligate_seq_lengths,
+        'layout': go.Layout(
+            height=350,
+            barmode='overlay',
+            title='Pre-Post Adapter Ligation Sequence Lengths',
+            hovermode='closest')
+    }
+
     figure_pcr_amp_lengths = {
         'data': pcr_amp_seq_lengths,
         'layout': go.Layout(
@@ -345,8 +375,13 @@ def generate_graphs(info):
                 dcc.Graph(id='sizing_lengths', figure=figure_sizing_lengths)
             ], style={'width': '45%', 'display': 'inline-block'}),
             html.Div([
-                dcc.Graph(id='pcr_amp_lengths', figure=figure_pcr_amp_lengths)
+                dcc.Graph(id='ligate_lengths', figure=figure_ligate_lengths)
             ], style={'width': '45%', 'display': 'inline-block'})
+        ]),
+        html.Div([
+            html.Div([
+                dcc.Graph(id='pcr_amp_lengths', figure=figure_pcr_amp_lengths)
+            ], style={'width': '45%', 'display': 'inline-block'}),
         ]),
         dcc.Graph(id='seq_lengths', figure=figure_seq_lengths),
     ])
