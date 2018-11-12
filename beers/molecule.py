@@ -148,7 +148,9 @@ class Molecule:
         return f"Molecule({self.molecule_id}, {self.sequence}, {self.start}, {self.cigar}, {self.transcript_id})"
 
     def log_entry(self, note = ''):
-        return "'" + str(self.molecule_id) + "'" + "," + self.sequence + "," + str(self.start or '') + "," + (self.cigar or '') + "," + "'" + note + "'" + "\n"
+        return "'" + str(self.molecule_id) + "'" + "," + self.sequence\
+               + "," + str(self.start if self.start is not None else '')\
+               + "," + (self.cigar or '') + "," + "'" + note + "'" + "\n"
 
     @staticmethod
     def new_id(parent_id=""):
