@@ -118,6 +118,11 @@
         }
       },
       {
+        "step_name": "adapter_ligation_step.AdapterLigationStep",
+        "log_filename": "adapter_ligation_step.log",
+        "parameters": {}
+      },
+      {
         "step_name": "pcr_amplification_step.PCRAmplificationStep",
         "log_filename": "pcr_amplification_step.log",
         "parameters": {
