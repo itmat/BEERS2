@@ -4,7 +4,8 @@ Coordinates = namedtuple('Coordinates', ['flowcell', 'lane', 'tile', 'x', 'y'])
 
 class Cluster:
 
-    def __init__(self, molecule):
+    def __init__(self, cluster_id,molecule):
+        self.cluster_id = cluster_id
         self.molecule = molecule
         self.molecule_count = 1
         self.amplification_snps = []
