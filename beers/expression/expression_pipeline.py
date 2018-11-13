@@ -11,23 +11,22 @@ from beers.sample import Sample
 class ExpressionPipeline:
     def __init__(self, configuration):
         self.reference_genome = dict()
-        pipeline_configuration = configuration['expression_pipeline']
-        input_directory_path = pipeline_configuration["input"]["directory_path"]
+        input_directory_path = configuration["input"]["directory_path"]
         self.reference_genome_file_path = \
-            rmos.path.join(input_directory_path, pipeline_configuration["input"]["data"]["reference_genome"])
+            os.path.join(input_directory_path, configuration["input"]["data"]["reference_genome"])
 
         self.samples = []
-        for index, entry in enumerate(pipeline_configuration["input"]["data"]["alignment"]):
+        for index, entry in enumerate(configuration["input"]["data"]["alignment"]):
             sample_name = os.path.splitext(entry["file"])[0]
             alignment_file_path = os.path.join(input_directory_path, entry["file"])
             self.samples.append(Sample(index, sample_name, alignment_file_path, entry.get("gender", None)))
 
         try:
-            self.output_directory_path = pipeline_configuration["output"]["directory_path"]
+            self.output_directory_path = configuration["output"]["directory_path"]
         except FileExistsError:
             pass
         self.parameters = {}
-        for item in pipeline_configuration["processes"]:
+        for item in configuration["processes"]:
             self.parameters[item["class_name"]] = item.get("parameters", dict())
 
     def validate(self):
@@ -84,18 +83,10 @@ class ExpressionPipeline:
         #return molecules
 
     @staticmethod
-    def main(configuration_file_path):
-        with open(configuration_file_path, "r+") as configuration_file:
-            configuration = json.load(configuration_file)
-        seed = configuration.get('seed', GeneralUtils.generate_seed())
-        np.random.seed(seed)
+    def main(configuration):
         pipeline = ExpressionPipeline(configuration)
         pipeline.validate()
         pipeline.execute()
 
 class ExpressionPipelineException(Exception):
     pass
-
-
-if __name__ == "__main__":
-    sys.exit(ExpressionPipeline.main("../../config/config.json"))

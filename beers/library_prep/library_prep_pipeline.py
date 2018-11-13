@@ -14,13 +14,12 @@ from beers.molecule import Molecule
 
 class LibraryPrepPipeline:
 
-    def __init__(self, configuration, pipeline_log_file, molecule_packet=None):
+    def __init__(self, configuration, molecule_packet=None):
             self.steps = []
-            library_prep_configuration = configuration['library_prep_pipeline']
-            input_directory_path = library_prep_configuration["input"]["directory_path"]
-            output_directory_path = library_prep_configuration["output"]["directory_path"]
-            self.pipeline_log_file = pipeline_log_file
-            for step in library_prep_configuration['steps']:
+            input_directory_path = configuration["input"]["directory_path"]
+            output_directory_path = configuration["output"]["directory_path"]
+            self.log_file_path = os.path.join(output_directory_path, configuration["output"]["log_filename"])
+            for step in configuration['steps']:
                 module_name, step_name = step["step_name"].rsplit(".")
                 step_log_filename = step["log_filename"]
                 step_log_file_path = os.path.join(output_directory_path, step_log_filename)
@@ -30,12 +29,11 @@ class LibraryPrepPipeline:
                 self.steps.append(step_class(step_log_file_path, parameters))
             self.molecule_packet = molecule_packet
             if not self.molecule_packet:
-                molecule_packet_filename = library_prep_configuration["input"]["molecule_packet_filename"]
+                molecule_packet_filename = configuration["input"]["molecule_packet_filename"]
                 self.molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
                 self.populate_molecule_packet()
-            results_filename = library_prep_configuration["output"]["results_filename"]
+            results_filename = configuration["output"]["results_filename"]
             self.results_file_path = os.path.join(output_directory_path, results_filename)
-            self.log_sample()
 
     def validate(self, **kwargs):
         if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
@@ -44,30 +42,32 @@ class LibraryPrepPipeline:
             raise BeersValidationException("Validation error in step: see stderr for details.")
 
     def execute(self):
-        pipeline_start = time.time()
-        molecule_packet = self.molecule_packet
-        for step in self.steps:
-            step_start = time.time()
-            molecule_packet = step.execute(molecule_packet)
-            elapsed_time = time.time() - step_start
+        with open(self.log_file_path, 'w') as log_file:
+            self.log_sample(log_file)
+            pipeline_start = time.time()
+            molecule_packet = self.molecule_packet
+            for step in self.steps:
+                step_start = time.time()
+                molecule_packet = step.execute(molecule_packet)
+                elapsed_time = time.time() - step_start
 
-            self.print_summary(molecule_packet.molecules, elapsed_time)
+                self.print_summary(molecule_packet.molecules, elapsed_time)
 
-            random_state = np.random.get_state()
-            self.pipeline_log_file.write(f"# random state following {step.__class__.__name__} is {random_state}\n")
+                random_state = np.random.get_state()
+                log_file.write(f"# random state following {step.__class__.__name__} is {random_state}\n")
 
-        pipeline_elapsed_time = time.time() - pipeline_start
-        print(f"Finished pipeline in {pipeline_elapsed_time:.1f} seconds")
+            pipeline_elapsed_time = time.time() - pipeline_start
+            print(f"Finished pipeline in {pipeline_elapsed_time:.1f} seconds")
 
         # Write final sample to a pickle file for inspection
         with open(self.results_file_path, "wb") as results_file:
             pickle.dump(molecule_packet, results_file)
         print(f"Output final sample to {self.results_file_path}")
 
-    def log_sample(self):
-        self.pipeline_log_file.write(Molecule.header)
+    def log_sample(self, log_file):
+        log_file.write(Molecule.header)
         for molecule in self.molecule_packet.molecules:
-            self.pipeline_log_file.write(molecule.log_entry())
+            log_file.write(molecule.log_entry())
 
     def populate_molecule_packet(self):
         print(f"Reading molecule packet from pickle file {self.molecule_packet_file_path}")
@@ -96,22 +96,10 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(configuration_file_path):
-        with open(configuration_file_path, "r+") as configuration_file:
-            configuration = json.load(configuration_file)
-        seed = configuration.get('seed', GeneralUtils.generate_seed())
-        np.random.seed(seed)
-        output_directory_path = configuration['library_prep_pipeline']["output"]["directory_path"]
-        log_file_path = os.path.join(output_directory_path, configuration['library_prep_pipeline']["output"]["log_filename"])
-        with open(log_file_path, "w") as pipeline_log_file:
-            pipeline_log_file.write(f"#Seed: {seed} \n")
-            library_prep_pipeline = LibraryPrepPipeline(configuration, pipeline_log_file)
-            library_prep_pipeline.validate()
-            library_prep_pipeline.execute()
+    def main(configuration):
+        library_prep_pipeline = LibraryPrepPipeline(configuration)
+        library_prep_pipeline.validate()
+        library_prep_pipeline.execute()
 
 class BeersValidationException(Exception):
     pass
-
-
-if __name__ == "__main__":
-    sys.exit(LibraryPrepPipeline.main("../../config/config.json"))

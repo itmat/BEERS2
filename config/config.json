@@ -1,5 +1,8 @@
 {
   "seed": 100,
+  "controller": {
+    "log_file_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/controller.log"
+  },
   "expression_pipeline": {
     "input" : {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",

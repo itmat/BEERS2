@@ -4,6 +4,7 @@ from scipy.stats import norm
 import numpy as np
 import pylab as pl
 import pickle
+from beers.utilities.library_prep_utils import Utils
 
 from beers.molecule import Molecule
 
@@ -68,14 +69,24 @@ class SizingStep:
 
 if __name__ == "__main__":
     np.random.seed(100)
-    molecules = []
+
+    # Getting original molecule packet (to preserve original sample metadata in case it is needed)
     with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
         molecule_packet = pickle.load(molecule_packet_file)
+
+    # Taking advantage of an existing log file to grab molecules.
+    molecule_packet.molecules = \
+        Utils.convert_log_data_into_molecules("../../data/tests/polya_step_output_data.log")
+
+    # Copying these molecules into a separate log file
     input_data_log_file = "../../data/tests/sizing_step_input_data.log"
     with open(input_data_log_file, "w+") as input_data_log:
         input_data_log.write(Molecule.header)
         for rna_molecule in molecule_packet.molecules:
             input_data_log.write(rna_molecule.log_entry())
+
+    # Selecting step log file and parameter info and using both to instantiate a step
+    # object (not bothering with validation)
     output_data_log_file = "../../data/tests/sizing_step_output_data.log"
     input_parameters = {
         "min_length": 100,
@@ -83,6 +94,8 @@ if __name__ == "__main__":
     }
     step = SizingStep(output_data_log_file, input_parameters)
     #step.display_dist_function()
+
+    # Executing the step and noting the time taken.
     start = timer()
     step.execute(molecule_packet)
     end = timer()
