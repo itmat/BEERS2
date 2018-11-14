@@ -13,7 +13,7 @@ class SequencePipeline:
             molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
             with open(molecule_packet_file_path, 'rb') as molecule_packet_file:
                 molecule_packet = pickle.load(molecule_packet_file)
-                self.cluster_packets = self.convert_molecule_pkt_to_cluster_pkt(molecule_packet)
+                self.cluster_packets.append(self.convert_molecule_pkt_to_cluster_pkt(molecule_packet))
         self.parameters = {}
         for item in configuration["steps"]:
             self.parameters[item["class_name"]] = item.get("parameters", dict())
@@ -23,7 +23,7 @@ class SequencePipeline:
 
     def execute(self):
         print("Execution of the Sequence Pipeline Started...")
-        flowcell_loading_step = FlowcellLoadingStep(self.parameters["FlowcellLoadingStep"])
+        flowcell_loading_step = FlowcellLoadingStep(self.cluster_packets, self.parameters["FlowcellLoadingStep"])
         flowcell_loading_step.execute()
 
     @staticmethod

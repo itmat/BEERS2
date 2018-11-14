@@ -15,5 +15,5 @@ class Cluster:
         counts = {nt: np.array([1 if base == nt else 0 for base in molecule.sequence]) for nt in "ACGT"}
         self.base_counts = BaseCounts(counts['G'],counts['A'], counts['T'], counts['C'])
 
-    def assign_coordinates(self, flowcell, lane, tile, x, y):
-        self.coordinates = Coordinates(flowcell, lane, tile, x, y)
+    def assign_coordinates(self, coordinates):
+        self.coordinates = coordinates

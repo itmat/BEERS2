@@ -161,7 +161,7 @@
       }
     ],
     "input": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence",
       "packets": [
         "final_output.pickle"
       ]
