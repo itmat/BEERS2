@@ -1,89 +1,43 @@
-import json
-import importlib
+from beers.sequence.flowcell_loading_step import FlowcellLoadingStep
+from beers.cluster import Cluster
+from beers.cluster_packet import ClusterPacket
+import os
 import pickle
-import time
-
-import numpy as np
-
-from beers.molecule import Molecule
 
 class SequencePipeline:
 
-    def __init__(self, config_filename = "../../config/config.json"):
-        with open(config_filename, "r+") as config_file:
-            config_json = json.load(config_file)
-            self.steps = []
-            for step in config_json["sequence_pipeline"]:
-                module_name, step_name = step["step_name"].rsplit(".")
-                log_file = step["log_file"]
-                parameters = step["parameters"]
-                module = importlib.import_module(f'.{module_name}', package="beers.library_prep")
-                step_class = getattr(module, step_name)
-                self.steps.append(step_class(log_file, parameters))
-            self.sample_file = config_json["sample_file"]
-            self.sample = self.populate_molecules()
-            self.seed = config_json["seed"]
-            self.results_filename = config_json["results_file"]
-            self.log_filename = config_json["log_filename"]
-            self.log_sample()
-            np.random.seed(self.seed)
+    def __init__(self, configuration):
+        input_directory_path = configuration["input"]["directory_path"]
+        self.cluster_packets = []
+        for molecule_packet_filename in configuration["input"]["packets"]:
+            molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
+            with open(molecule_packet_file_path, 'rb') as molecule_packet_file:
+                molecule_packet = pickle.load(molecule_packet_file)
+                self.cluster_packets = self.convert_molecule_pkt_to_cluster_pkt(molecule_packet)
+        self.parameters = {}
+        for item in configuration["steps"]:
+            self.parameters[item["class_name"]] = item.get("parameters", dict())
 
     def validate(self, **kwargs):
-        if not all([molecule.validate() for molecule in self.sample]):
-            raise BeersSequenceValidationException("Validation error in sample: see stderr for details.")
-        if not all([step.validate() for step in self.steps]):
-            raise BeersSequenceValidationException("Validation error in step: see stderr for details.")
+        pass
 
     def execute(self):
-        pipeline_start = time.time()
-        sample = self.sample
-        for step in self.steps:
-            step_start = time.time()
-            sample = step.execute(sample)
-            elapsed_time = time.time() - step_start
-
-
-
-        pipeline_elapsed_time = time.time() - pipeline_start
-        print(f"Finished pipeline in {pipeline_elapsed_time:.1f} seconds")
-
-        # Write final sample to a pickle file for inspection
-        with open(self.results_filename, "wb") as results_file:
-            pickle.dump(sample, results_file)
-        print(f"Output final sample to {self.results_filename}")
-
-    def log_sample(self):
-        with open(self.log_filename, "w+") as log_file:
-            log_file.write(Molecule.header)
-            for molecule in self.sample:
-                log_file.write(molecule.log_entry())
-
-    def populate_molecules(self):
-        molecules = []
-        i = 0
-        if self.sample_file.endswith(".pickle"):
-            print(f"Reading molecule list from pickle file {self.sample_file}")
-            with open(self.sample_file, 'rb') as sample_file:
-                molecules = list(pickle.load(sample_file))
-        else:
-            print(f"Reading molecule list from text file {self.sample_file}")
-            with open(self.sample_file, 'r') as sample_file:
-                sequences = sample_file.readlines()
-                for text in sequences:
-                    sequence = text.rstrip()
-                    cigar = str(len(sequence)) + 'M'
-                    molecule = Molecule(i, sequence, 1, cigar)
-                    molecules.append(molecule)
-                    i += 1
-
-        self.original_ids = set(str(m.molecule_id) for m in molecules)
-
-        return molecules
-
+        print("Execution of the Sequence Pipeline Started...")
+        flowcell_loading_step = FlowcellLoadingStep(self.parameters["FlowcellLoadingStep"])
+        flowcell_loading_step.execute()
 
     @staticmethod
-    def main():
-        sequence_pipeline = SequencePipeline()
+    def convert_molecule_pkt_to_cluster_pkt(molecule_packet):
+        clusters = []
+        for molecule in molecule_packet.molecules:
+            cluster_id = Cluster.next_cluster_id
+            clusters.append(Cluster(cluster_id, molecule))
+            Cluster.next_cluster_id += 1
+        return ClusterPacket(molecule_packet.sample, clusters)
+
+    @staticmethod
+    def main(configuration):
+        sequence_pipeline = SequencePipeline(configuration)
         sequence_pipeline.validate()
         sequence_pipeline.execute()
 
@@ -91,6 +45,3 @@ class SequencePipeline:
 class BeersSequenceValidationException(Exception):
     pass
 
-
-if __name__ == "__main__":
-    SequencePipeline.main()

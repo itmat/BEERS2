@@ -1,10 +1,12 @@
 import json
 import time
+from timeit import default_timer as timer
 import numpy as np
 from datetime import datetime
 from beers.utilities.general_utils import GeneralUtils
 from beers.expression.expression_pipeline import ExpressionPipeline
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
+from beers.sequence.sequence_pipeline import SequencePipeline
 
 class Controller:
 
@@ -19,6 +21,15 @@ class Controller:
         self.plant_seed()
         self.create_controller_log()
         LibraryPrepPipeline.main(self.configuration['library_prep_pipeline'])
+
+    def run_sequence_pipeline(self, args):
+        start = timer()
+        self.retrieve_configuration(args.config)
+        self.plant_seed()
+        self.create_controller_log()
+        SequencePipeline.main(self.configuration['sequence_pipeline'])
+        end = timer()
+        print(f"Sequence Pipeline: {end - start}")
 
     def retrieve_configuration(self, configuration_file_path):
         with open(configuration_file_path, "r+") as configuration_file:

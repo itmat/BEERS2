@@ -15,5 +15,8 @@ parser_expression_pipeline.set_defaults(func=controller.run_expression_pipeline)
 parser_library_prep_pipeline = subparsers.add_parser('library_prep_pipeline', help='Run the library prep pipeline only')
 parser_library_prep_pipeline.set_defaults(func=controller.run_library_prep_pipeline)
 
+parser_sequence_pipeline = subparsers.add_parser('sequence_pipeline', help='Run the sequence pipeline only')
+parser_sequence_pipeline.set_defaults(func=controller.run_sequence_pipeline)
+
 args = parser.parse_args()
 args.func(args)

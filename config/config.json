@@ -146,13 +146,19 @@
   "sequence_pipeline": {
     "steps": [
       {
-        "step_name": "sequence_by_synthesis.SequenceBySynthesis",
-        "log_file": "sequence_by_synthesis_step.log",
+        "class_name": "FlowcellLoadingStep",
+        "log_file": "flowcell_loading_step.log",
         "parameters": {}
       }
     ],
+    "input": {
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
+      "packets": [
+        "final_output.pickle"
+      ]
+    },
     "output": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38/output",
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output",
       "log_filename": "sequence_pipeline.log"
     }
   }
