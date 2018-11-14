@@ -1,16 +1,25 @@
 {
-  "seed": 100,
   "controller": {
-    "log_file_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/controller.log"
+    "seed": 100,
+    "log_file_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/controller.log",
+    "input": {
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
+      "data": [
+        {
+          "filename": "Test_data.1002_baseline.sorted.bam",
+          "gender": "female"
+        },
+        {
+          "filename": "Test_data.1015_baseline.sorted.bam",
+          "gender": "male"
+        }
+      ]
+    }
   },
   "expression_pipeline": {
     "input" : {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
-      "data": {
-        "alignment": [
-          {"file": "Test_data.1002_baseline.sorted.bam", "gender": "female"},
-          {"file": "Test_data.1015_baseline.sorted.bam", "gender": "male"}
-        ],
+      "model_files": {
         "reference_genome": "Homo_sapiens.GRCh38.reference_genome.fa",
         "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt"
       }

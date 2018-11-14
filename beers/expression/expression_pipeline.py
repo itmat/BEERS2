@@ -1,25 +1,18 @@
 import sys
-import json
 import os
-import numpy as np
 from beers.expression.variants_finder import VariantsFinder
 from beers.expression.beagle import Beagle
 from beers.utilities.expression_utils import ExpressionUtils
-from beers.utilities.general_utils import GeneralUtils
 from beers.sample import Sample
 
 class ExpressionPipeline:
-    def __init__(self, configuration):
+    def __init__(self, input_samples, configuration):
         self.reference_genome = dict()
         input_directory_path = configuration["input"]["directory_path"]
         self.reference_genome_file_path = \
-            os.path.join(input_directory_path, configuration["input"]["data"]["reference_genome"])
+            os.path.join(input_directory_path, configuration["input"]["model_files"]["reference_genome"])
 
-        self.samples = []
-        for index, entry in enumerate(configuration["input"]["data"]["alignment"]):
-            sample_name = os.path.splitext(entry["file"])[0]
-            alignment_file_path = os.path.join(input_directory_path, entry["file"])
-            self.samples.append(Sample(index, sample_name, alignment_file_path, entry.get("gender", None)))
+        self.samples = input_samples
 
         try:
             self.output_directory_path = configuration["output"]["directory_path"]
@@ -43,7 +36,7 @@ class ExpressionPipeline:
 
             variants_finder = \
                 VariantsFinder('X',
-                               sample.alignment_file_path,
+                               sample.input_file_path,
                                self.reference_genome,
                                self.parameters["VariantsFinder"],
                                self.output_directory_path)
@@ -83,8 +76,8 @@ class ExpressionPipeline:
         #return molecules
 
     @staticmethod
-    def main(configuration):
-        pipeline = ExpressionPipeline(configuration)
+    def main(input_samples, configuration):
+        pipeline = ExpressionPipeline(input_samples, configuration)
         pipeline.validate()
         pipeline.execute()
 
