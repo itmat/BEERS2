@@ -12,7 +12,8 @@ class Cluster:
         self.cluster_id = cluster_id
         self.molecule = molecule
         self.molecule_count = 1
-        counts = {nt: np.array([1 if base == nt else 0 for base in molecule.sequence]) for nt in "ACGT"}
+        encoded = numpy.frombuffer(s.encode("ascii"), dtype='uint8')
+        counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"} 
         self.base_counts = BaseCounts(counts['G'],counts['A'], counts['T'], counts['C'])
 
     def assign_coordinates(self, coordinates):
