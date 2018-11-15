@@ -7,7 +7,8 @@ controller = Controller()
 parser = argparse.ArgumentParser(description='BEERS Simulator, Version 2.0')
 required_named = parser.add_argument_group('required named arguments')
 required_named.add_argument('-c', '--config', required=True, help='Full path to configuration file')
-subparsers = parser.add_subparsers(help='pipeline subcommand')
+subparsers = parser.add_subparsers(help='pipeline subcommand', dest="subcommand")
+subparsers.required = True
 
 parser_expression_pipeline = subparsers.add_parser('expression_pipeline', help='Run the expression pipeline only')
 parser_expression_pipeline.set_defaults(func=controller.run_expression_pipeline)
