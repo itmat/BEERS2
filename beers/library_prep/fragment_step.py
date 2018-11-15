@@ -47,7 +47,7 @@ class FragmentStep:
         elif self.method == "beta":
             fragment_locations = compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime)
 
-        result = [sample[k].make_fragment(start,end) for (start, end, k) in fragment_locations]
+        result = [sample[k].make_fragment(start+1,end+1) for (start, end, k) in fragment_locations]
 
         # Output all the molecules to log
         with open(self.history_filename, "w+") as log_file:

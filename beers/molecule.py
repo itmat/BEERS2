@@ -88,9 +88,9 @@ class Molecule:
 
     def make_fragment(self, start,end):
         """ Return a smaller molecule from this molecule """
-        assert start < end <= len(self.sequence)
+        assert 1 <= start < end <= len(self.sequence)+1
 
-        frag_sequence = self.sequence[start:end]
+        frag_sequence = self.sequence[start-1:end-1]
         frag_length = end - start
         frag_cigar = f"{frag_length}M" # Fragments match their parents
         frag_id = Molecule.new_id(self.molecule_id)
