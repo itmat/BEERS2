@@ -12,7 +12,7 @@ class Cluster:
         self.cluster_id = cluster_id
         self.molecule = molecule
         self.molecule_count = 1
-        encoded = numpy.frombuffer(s.encode("ascii"), dtype='uint8')
+        encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
         counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"} 
         self.base_counts = BaseCounts(counts['G'],counts['A'], counts['T'], counts['C'])
 
