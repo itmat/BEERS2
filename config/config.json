@@ -144,7 +144,7 @@
     ],
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
-      "molecule_packet_filename": "molecule_packet.pickle"
+      "molecule_packet_filename": "molecule_packet_plus_source.pickle"
     },
     "output": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
@@ -153,11 +153,12 @@
     }
   },
   "sequence_pipeline": {
+    "parameters": {
+    },
     "steps": [
       {
-        "class_name": "FlowcellLoadingStep",
-        "log_file": "flowcell_loading_step.log",
-        "parameters": {}
+        "class_name": "BridgeAmplificationStep",
+        "log_file": "bridge_amplification_step.log"
       }
     ],
     "input": {

@@ -9,11 +9,14 @@ class Molecule:
     disallowed = re.compile((r'[^AGTCN]'))
     # TODO: we are currently allowing 'N' as a base, but should probably not in the future
 
-    def __init__(self, molecule_id, sequence, start=None, cigar=None, transcript_id=None):
+    def __init__(self, molecule_id, sequence, start=None, cigar=None,
+                 transcript_id=None, source_start=None, source_cigar=None):
         self.molecule_id = molecule_id
         self.sequence = sequence.strip()
         self.start = start
+        self.source_start = source_start or start
         self.cigar = cigar
+        self.source_cigar = source_cigar or cigar
         self.transcript_id = transcript_id
         #Track sequences and locations of bound primers or newly synthesized
         #cDNA strands, etc.

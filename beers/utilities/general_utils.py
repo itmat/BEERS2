@@ -36,11 +36,6 @@ class GeneralUtils:
         with open(molecule_packet_file_path, 'wb') as molecule_packet_file:
             pickle.dump(molecule_packet, molecule_packet_file)
 
-
 if __name__ == "__main__":
-    #GeneralUtils.reset_molecule_ids("/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecules.pickle")
-    with open("/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecules.pickle", 'rb') as sample_file:
-        molecules = list(pickle.load(sample_file))
-    sample = Sample(1, "test_sample", "", "female")
-    sample.add_adapters("CATCATCAT","ATGATCATG")
-    GeneralUtils.create_pickled_molecule_packet(1, sample, molecules, "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/molecule_packet.pickle")
+    pass
+
