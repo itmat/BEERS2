@@ -98,5 +98,4 @@ class Controller:
                        input_sample.get("gender", None),
                        adapter_generator.get_unique_adapter_labels()))
             Sample.next_sample_id += 1
-        for sample in self.input_samples:
-            print(sample)
+
