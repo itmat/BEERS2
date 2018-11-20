@@ -138,7 +138,7 @@
         "step_name": "pcr_amplification_step.PCRAmplificationStep",
         "log_filename": "pcr_amplification_step.log",
         "parameters": {
-          "number_cycles": 4
+          "number_cycles": 6
         }
       }
     ],
@@ -154,7 +154,9 @@
   },
   "sequence_pipeline": {
     "parameters": {
-      "flowcell_retention_percentage": 0.008
+      "flowcell_retention_percentage": 0.008,
+      "bridge_amplification_cycles": 10,
+      "bridge_amplification_snp_percentage": 0.5
     },
     "steps": [
       {

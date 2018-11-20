@@ -1,5 +1,5 @@
 import pysam
-import random
+import numpy as np
 import math
 import re
 from beers.molecule_packet import MoleculePacket
@@ -20,7 +20,7 @@ class FlowcellLoader:
 
     def identify_retained_molecules(self):
         number_samples_to_draw = math.floor(self.flowcell_retention * len(self.molecule_packet.molecules))
-        return random.sample(self.molecule_packet.molecules, number_samples_to_draw)
+        return np.random.choice(self.molecule_packet.molecules, size=number_samples_to_draw, replace=False)
 
     @staticmethod
     def convert_molecule_pkt_to_cluster_pkt(molecule_packet):
