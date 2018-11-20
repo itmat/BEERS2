@@ -19,3 +19,18 @@ class Cluster:
 
     def assign_coordinates(self, coordinates):
         self.coordinates = coordinates
+
+    def get_base_count_by_position(self, index):
+        return f"{index}\t" \
+                  f"{self.base_counts.G[index]}\t" \
+                  f"{self.base_counts.A[index]}\t" \
+                  f"{self.base_counts.T[index]}\t" \
+                  f"{self.base_counts.C[index]}\t" \
+                  f"{self.molecule.sequence[index]}"
+
+    def __str__(self):
+        output = "position\tG\tA\tT\tC\torig\n"
+        for index in range(len(self.molecule.sequence)):
+            output += self.get_base_count_by_position(index) + "\n"
+        return output
+
