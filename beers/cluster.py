@@ -11,6 +11,7 @@ class Cluster:
     def __init__(self, cluster_id, molecule):
         self.cluster_id = cluster_id
         self.molecule = molecule
+        self.diameter = 0
         self.molecule_count = 1
         encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
         counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"} 

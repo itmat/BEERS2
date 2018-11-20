@@ -1,6 +1,7 @@
 class SequencePipeline:
 
-    def __init__(self, configuration):
+    def __init__(self, cluster_packet, configuration):
+        self.cluster_packet = cluster_packet
         self.parameters = configuration["parameters"]
 
     def validate(self, **kwargs):
@@ -10,8 +11,8 @@ class SequencePipeline:
         print("Execution of the Sequence Pipeline Started...")
 
     @staticmethod
-    def main(configuration):
-        sequence_pipeline = SequencePipeline(configuration)
+    def main(cluster_packet, configuration):
+        sequence_pipeline = SequencePipeline(cluster_packet, configuration)
         sequence_pipeline.validate()
         sequence_pipeline.execute()
 

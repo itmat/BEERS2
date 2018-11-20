@@ -154,6 +154,7 @@
   },
   "sequence_pipeline": {
     "parameters": {
+      "flowcell_retention_percentage": 0.008
     },
     "steps": [
       {
