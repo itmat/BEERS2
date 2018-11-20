@@ -144,11 +144,14 @@ class Molecule:
                  "sequence": self.sequence,
                  "start": self.start,
                  "cigar": self.cigar,
+                 "source_start": self.source_start,
+                 "source_cigar": self.source_cigar,
                  "transcript id": self.transcript_id})
         )
 
     def __repr__(self):
-        return f"Molecule({self.molecule_id}, {self.sequence}, {self.start}, {self.cigar}, {self.transcript_id})"
+        return f"Molecule({self.molecule_id}, {self.sequence}, {self.start}, {self.cigar}," \
+               f" {self.transcript_id}, {self.source_start}, {self.source_cigar})"
 
     def log_entry(self, note = ''):
         return "'" + str(self.molecule_id) + "'" + "," + self.sequence\
