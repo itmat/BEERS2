@@ -2,7 +2,6 @@ from collections import namedtuple
 import numpy as np
 
 BaseCounts = namedtuple('BaseCounts', ["G", "A", "T", "C"])
-Coordinates = namedtuple('Coordinates', ['flowcell', 'lane', 'tile', 'x', 'y'])
 
 class Cluster:
 

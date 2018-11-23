@@ -5,6 +5,7 @@ import re
 import os
 import gzip
 import itertools
+from collections import namedtuple
 import sys
 import json
 from timeit import default_timer as timer
@@ -12,17 +13,22 @@ from timeit import default_timer as timer
 from beers.molecule_packet import MoleculePacket
 from beers.cluster import Cluster
 from beers.cluster_packet import ClusterPacket
-from beers.cluster import Coordinates
+from beers.beers_exception import BeersException
+
+Coordinates = namedtuple('Coordinates', ['flowcell', 'lane', 'tile', 'x', 'y'])
 
 class FlowcellLoader:
 
     coords_match_pattern = "^.*:(\w+):(\d+)\:(\d+)\:(\d+)\:(\d+)$"
+    consumed_coordinates = []
 
-    def __init__(self, molecule_packet, parameters):
+    def __init__(self, molecule_packet, parameters, min_coords, max_coords):
         self.molecule_packet = molecule_packet
         self.input_file_path = molecule_packet.sample.input_file_path
         self.parameters = parameters
         self.flowcell_retention = self.parameters["flowcell_retention_percentage"]/100
+        self.min_coords = min_coords
+        self.max_coords = max_coords
         self.coordinate_generator = self.generate_coordinates()
 
     def identify_retained_molecules(self):
@@ -38,7 +44,12 @@ class FlowcellLoader:
             Cluster.next_cluster_id += 1
         return ClusterPacket(molecule_packet.sample, clusters)
 
-    def generate_coordinates(self):
+    def generate_coordinates_from_alignment_file(self):
+        '''
+        This generator depends on a sorted alignment file for coordinate retrieval and is not currently being
+        used.
+        :return: flowcell coordinates
+        '''
         input_file = pysam.AlignmentFile(self.input_file_path, "rb")
         for line in input_file.fetch():
             if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
@@ -47,7 +58,7 @@ class FlowcellLoader:
             if coords_match:
                 (flowcell, lane, tile, x, y) = coords_match.groups()
                 coordinates = Coordinates(flowcell, lane, tile, x, y)
-                yield(coordinates)
+                yield coordinates
 
     def load_flowcell(self):
         retained_molecules = self.identify_retained_molecules()
@@ -60,12 +71,10 @@ class FlowcellLoader:
         return cluster_packet
 
     @staticmethod
-    def read_fastq(configuration):
+    def get_coordinate_ranges(fastq_file_paths):
         min_coords = {"lane": 10000, "tile": 10000, "x": 10000, "y": 10000}
         max_coords = {"lane": 0, "tile": 0, "x": 0, "y": 0}
-        input_directory_path = configuration['input']['directory_path']
-        for fastq_filename in configuration['input']['fastq_filenames']:
-            fastq_file_path = os.path.join(input_directory_path, fastq_filename)
+        for fastq_file_path in fastq_file_paths:
             with gzip.open(fastq_file_path, 'rb') as fastq_file:
                 for counter, (byte_header, content, toss, scores) in enumerate(itertools.zip_longest(*[fastq_file] * 4)):
                     if counter%1000000 == 0:
@@ -86,36 +95,21 @@ class FlowcellLoader:
                         max_coords['lane'] = max(lane, max_coords['lane'])
         return min_coords, max_coords
 
-    @staticmethod
-    def create_coordinate_list():
-        x = list(range(1012, 32816))
-        np.random.shuffle(x)
-        print(x[:25])
-        y = list(range(998, 49247))
-        np.random.shuffle(y)
-        print(y[:25])
-        tile = list(range(1101, 2228))
-        np.random.shuffle(tile)
-        print(tile[:25])
-        lanes = [1, 3, 7]
-        np.random.shuffle(lanes)
-        print(lanes)
-        values = itertools.product(lanes, tile, x, y)
-        for value in values:
-            print(value)
-            input()
-        #coord_list = [value for value in values]
-        #print(sys.getsizeof(coord_list))
+    def generate_coordinates(self):
+        ctr = 0
+        while True:
+            ctr += 1
+            x = np.random.choice(range(self.min_coords['x'],self.max_coords['x']))
+            y = np.random.choice(range(self.min_coords['y'], self.max_coords['y']))
+            tile = np.random.choice(range(self.min_coords['tile'],self.max_coords['tile']))
+            lane = np.random.choice(range(self.min_coords['lane'],self.max_coords['lane']))
+            # TODO handle flowcell properly - just a placeholder for now
+            coordinates = Coordinates('1', lane,tile,x,y)
+            if coordinates not in FlowcellLoader.consumed_coordinates:
+                FlowcellLoader.consumed_coordinates.append(coordinates)
+                yield coordinates
+            if ctr >= 100:
+                raise BeersException("Unable to find unused flowcell coordinates after 100 attempts.")
 
 
 
-if __name__ == '__main__':
-    start = timer()
-    #with open("../../config/config.json", "r+") as configuration_file:
-    #    configuration = json.load(configuration_file)
-    #min_coords, max_coords = FlowcellLoader.read_fastq(configuration["controller"])
-    #print(min_coords)
-    #print(max_coords)
-    FlowcellLoader.create_coordinate_list()
-    end = timer()
-    print(f"FastQ query: {end - start}")

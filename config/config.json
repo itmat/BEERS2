@@ -161,6 +161,16 @@
   },
   "sequence_pipeline": {
     "parameters": {
+      "flowcell_geometry": {
+        "min_x": 1012,
+        "max_x": 32816,
+        "min_y": 998,
+        "max_y": 49247,
+        "min_tile": 1101,
+        "max_tile": 2228,
+        "min_lane": 1,
+        "max_lane": 8
+      },
       "flowcell_retention_percentage": 0.008,
       "bridge_amplification_cycles": 10,
       "bridge_amplification_snp_percentage": 0.0

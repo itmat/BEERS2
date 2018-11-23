@@ -10,8 +10,9 @@ from beers.expression.expression_pipeline import ExpressionPipeline
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sequence.sequence_pipeline import SequencePipeline
 from beers.sample import Sample
-from beers.utilities.flowcell_loader import FlowcellLoader
+from beers.utilities.flowcell_loader import FlowcellLoader, Coordinates
 from beers.utilities.adapter_generator import AdapterGenerator
+
 
 class Controller:
 
@@ -39,7 +40,9 @@ class Controller:
         self.create_controller_log()
         if not self.molecule_packet:
             self.get_sequencer_input_from_pickle()
-        flowcell_loader = FlowcellLoader(self.molecule_packet, self.configuration['sequence_pipeline']['parameters'])
+        self.set_flowcell_coordinate_ranges()
+        flowcell_loader = FlowcellLoader(self.molecule_packet, self.configuration['sequence_pipeline']['parameters'],
+                                         self.min_coords, self.max_coords)
         cluster_packet = flowcell_loader.load_flowcell()
         SequencePipeline.main(cluster_packet, self.configuration['sequence_pipeline'])
         end = timer()
@@ -87,4 +90,19 @@ class Controller:
                        input_sample.get("gender", None),
                        adapter_generator.get_unique_adapter_labels()))
             Sample.next_sample_id += 1
+
+    def set_flowcell_coordinate_ranges(self):
+        geometry = self.configuration['sequence_pipeline']['parameters']['flowcell_geometry']
+        if not geometry:
+            fastq_file_paths = []
+            input_directory_path = self.configuration['controller']['input']['directory_path']
+            for fastq_filename in self.configuration['controller']['input']['fastq_filenames']:
+                fastq_file_paths.append(os.path.join(input_directory_path, fastq_filename))
+            self.min_coords, self.max_coords = FlowcellLoader.get_coordinate_ranges()
+        else:
+            self.min_coords = {"lane": geometry['min_lane'], "tile": geometry['min_tile'],
+                          "x": geometry['min_x'], "y": geometry['min_y']}
+            self.max_coords = {"lane": geometry['max_lane'], "tile": geometry['max_tile'],
+                          "x": geometry['max_x'], "y": geometry['max_y']}
+
 
