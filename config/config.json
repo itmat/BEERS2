@@ -180,6 +180,10 @@
       {
         "class_name": "BridgeAmplificationStep",
         "log_file": "bridge_amplification_step.log"
+      },
+      {
+        "class_name": "SequenceBySynteisStep",
+        "log_file": "sequence_by_synthesis_step.log"
       }
     ],
     "input": {
