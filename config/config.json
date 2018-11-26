@@ -172,6 +172,7 @@
         "max_lane": 8
       },
       "flowcell_retention_percentage": 0.008,
+      "lanes_to_use": [1,2,8],
       "bridge_amplification_cycles": 10,
       "bridge_amplification_snp_percentage": 0.0
     },

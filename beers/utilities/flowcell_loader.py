@@ -29,7 +29,22 @@ class FlowcellLoader:
         self.flowcell_retention = self.parameters["flowcell_retention_percentage"]/100
         self.min_coords = min_coords
         self.max_coords = max_coords
+        self.available_lanes = list(range(min_coords['lane'], max_coords['lane'] + 1))
+        self.lanes_to_use = self.parameters["lanes_to_use"] or self.available_lanes
         self.coordinate_generator = self.generate_coordinates()
+
+    def validate(self):
+        valid = True
+        msg = None
+        if not set(self.lanes_to_use).issubset(set(self.available_lanes)):
+            valid = False
+            msg = f"The flowcell lanes to use {self.lanes_to_use} must be a subset of the available lanes" \
+                  f" {self.available_lanes}.\n"
+        if not self.flowcell_retention or self.flowcell_retention >= 1:
+            valid = False
+            msg = f"The flowcell retention {self.flowcell_retention} value must be less than 1" \
+                  f" (1 signifies total retention)."
+        return valid, msg
 
     def identify_retained_molecules(self):
         number_samples_to_draw = math.floor(self.flowcell_retention * len(self.molecule_packet.molecules))
@@ -99,10 +114,10 @@ class FlowcellLoader:
         ctr = 0
         while True:
             ctr += 1
-            x = np.random.choice(range(self.min_coords['x'],self.max_coords['x']))
-            y = np.random.choice(range(self.min_coords['y'], self.max_coords['y']))
-            tile = np.random.choice(range(self.min_coords['tile'],self.max_coords['tile']))
-            lane = np.random.choice(range(self.min_coords['lane'],self.max_coords['lane']))
+            x = np.random.choice(range(self.min_coords['x'],self.max_coords['x'] + 1))
+            y = np.random.choice(range(self.min_coords['y'], self.max_coords['y'] + 1))
+            tile = np.random.choice(range(self.min_coords['tile'],self.max_coords['tile'] + 1))
+            lane = np.random.choice(self.lanes_to_use)
             # TODO handle flowcell properly - just a placeholder for now
             coordinates = Coordinates('1', lane,tile,x,y)
             if coordinates not in FlowcellLoader.consumed_coordinates:
@@ -110,6 +125,3 @@ class FlowcellLoader:
                 yield coordinates
             if ctr >= 100:
                 raise BeersException("Unable to find unused flowcell coordinates after 100 attempts.")
-
-
-

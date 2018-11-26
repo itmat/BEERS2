@@ -43,6 +43,9 @@ class Controller:
         self.set_flowcell_coordinate_ranges()
         flowcell_loader = FlowcellLoader(self.molecule_packet, self.configuration['sequence_pipeline']['parameters'],
                                          self.min_coords, self.max_coords)
+        valid, msg = flowcell_loader.validate()
+        if not valid:
+            raise(ControllerValidationException(msg))
         cluster_packet = flowcell_loader.load_flowcell()
         SequencePipeline.main(cluster_packet, self.configuration['sequence_pipeline'])
         end = timer()
@@ -104,5 +107,9 @@ class Controller:
                           "x": geometry['min_x'], "y": geometry['min_y']}
             self.max_coords = {"lane": geometry['max_lane'], "tile": geometry['max_tile'],
                           "x": geometry['max_x'], "y": geometry['max_y']}
+
+class ControllerValidationException(Exception):
+    pass
+
 
 
