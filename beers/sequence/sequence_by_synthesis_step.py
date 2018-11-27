@@ -12,7 +12,7 @@ class SequenceBySynthesisStep:
 
     def execute(self, cluster_packet):
         for cluster in cluster_packet.clusters:
-            cluster.compute_quality_scores(self.read_length, self.paired_ends, self.barcode_data)
+            cluster.read(self.read_length, self.paired_ends, self.barcode_data)
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet
 

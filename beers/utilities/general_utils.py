@@ -20,6 +20,20 @@ class GeneralUtils:
             candidate_seed = candidate_seed & 0xffffffff
         return candidate_seed
 
+    base_complements = {"A": "T", "T": "A", "G": "C", "C": "G", "N": "N"}
+    # TODO: should we allow 'N's to be complemented? - Yes when reverse complementing reads
+
+    @staticmethod
+    def create_complement_strand(strand):
+        """
+        Simple utility to provide the complement of the strand and return it in the
+        5' to 3' direction.  Note that T is used rather than U even for RNA
+        :param strand: RNA/DNA strand to complement.
+        :return: complement strand in 5' to 3' direction
+        """
+        complement_strand = ''.join(GeneralUtils.base_complements[base] for base in strand)
+        return complement_strand[::-1]
+
     @staticmethod
     def reset_molecule_ids(sample_file_path):
         with open(sample_file_path, 'rb') as sample_file:

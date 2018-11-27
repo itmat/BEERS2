@@ -3,6 +3,7 @@ import numpy as np
 from io import StringIO
 import math
 from contextlib import closing
+from beers.utilities.general_utils import GeneralUtils
 
 
 BaseCounts = namedtuple('BaseCounts', ["G", "A", "T", "C"])
@@ -37,59 +38,46 @@ class Cluster:
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
         return f"@BEERS:{self.run_id}:1:{self.coordinates.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
 
-    def compute_quality_scores(self, read_length, paired_ends, barcode_data):
-        self.compute_5_prime_quality_score(read_length, barcode_data)
+    def read(self, read_length, paired_ends, barcode_data):
+        self.read_in_5_prime_direction(read_length, barcode_data)
         if paired_ends:
-            self.compute_5_prime_quality_score(read_length, barcode_data)
+            self.read_in_3_prime_direction(read_length, barcode_data)
 
-
-    def compute_5_prime_quality_score(self, read_length, barcode_data):
-        with closing(StringIO()) as called_sequence:
+    def read_over_range(self, range_start, range_end):
+        with closing(StringIO()) as called_bases:
             with closing(StringIO()) as quality_scores:
-                for position in range(barcode_data[0], barcode_data[0] + read_length):
-                    base_counts = list(zip('GATC', self.get_base_counts_by_position(position)))
-                    max_base_count = max(base_counts, key=lambda base_count: base_count[1])
-                    number_max_values = len([base_count[0] for base_count in base_counts
-                                        if base_count[1] == max_base_count[1]])
-                    if number_max_values > 1:
-                        quality_score.write(str(chr(Cluster.MIN_ASCII)))
-                        called_sequence.write('N')
-                    else:
-                        other_bases_total_count = sum(count for base, count in base_counts if base != max_base_count[0])
-                        prob = other_bases_total_count/self.molecule_count
-                        quality_score = min(Cluster.MAX_QUALITY, math.floor(-10*math.log10(prob)))\
-                                        if prob != 0 else Cluster.MAX_QUALITY
-                        ascii_score = quality_score + Cluster.MIN_ASCII
-                        quality_scores.write(str(chr(ascii_score)))
-                        called_sequence.write(max_base_count[0])
-                self.quality_scores.append(quality_scores.getvalue())
-                self.called_sequences.append(called_sequence.getvalue())
-
-    def compute_3_prime_quality_score(self, read_length, barcode_data):
-        with closing(StringIO()) as called_sequence:
-            with closing(StringIO()) as quality_scores:
-                range_end = len(self.molecule.sequence) - barcode_data[1]
-                range_start = range_end - read_length
                 for position in range(range_start, range_end):
                     base_counts = list(zip('GATC', self.get_base_counts_by_position(position)))
                     max_base_count = max(base_counts, key=lambda base_count: base_count[1])
                     number_max_values = len([base_count[0] for base_count in base_counts
                                         if base_count[1] == max_base_count[1]])
                     if number_max_values > 1:
-                        quality_score.write(str(chr(Cluster.MIN_ASCII)))
-                        called_sequence.write('N')
+                        called_bases.write('N')
+                        quality_scores.write(str(chr(Cluster.MIN_ASCII)))
                     else:
                         other_bases_total_count = sum(count for base, count in base_counts if base != max_base_count[0])
-                        prob = other_bases_total_count/self.molecule_count
-                        quality_score = min(Cluster.MAX_QUALITY, math.floor(-10*math.log10(prob)))\
+                        prob = other_bases_total_count / self.molecule_count
+                        quality_value = min(Cluster.MAX_QUALITY, math.floor(-10 * math.log10(prob))) \
                                         if prob != 0 else Cluster.MAX_QUALITY
-                        ascii_score = quality_score + Cluster.MIN_ASCII
-                        quality_scores.write(str(chr(ascii_score)))
-                        called_sequence.write(max_base_count[0])
+                        called_bases.write(max_base_count[0])
+                        quality_scores.write(str(chr(quality_value + Cluster.MIN_ASCII)))
+                return called_bases.getvalue(), quality_scores.getvalue()
 
-                self.quality_scores.append(quality_scores.getvalue())
-                self.called_sequences.append(called_sequence.getvalue())
+    def read_in_5_prime_direction(self, read_length, barcode_data):
+        range_start = barcode_data[0]
+        range_end = range_start + read_length
+        called_bases, quality_scores = self.read_over_range(range_start, range_end)
+        self.quality_scores.append(quality_scores)
+        self.called_sequences.append(called_bases)
 
+    def read_in_3_prime_direction(self, read_length, barcode_data):
+        range_end = len(self.molecule.sequence) - barcode_data[1]
+        range_start = range_end - read_length
+        called_bases, quality_scores = self.read_over_range(range_start, range_end)
+        quality_scores.reverse()
+        called_bases = GeneralUtils.create_complement_strand(called_bases)
+        self.quality_scores.append(quality_scores.getvalue())
+        self.called_sequences.append(called_bases.getvalue())
 
     def get_base_counts_by_position(self, index):
         return  (self.base_counts.G[index],
