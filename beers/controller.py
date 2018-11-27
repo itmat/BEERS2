@@ -21,37 +21,46 @@ class Controller:
         self.cluster_packet = None
 
     def run_expression_pipeline(self, args):
-        self.retrieve_configuration(args.config)
-        self.plant_seed()
-        self.create_controller_log()
+        self.perform_setup(args)
         self.assemble_input_samples()
         ExpressionPipeline.main(self.input_samples, self.configuration['expression_pipeline'])
 
     def run_library_prep_pipeline(self, args):
-        self.retrieve_configuration(args.config)
-        self.plant_seed()
-        self.create_controller_log()
+        self.perform_setup(args)
         LibraryPrepPipeline.main(self.configuration['library_prep_pipeline'])
 
     def run_sequence_pipeline(self, args):
-        start = timer()
-        self.retrieve_configuration(args.config)
-        self.plant_seed()
-        self.create_controller_log()
+        self.perform_setup(args)
         if not self.molecule_packet:
             self.get_sequencer_input_from_pickle()
-        flowcell = Flowcell(self.configuration, self.configuration['controller']['flowcell'])
+        cluster_packet = self.setup_flowcell()
+        SequencePipeline.main(self.configuration['sequence_pipeline'], cluster_packet)
+
+    def perform_setup(self, args):
+        self.retrieve_configuration(args.config)
+        self.set_run_id(args.run_id)
+        self.plant_seed()
+        self.create_controller_log()
+
+    def setup_flowcell(self):
+        flowcell = Flowcell(self.run_id, self.configuration, self.configuration['controller']['flowcell'])
         valid, msg = flowcell.validate()
         if not valid:
-            raise(ControllerValidationException(msg))
-        cluster_packet = flowcell.load_flowcell(self.molecule_packet)
-        SequencePipeline.main(self.configuration['sequence_pipeline'], cluster_packet)
-        end = timer()
-        print(f"Sequence Pipeline: {end - start}")
+            raise (ControllerValidationException(msg))
+        return flowcell.load_flowcell(self.molecule_packet)
 
     def retrieve_configuration(self, configuration_file_path):
         with open(configuration_file_path, "r+") as configuration_file:
             self.configuration = json.load(configuration_file)
+
+    def set_run_id(self, run_id):
+        if not run_id:
+            if not self.configuration['controller']['run_id']:
+                raise ControllerValidationException('No run id given either on the command line'
+                                                    ' or in the configuration file')
+            self.run_id = self.configuration['controller']['run_id']
+        else:
+            self.run_id = run_id
 
     def plant_seed(self):
         self.seed = self.configuration['controller'].get('seed', GeneralUtils.generate_seed())
@@ -71,6 +80,7 @@ class Controller:
         with open(log_file_path, 'w') as controller_log_file:
             timestamp = time.time()
             current_datetime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            controller_log_file.write(f"Run Id:\t{self.run_id}\n")
             controller_log_file.write(f"Run Timestamp (UTC):\t{current_datetime}\n")
             controller_log_file.write(f"Seed:\t{self.seed}\n")
             controller_log_file.write(f"Configuration:\n")

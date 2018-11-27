@@ -1,5 +1,6 @@
 {
   "controller": {
+    "run_id": null,
     "seed": 100,
     "log_file_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/controller.log",
     "input": {

@@ -7,6 +7,8 @@ controller = Controller()
 parser = argparse.ArgumentParser(description='BEERS Simulator, Version 2.0')
 required_named = parser.add_argument_group('required named arguments')
 required_named.add_argument('-c', '--config', required=True, help='Full path to configuration file')
+optional_named = parser.add_argument_group('optional named arguments - these override configuration file arguments')
+optional_named.add_argument('-r', '--run_id', type=int, help="integer used to specify run id")
 subparsers = parser.add_subparsers(help='pipeline subcommand', dest="subcommand")
 subparsers.required = True
 

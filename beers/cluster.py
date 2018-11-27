@@ -14,9 +14,10 @@ class Cluster:
     MIN_ASCII = 33
     MAX_QUALITY = 41
 
-    def __init__(self, cluster_id, molecule):
+    def __init__(self, run_id, cluster_id, molecule):
         self.coordinates = None
         self.cluster_id = cluster_id
+        self.run_id = run_id
         self.molecule = molecule
         self.diameter = 0
         self.molecule_count = 1
@@ -33,7 +34,8 @@ class Cluster:
         self.header = f"{self.encode_sequence_identifier()}\t{sample_name}"
 
     def encode_sequence_identifier(self):
-        return f"@BEERS:{self.coordinates.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
+        # TODO the 1 is a placeholder for flowcell.  What should we do with this?
+        return f"@BEERS:{self.run_id}:1:{self.coordinates.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
 
     def compute_quality_scores(self, read_length, paired_ends, barcode_data):
         self.compute_5_prime_quality_score(read_length, barcode_data)

@@ -35,7 +35,7 @@ class FastQ:
 
 if __name__ == '__main__':
     fastq = FastQ(1, "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output/packets",
-                      "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output")
+                  "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output")
     fastq.generate_report()
 
 

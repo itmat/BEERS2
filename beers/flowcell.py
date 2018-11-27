@@ -16,7 +16,8 @@ class Flowcell:
 
     coords_match_pattern = "^.*:(\w+):(\d+)\:(\d+)\:(\d+)\:(\d+)$"
 
-    def __init__(self, configuration, parameters):
+    def __init__(self, run_id, configuration, parameters):
+        self.run_id = run_id
         self.configuration = configuration
         self.parameters = parameters
         self.flowcell_retention = self.parameters["flowcell_retention_percentage"] / 100
@@ -45,12 +46,11 @@ class Flowcell:
         number_samples_to_draw = math.floor(self.flowcell_retention * len(molecule_packet.molecules))
         return np.random.choice(molecule_packet.molecules, size=number_samples_to_draw, replace=False)
 
-    @staticmethod
-    def convert_molecule_pkt_to_cluster_pkt(molecule_packet):
+    def convert_molecule_pkt_to_cluster_pkt(self, molecule_packet):
         clusters = []
         for molecule in molecule_packet.molecules:
             cluster_id = Cluster.next_cluster_id
-            clusters.append(Cluster(cluster_id, molecule))
+            clusters.append(Cluster(self.run_id, cluster_id, molecule))
             Cluster.next_cluster_id += 1
         return ClusterPacket(molecule_packet.sample, clusters)
 
