@@ -45,7 +45,7 @@ class Controller:
         if not valid:
             raise(ControllerValidationException(msg))
         cluster_packet = flowcell.load_flowcell(self.molecule_packet)
-        SequencePipeline.main(cluster_packet, self.configuration['sequence_pipeline'])
+        SequencePipeline.main(self.configuration['sequence_pipeline'], cluster_packet)
         end = timer()
         print(f"Sequence Pipeline: {end - start}")
 
@@ -61,10 +61,10 @@ class Controller:
         # Molecule packets coming from file location named in configuration when not directly from
         # the library pipeline
         input_directory_path = self.configuration["sequence_pipeline"]["input"]["directory_path"]
-        for molecule_packet_filename in self.configuration["sequence_pipeline"]["input"]["packets"]:
-            molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
-            with open(molecule_packet_file_path, 'rb') as molecule_packet_file:
-                self.molecule_packet = pickle.load(molecule_packet_file)
+        molecule_packet_filename = self.configuration["sequence_pipeline"]["input"]["molecule_packet_filename"]
+        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
+        with open(molecule_packet_file_path, 'rb') as molecule_packet_file:
+            self.molecule_packet = pickle.load(molecule_packet_file)
 
     def create_controller_log(self):
         log_file_path = self.configuration['controller']['log_file_path']

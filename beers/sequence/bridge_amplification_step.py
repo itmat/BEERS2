@@ -1,17 +1,18 @@
-from collections import namedtuple
-from beers.cluster import BaseCounts
-import itertools
 import math
 import numpy as np
+import sys
 
 class BridgeAmplificationStep:
 
     BASES = ['G','A','T','C']
+    MAX_CYCLES = 16
+    MAX_SNP_RATE = 1
 
-    def __init__(self, parameters):
-        self.parameters = parameters
+    def __init__(self, step_log_file_path, parameters):
+        self.log_filename = step_log_file_path
         self.cycles = parameters["bridge_amplification_cycles"]
         self.snp_rate = parameters["bridge_amplification_snp_percentage"]/100
+        print("Bridge amplification step instantiated")
 
 
     def execute(self, cluster_packet):
@@ -47,6 +48,18 @@ class BridgeAmplificationStep:
         if snp_count > 0:
             snps = np.random.choice(range(0,len(cluster.molecule.sequence)), size=snp_count)
         return sorted(snps)
+
+    def validate(self):
+        print(f"Bridge amplification step validating parameters")
+        if self.cycles < 0 or self.cycles > BridgeAmplificationStep.MAX_CYCLES:
+            print(f"The number of bridge amplification cycles must be a non-negative integer less than or"
+                  f" equal to {BridgeAmplificationStep.MAX_CYCLES}", file=sys.stderr)
+            return False
+        if self.snp_rate < 0 or self.snp_rate > BridgeAmplificationStep.MAX_SNP_RATE:
+            print(f"The snp rate must be a non-negative value less than or"
+                  f" equal to {BridgeAmplificationStep.MAX_SNP_RATE} ", file=sys.stderr)
+            return False
+        return True
 
 
 

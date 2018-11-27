@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-LaneCoordinates = namedtuple('Coordinates', ['tile', 'x', 'y'])
+LaneCoordinates = namedtuple('LaneCoordinates', ['tile', 'x', 'y'])
 
 class FlowcellLane:
 

@@ -15,6 +15,7 @@ class Cluster:
     MAX_QUALITY = 41
 
     def __init__(self, cluster_id, molecule):
+        self.coordinates = None
         self.cluster_id = cluster_id
         self.molecule = molecule
         self.diameter = 0

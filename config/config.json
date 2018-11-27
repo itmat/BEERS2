@@ -172,29 +172,35 @@
         "max_lane": 8
       },
       "flowcell_retention_percentage": 0.008,
-      "lanes_to_use": [1,2,8],
-      "bridge_amplification_cycles": 10,
-      "bridge_amplification_snp_percentage": 0.0
+      "lanes_to_use": [1,2,8]
     },
     "steps": [
-      {
-        "class_name": "BridgeAmplificationStep",
-        "log_file": "bridge_amplification_step.log"
+       {
+        "step_name": "bridge_amplification_step.BridgeAmplificationStep",
+        "log_filename": "bridge_amplification_step.log",
+        "parameters": {
+          "bridge_amplification_cycles": 10,
+          "bridge_amplification_snp_percentage": 0.0
+        }
       },
       {
-        "class_name": "SequenceBySynteisStep",
-        "log_file": "sequence_by_synthesis_step.log"
+        "step_name": "sequence_by_synthesis_step.SequenceBySynthesisStep",
+        "log_filename": "sequence_by_synthesis_step.log",
+        "parameters": {
+          "bridge_amplification_cycles": 10,
+          "bridge_amplification_snp_percentage": 0.0
+        }
       }
     ],
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence",
-      "packets": [
-        "final_output.pickle"
-      ]
+      "cluster_packet_filename": "final_output.pickle",
+      "molecule_packet_filename": "final_output.pickle"
     },
     "output": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output",
-      "log_filename": "sequence_pipeline.log"
+      "log_filename": "sequence_pipeline.log",
+      "results_filename": "final_sequence_pipeline_output.pickle"
     }
   }
 }
