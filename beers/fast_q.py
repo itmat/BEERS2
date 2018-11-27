@@ -28,9 +28,9 @@ class FastQ:
         with open(fastq_output_file_path, "w") as fastq_output_file:
             for cluster in sorted_clusters:
                 fastq_output_file.write(cluster.header + "\n")
-                fastq_output_file.write(cluster.called_sequence + "\n")
+                fastq_output_file.write(cluster.called_sequences[0] + "\n")
                 fastq_output_file.write("+\n")
-                fastq_output_file.write(cluster.quality_scores + "\n")
+                fastq_output_file.write(cluster.quality_scores[0] + "\n")
 
 
 if __name__ == '__main__':
