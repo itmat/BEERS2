@@ -29,8 +29,11 @@ class Cluster:
     def assign_coordinates(self, coordinates):
         self.coordinates = coordinates
 
+    def generate_fasta_header(self, sample_name):
+        self.header = f"{self.encode_sequence_identifier()}\t{sample_name}"
+
     def encode_sequence_identifier(self):
-        return f"@BEERS:{self.coordinates.lane}:{self.coordinates.tile}:{self.coordinates.x}{self.coordinates.y}"
+        return f"@BEERS:{self.coordinates.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
 
     def compute_quality_score(self):
         with closing(StringIO()) as called_sequence:
