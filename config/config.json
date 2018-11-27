@@ -21,6 +21,20 @@
         "Adapter_trimmed.1021_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
         "Adapter_trimmed.1022_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
       ]
+    },
+    "flowcell": {
+      "flowcell_geometry": {
+        "min_x": 1012,
+        "max_x": 32816,
+        "min_y": 998,
+        "max_y": 49247,
+        "min_tile": 1101,
+        "max_tile": 2228,
+        "min_lane": 1,
+        "max_lane": 8
+      },
+      "flowcell_retention_percentage": 0.008,
+      "lanes_to_use": [1,2,8]
     }
   },
   "expression_pipeline": {
@@ -160,20 +174,6 @@
     }
   },
   "sequence_pipeline": {
-    "parameters": {
-      "flowcell_geometry": {
-        "min_x": 1012,
-        "max_x": 32816,
-        "min_y": 998,
-        "max_y": 49247,
-        "min_tile": 1101,
-        "max_tile": 2228,
-        "min_lane": 1,
-        "max_lane": 8
-      },
-      "flowcell_retention_percentage": 0.008,
-      "lanes_to_use": [1,2,8]
-    },
     "steps": [
        {
         "step_name": "bridge_amplification_step.BridgeAmplificationStep",
@@ -194,7 +194,7 @@
     ],
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence",
-      "cluster_packet_filename": "final_output.pickle",
+      "cluster_packet_filename": "",
       "molecule_packet_filename": "final_output.pickle"
     },
     "output": {

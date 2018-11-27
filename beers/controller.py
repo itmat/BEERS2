@@ -40,7 +40,7 @@ class Controller:
         self.create_controller_log()
         if not self.molecule_packet:
             self.get_sequencer_input_from_pickle()
-        flowcell = Flowcell(self.configuration, self.configuration['sequence_pipeline']['parameters'])
+        flowcell = Flowcell(self.configuration, self.configuration['controller']['flowcell'])
         valid, msg = flowcell.validate()
         if not valid:
             raise(ControllerValidationException(msg))
