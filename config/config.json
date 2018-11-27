@@ -189,6 +189,7 @@
         "step_name": "sequence_by_synthesis_step.SequenceBySynthesisStep",
         "log_filename": "sequence_by_synthesis_step.log",
         "parameters": {
+          "forward_is_5_prime": true,
           "read_length": 100,
           "paired_ends": false,
           "barcode_5_prime_start": 29,

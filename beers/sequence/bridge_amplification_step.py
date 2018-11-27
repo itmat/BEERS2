@@ -8,11 +8,13 @@ class BridgeAmplificationStep:
     MAX_CYCLES = 16
     MAX_SNP_RATE = 1
 
+    name = "Bridge Amplification Step"
+
     def __init__(self, step_log_file_path, parameters):
         self.log_filename = step_log_file_path
         self.cycles = parameters["bridge_amplification_cycles"]
         self.snp_rate = parameters["bridge_amplification_snp_percentage"]/100
-        print("Bridge amplification step instantiated")
+        print(f"{BridgeAmplificationStep.name} instantiated")
 
 
     def execute(self, cluster_packet):
@@ -50,7 +52,7 @@ class BridgeAmplificationStep:
         return sorted(snps)
 
     def validate(self):
-        print(f"Bridge amplification step validating parameters")
+        print(f"{BridgeAmplificationStep.name} validating parameters")
         if self.cycles < 0 or self.cycles > BridgeAmplificationStep.MAX_CYCLES:
             print(f"The number of bridge amplification cycles must be a non-negative integer less than or"
                   f" equal to {BridgeAmplificationStep.MAX_CYCLES}", file=sys.stderr)

@@ -38,10 +38,15 @@ class Cluster:
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
         return f"@BEERS:{self.run_id}:1:{self.coordinates.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
 
-    def read(self, read_length, paired_ends, barcode_data):
-        self.read_in_5_prime_direction(read_length, barcode_data)
-        if paired_ends:
+    def read(self, read_length, foward_is_5_prime, paired_ends, barcode_data):
+        if foward_is_5_prime:
+            self.read_in_5_prime_direction(read_length, barcode_data)
+            if paired_ends:
+                self.read_in_3_prime_direction(read_length, barcode_data)
+        else:
             self.read_in_3_prime_direction(read_length, barcode_data)
+            if paired_ends:
+                self.read_in_5_prime_direction(read_length, barcode_data)
 
     def read_over_range(self, range_start, range_end):
         with closing(StringIO()) as called_bases:
