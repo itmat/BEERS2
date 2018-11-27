@@ -72,7 +72,7 @@ class Flowcell:
             y = np.random.choice(range(self.min_coords['y'], self.max_coords['y'] + 1))
             tile = np.random.choice(range(self.min_coords['tile'], self.max_coords['tile'] + 1))
             lane = np.random.choice(self.lanes_to_use)
-            coordinates = LaneCoordinates(tile, x, y)
+            coordinates = LaneCoordinates(lane, tile, x, y)
             consumed_coordinates = [flowcell_lane.consumed_coordinates
                                     for flowcell_lane in self.flowcell_lanes
                                     if flowcell_lane.lane == lane][0]
