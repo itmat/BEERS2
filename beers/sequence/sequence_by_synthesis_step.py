@@ -7,7 +7,7 @@ class SequenceBySynthesisStep:
     def __init__(self, step_log_file_path, parameters):
         self.log_filename = step_log_file_path
         self.read_length = parameters['read_length']
-        self.foward_is_5_prime = parameters.get('forward_is_5_prime', True)
+        self.forward_is_5_prime = parameters.get('forward_is_5_prime', True)
         self.paired_ends = parameters.get('paired_ends', False)
         self.barcode_data = (parameters['barcode_5_prime_start'],
                              parameters['barcode_5_prime_length'],
@@ -17,7 +17,7 @@ class SequenceBySynthesisStep:
 
     def execute(self, cluster_packet):
         for cluster in cluster_packet.clusters:
-            cluster.read(self.read_length, self.foward_is_5_prime, self.paired_ends, self.barcode_data)
+            cluster.read(self.read_length, self.forward_is_5_prime, self.paired_ends, self.barcode_data)
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet
 

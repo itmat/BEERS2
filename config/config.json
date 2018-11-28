@@ -161,7 +161,7 @@
         "step_name": "pcr_amplification_step.PCRAmplificationStep",
         "log_filename": "pcr_amplification_step.log",
         "parameters": {
-          "number_cycles": 6
+          "number_cycles": 10
         }
       }
     ],
