@@ -53,6 +53,8 @@ class PCRAmplificationStep:
             # Iterate over the number of cycles requested.
             for cycle in range(self.number_cycles):
 
+                print(f"Starting cycle {cycle + 1}")
+
                 # Start a new empty list of new molecules
                 new_molecules = []
 
