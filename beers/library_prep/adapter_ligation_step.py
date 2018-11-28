@@ -7,14 +7,16 @@ from beers.utilities.adapter_generator import AdapterGenerator
 
 class AdapterLigationStep:
 
+    name = "Adapter Ligation Step"
+
     def __init__(self, step_log_file_path, parameters):
         self.log_filename = step_log_file_path
         self.parameters = parameters
         self.adapter_generator = AdapterGenerator("TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa")
-        print("Adapter Ligation step instantiated")
+        print(f"{self.name} instantiated")
 
     def execute(self, molecule_packet):
-        print("Adapter ligation step starting")
+        print("{self.name} starting")
         sample = molecule_packet.sample
         adapter_5_prime = [adapter.sequence for adapter in self.adapter_generator.adapters
                            if adapter.label == sample.adapter_labels[0]][0]
@@ -32,7 +34,7 @@ class AdapterLigationStep:
         return molecule_packet
 
     def validate(self):
-        print(f"Adapter ligation step validating parameters")
+        print(f"{self.name} validating parameters")
         return True
 
 if __name__ == "__main__":

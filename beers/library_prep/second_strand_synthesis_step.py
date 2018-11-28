@@ -4,6 +4,8 @@ from beers.utilities.library_prep_utils import Utils
 
 class SecondStrandSynthesisStep:
 
+    name = "Second Strand Synthesis Step"
+
     def __init__(self, log_file, parameters):
         self.history_filename = log_file
         print("Second Strand cDNA Synthesis Step instantiated.")

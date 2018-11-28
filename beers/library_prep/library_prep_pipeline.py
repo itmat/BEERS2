@@ -4,6 +4,7 @@ import pickle
 import time
 import sys
 import os
+import resource
 
 import numpy as np
 
@@ -47,6 +48,7 @@ class LibraryPrepPipeline:
             pipeline_start = time.time()
             molecule_packet = self.molecule_packet
             for step in self.steps:
+                step_name = step.__class__.name if hasattr(step.__class__, 'name') else step.__class__.__name__
                 step_start = time.time()
                 molecule_packet = step.execute(molecule_packet)
                 elapsed_time = time.time() - step_start
@@ -54,7 +56,9 @@ class LibraryPrepPipeline:
                 self.print_summary(molecule_packet.molecules, elapsed_time)
 
                 random_state = np.random.get_state()
-                log_file.write(f"# random state following {step.__class__.__name__} is {random_state}\n")
+                log_file.write(f"# random state following {step_name} is {random_state}\n")
+                print(f"{step_name} complete - process RAM currently at"
+                      f" {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
 
             pipeline_elapsed_time = time.time() - pipeline_start
             print(f"Finished pipeline in {pipeline_elapsed_time:.1f} seconds")

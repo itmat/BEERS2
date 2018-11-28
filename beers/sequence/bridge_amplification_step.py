@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import sys
+import resource
 
 class BridgeAmplificationStep:
 
@@ -18,7 +19,6 @@ class BridgeAmplificationStep:
 
 
     def execute(self, cluster_packet):
-        print(f"Cluster Pkt size: {len(cluster_packet.clusters)}")
         for cycle in range(1,self.cycles + 1):
             for cluster in cluster_packet.clusters:
                 cluster.molecule_count *= 2
@@ -42,6 +42,8 @@ class BridgeAmplificationStep:
                             getattr(cluster.base_counts, base)[index] *= 2
                         for base in selected_bases:
                             getattr(cluster.base_counts, base)[index] += 1
+        print(f"Molecules per cluster after amplification is {cluster_packet.clusters[0].molecule_count}.")
+        print(f"Total molecules over all clusters is {len(cluster_packet.clusters)*cluster_packet.clusters[0].molecule_count}")
         return cluster_packet
 
     def determine_snps(self, cluster, cycle):

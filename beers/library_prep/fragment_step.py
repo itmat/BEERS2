@@ -16,7 +16,11 @@ METHODS = {"uniform", "beta"}
 # i.e. lambda gives the rate of breakage of a molecule which has this length
 TYPICAL_MOLECULE_SIZE = 1000
 
+
 class FragmentStep:
+
+    name = "Fragment Step"
+
     def __init__(self, logfile, parameters):
         """
         Make fragmentation step that with rate of fragmentation lambda_ running for run_time

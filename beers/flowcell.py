@@ -10,6 +10,7 @@ import re
 import pysam
 import math
 import os
+import resource
 
 
 class Flowcell:
@@ -56,12 +57,17 @@ class Flowcell:
 
     def load_flowcell(self, molecule_packet):
         retained_molecules = self.identify_retained_molecules(molecule_packet)
+        print(f"Number of molecules to be attached to flowcell {len(retained_molecules)}")
         retained_molecule_packet = MoleculePacket(MoleculePacket.next_molecule_packet_id,
                                                   molecule_packet.sample, retained_molecules)
+        # Attempt to keep memory footprint in bounds.
+        molecule_packet = None
         MoleculePacket.next_molecule_packet_id += 1
         cluster_packet = self.convert_molecule_pkt_to_cluster_pkt(retained_molecule_packet)
-        for cluster in cluster_packet.clusters:
+        for counter, cluster in enumerate(cluster_packet.clusters):
             cluster.assign_coordinates(next(self.coordinate_generator))
+            if (counter + 1) % 100 == 0:
+                print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
         return cluster_packet
 
     def generate_coordinates(self):
@@ -77,6 +83,7 @@ class Flowcell:
                                     for flowcell_lane in self.flowcell_lanes
                                     if flowcell_lane.lane == lane][0]
             if coordinates not in consumed_coordinates:
+                ctr = 0
                 consumed_coordinates.append(coordinates)
                 yield coordinates
             if ctr >= 100:
@@ -119,8 +126,8 @@ class Flowcell:
             with gzip.open(fastq_file_path, 'rb') as fastq_file:
                 for counter, (byte_header, content, toss, scores) in enumerate(
                         itertools.zip_longest(*[fastq_file] * 4)):
-                    if counter % 1000000 == 0:
-                        print(f"{counter} reads")
+                    if (counter + 1) % 1000000 == 0:
+                        print(f"{counter + 1} reads")
                     header = byte_header.decode()
                     sequence_identifier = header.split(" ")[0]
                     coords_match = re.match(Flowcell.coords_match_pattern, sequence_identifier)

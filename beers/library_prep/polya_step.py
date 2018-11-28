@@ -1,12 +1,12 @@
 import sys
 import pickle
 from timeit import default_timer as timer
-
 import numpy as np
-
 from beers.molecule import Molecule
 
 class PolyAStep:
+
+    name = "PolyA Selection Step"
 
     def __init__(self, step_log_file_path, parameters):
         self.log_filename = step_log_file_path

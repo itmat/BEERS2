@@ -3,6 +3,7 @@ import time
 from timeit import default_timer as timer
 import numpy as np
 import os
+import resource
 import pickle
 from datetime import datetime
 from beers.utilities.general_utils import GeneralUtils
@@ -74,6 +75,7 @@ class Controller:
         molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
         with open(molecule_packet_file_path, 'rb') as molecule_packet_file:
             self.molecule_packet = pickle.load(molecule_packet_file)
+        print(f"Sequence Input Loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1E6} GB")
 
     def create_controller_log(self):
         log_file_path = self.configuration['controller']['log_file_path']

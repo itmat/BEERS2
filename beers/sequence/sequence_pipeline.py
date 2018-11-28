@@ -3,6 +3,7 @@ import pickle
 import os
 import time
 import numpy as np
+import resource
 
 
 class SequencePipeline:
@@ -44,6 +45,8 @@ class SequencePipeline:
 
                 random_state = np.random.get_state()
                 log_file.write(f"# random state following {step.__class__.__name__} is {random_state}\n")
+                print(f"{step.__class__.name} complete - process RAM currently at"
+                      f" {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
 
             pipeline_elapsed_time = time.time() - pipeline_start
             print(f"Finished sequence pipeline in {pipeline_elapsed_time:.1f} seconds")

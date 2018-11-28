@@ -161,7 +161,7 @@
         "step_name": "pcr_amplification_step.PCRAmplificationStep",
         "log_filename": "pcr_amplification_step.log",
         "parameters": {
-          "number_cycles": 10
+          "number_cycles": 9
         }
       }
     ],
@@ -200,7 +200,7 @@
       }
     ],
     "input": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence",
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
       "cluster_packet_filename": "",
       "molecule_packet_filename": "final_output.pickle"
     },

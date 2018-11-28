@@ -8,7 +8,11 @@ from beers.utilities.library_prep_utils import Utils
 
 from beers.molecule import Molecule
 
+
+
 class SizingStep:
+
+    name = "Sizing Step"
 
     def __init__(self, step_log_file_path, parameters):
         self.idealized = False

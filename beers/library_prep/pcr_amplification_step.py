@@ -8,7 +8,10 @@ import numpy as np
 from beers.utilities.library_prep_utils import Utils
 from beers.molecule import Molecule
 
+
 class PCRAmplificationStep:
+
+    name = "PCR Amplification Step"
 
     # Putting an upper bound on the number of allowed PCR amplification cycles to avoid accidentally launching
     # a virtually runaway population of molecule objects.
