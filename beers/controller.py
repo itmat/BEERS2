@@ -34,6 +34,7 @@ class Controller:
         if not molecule_packet:
             molecule_packet = self.get_sequencer_input_from_pickle()
         cluster_packet = self.setup_flowcell(molecule_packet)
+        molecule_packet = None
         SequencePipeline.main(self.configuration['sequence_pipeline'], cluster_packet)
 
     def perform_setup(self, args):
