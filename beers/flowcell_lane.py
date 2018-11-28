@@ -1,6 +1,5 @@
 from collections import namedtuple
 
-#LaneCoordinates = namedtuple('LaneCoordinates', ['lane', 'tile', 'x', 'y'])
 
 class FlowcellLane:
 

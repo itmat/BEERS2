@@ -18,7 +18,6 @@ from beers.flowcell import Flowcell
 class Controller:
 
     def __init__(self):
-        self.molecule_packet = None
         self.cluster_packet = None
 
     def run_expression_pipeline(self, args):
@@ -30,11 +29,11 @@ class Controller:
         self.perform_setup(args)
         LibraryPrepPipeline.main(self.configuration['library_prep_pipeline'])
 
-    def run_sequence_pipeline(self, args):
+    def run_sequence_pipeline(self, args, molecule_packet=None):
         self.perform_setup(args)
-        if not self.molecule_packet:
-            self.get_sequencer_input_from_pickle()
-        cluster_packet = self.setup_flowcell()
+        if not molecule_packet:
+            molecule_packet = self.get_sequencer_input_from_pickle()
+        cluster_packet = self.setup_flowcell(molecule_packet)
         SequencePipeline.main(self.configuration['sequence_pipeline'], cluster_packet)
 
     def perform_setup(self, args):
@@ -43,12 +42,12 @@ class Controller:
         self.plant_seed()
         self.create_controller_log()
 
-    def setup_flowcell(self):
+    def setup_flowcell(self, molecule_packet):
         flowcell = Flowcell(self.run_id, self.configuration, self.configuration['controller']['flowcell'])
         valid, msg = flowcell.validate()
         if not valid:
             raise (ControllerValidationException(msg))
-        return flowcell.load_flowcell(self.molecule_packet)
+        return flowcell.load_flowcell(molecule_packet)
 
     def retrieve_configuration(self, configuration_file_path):
         with open(configuration_file_path, "r+") as configuration_file:
@@ -74,7 +73,8 @@ class Controller:
         molecule_packet_filename = self.configuration["sequence_pipeline"]["input"]["molecule_packet_filename"]
         molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
         with open(molecule_packet_file_path, 'rb') as molecule_packet_file:
-            self.molecule_packet = pickle.load(molecule_packet_file)
+            molecule_packet = pickle.load(molecule_packet_file)
+        return molecule_packet
         print(f"Sequence Input Loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1E6} GB")
 
     def create_controller_log(self):
