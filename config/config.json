@@ -2,7 +2,6 @@
   "controller": {
     "run_id": null,
     "seed": 100,
-    "log_file_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/controller.log",
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
       "data": [
@@ -23,6 +22,8 @@
         "Adapter_trimmed.1022_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
       ]
     },
+    "output_directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/pipeline_results",
+
     "flowcell": {
       "flowcell_geometry": {
         "min_x": 1012,
@@ -46,12 +47,9 @@
         "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt"
       }
     },
-    "output": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38/output"
-    },
-    "processes": [
+    "steps": [
       {
-        "class_name": "VariantsFinder",
+        "step_name": "variants_finder.VariantsFinderStep",
         "parameters": {
           "x_chromosome_name": "X",
           "cutoff_depth": 10,
@@ -61,37 +59,9 @@
         }
       },
       {
-        "class_name": "Beagle",
+        "step_name": "beagle.BeagleStep",
         "parameters": {
           "command": "java -classpath /home/crislawrence/eclipse-workspace/Stubs/bin org.crislawrence.stubs.MockProcess 5"
-        }
-      },
-      {
-        "class_name": "GemomeMaker.py",
-        "parameters": {
-          "ignore_indels": "False",
-          "ignore_snps": "False"
-        }
-      },
-      {
-        "class_name": "UpdateAnnotationsForGenome",
-        "parameters": {}
-      },
-      {
-        "class_name": "Quantify",
-        "parameters": {}
-      },
-      {
-        "class_name": "TranscriptMaker",
-        "parameters": {
-          "transcriptome_size": "1000000"
-        }
-      },
-      {
-        "class_name": "RibosomalRNA",
-        "parameters": {
-          "percent_mature": "0.9",
-          "rna_fasta_filename": ""
         }
       }
     ]
@@ -100,7 +70,6 @@
     "steps": [
       {
         "step_name": "polya_step.PolyAStep",
-        "log_filename": "polya_selection_step.log",
         "parameters": {
           "min_polya_tail_length": 40,
           "min_retention_prob": 0.0,
@@ -113,7 +82,6 @@
       },
       {
         "step_name": "fragment_step.FragmentStep",
-        "log_filename": "fragment_step.log",
         "parameters": {
           "method": "beta",
           "lambda": 0.001,
@@ -125,27 +93,22 @@
       },
       {
         "step_name": "first_strand_prime_step.FirstStrandPrimeStep",
-        "log_filename": "first_strand_prime_step.log",
         "parameters": {}
       },
        {
         "step_name": "first_strand_synthesis_step.FirstStrandSynthesisStep",
-        "log_filename": "first_strand_synthesis_step.log",
         "parameters": {}
       },
        {
         "step_name": "second_strand_prime_step.SecondStrandPrimeStep",
-        "log_filename": "second_strand_prime_step.log",
         "parameters": {}
       },
        {
         "step_name": "second_strand_synthesis_step.SecondStrandSynthesisStep",
-        "log_filename": "second_strand_synthesis_step.log",
         "parameters": {}
       },
       {
         "step_name": "sizing_step.SizingStep",
-        "log_filename": "sizing_step.log",
         "parameters": {
           "min_length": 100,
           "max_length": 400
@@ -153,33 +116,25 @@
       },
       {
         "step_name": "adapter_ligation_step.AdapterLigationStep",
-        "log_filename": "adapter_ligation_step.log",
         "parameters": {
         }
       },
       {
         "step_name": "pcr_amplification_step.PCRAmplificationStep",
-        "log_filename": "pcr_amplification_step.log",
         "parameters": {
-          "number_cycles": 9
+          "number_cycles": 4
         }
       }
     ],
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
       "molecule_packet_filename": "molecule_packet_plus_source.pickle"
-    },
-    "output": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
-      "log_filename": "library_prep_pipeline.log",
-      "results_filename": "final_output.pickle"
     }
   },
   "sequence_pipeline": {
     "steps": [
        {
         "step_name": "bridge_amplification_step.BridgeAmplificationStep",
-        "log_filename": "bridge_amplification_step.log",
         "parameters": {
           "bridge_amplification_cycles": 10,
           "bridge_amplification_snp_percentage": 0.0
@@ -187,7 +142,6 @@
       },
       {
         "step_name": "sequence_by_synthesis_step.SequenceBySynthesisStep",
-        "log_filename": "sequence_by_synthesis_step.log",
         "parameters": {
           "forward_is_5_prime": true,
           "read_length": 100,
@@ -201,13 +155,7 @@
     ],
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
-      "cluster_packet_filename": "",
       "molecule_packet_filename": "final_output.pickle"
-    },
-    "output": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output",
-      "log_filename": "sequence_pipeline.log",
-      "results_filename": "final_sequence_pipeline_output.pickle"
     }
   }
 }

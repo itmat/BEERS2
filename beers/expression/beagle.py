@@ -3,13 +3,13 @@ import argparse
 from timeit import default_timer as timer
 import sys
 
-class Beagle:
+class BeagleStep:
 
-    def __init__(self, parameters):
+    def __init__(self, logfile, data_directory_path, parameters):
         self.command = parameters["command"]
 
     def validate(self):
-        pass
+        return True
 
     def execute(self):
         print("Calling BEAGLE")

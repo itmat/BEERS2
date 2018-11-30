@@ -9,6 +9,7 @@ from operator import attrgetter, itemgetter
 import math
 from io import StringIO
 from beers.utilities.expression_utils import ExpressionUtils
+from beers.sample import Sample
 
 
 
@@ -22,7 +23,7 @@ description: description of the variant (e.g., C, IAA, D5, etc.)
 """
 
 
-class VariantsFinder:
+class VariantsFinderStep:
     """
     This class creates a text file listing variants for those locations in the reference genome having variants.
     The variants include snps and indels with the number of reads attributed to each variant.
@@ -45,24 +46,21 @@ class VariantsFinder:
     DEFAULT_DEPTH_CUTOFF = 10
     DEFAULT_MIN_THRESHOLD = 0.03
 
-    def __init__(self, chromosome, alignment_file_path, reference_genome, parameters, output_directory_path):
-        self.alignment_file_path = alignment_file_path
-        variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
-        self.variants_file_path = os.path.join(output_directory_path, variants_filename)
-        self.alignment_file = pysam.AlignmentFile(self.alignment_file_path, "rb")
-        self.chromosomes = [chromosome] if chromosome else self.get_chromosome_list()
-        self.reference_genome = reference_genome
-        self.x_chomosome_name = parameters['x_chromosome_name'] or VariantsFinder.DEFAULT_X_CHROMOSOME_NAME
+    name = "Variants Finder Step"
+
+    def __init__(self, logfile, data_directory_path, parameters):
+        self.data_directory_path = data_directory_path
+        self.x_chomosome_name = parameters['x_chromosome_name'] or VariantsFinderStep.DEFAULT_X_CHROMOSOME_NAME
         self.entropy_sort = parameters["sort_by_entropy"]
-        self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinder.DEFAULT_DEPTH_CUTOFF
-        self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinder.DEFAULT_MIN_THRESHOLD
+        self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinderStep.DEFAULT_DEPTH_CUTOFF
+        self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinderStep.DEFAULT_MIN_THRESHOLD
         self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
         self.clip_at_end_pattern = re.compile("\d+[SH]$")
         self.variant_pattern = re.compile("(\d+)([NMID])")
         self.indel_pattern = re.compile("\|([^|]+)")
 
     def validate(self):
-        pass
+        return True
 
     def get_chromosome_list(self):
         """
@@ -248,29 +246,35 @@ class VariantsFinder:
         print(f"Gender is {gender}")
         return gender
 
-    def find_variants(self):
+    def execute(self, sample, reference_genome, chromosome = None):
         """
         Entry point into variants_finder when accessed via imports.  Iterates over the chromosomes in the list
         provided by the alignment file header and logs those variants found.  In the case of the X chromosome,
         gender (M or F) is determined by the number of variants found for the X chromosome.
         :return: gender information
         """
+        alignment_file_path = sample.input_file_path
+        variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
+        variants_file_path = os.path.join(self.data_directory_path, variants_filename)
+        self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
+        self.chromosomes = [chromosome] if chromosome else self.get_chromosome_list()
+        self.reference_genome = reference_genome
         gender = ''
         for chromosome in self.chromosomes:
             print(f"Finding variants for chromosome {chromosome}")
             variants = self.call_variants(chromosome, self.collect_reads(chromosome))
-            self.log_variants(variants)
+            self.log_variants(variants, variants_file_path)
             if chromosome == self.x_chomosome_name:
                 gender = self.establish_gender(variants)
         return gender
 
-    def log_variants(self, variants):
+    def log_variants(self, variants, variants_file_path):
         """
         Logs the variants to a file in the user's designated output directory one chromosome at a time.  The filename
         has the stem of the alignment filename suffixed with _variants.txt
         :param variants: variants list for one chromosome.
         """
-        with open(self.variants_file_path, 'a') as variants_file:
+        with open(variants_file_path, 'a') as variants_file:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
@@ -306,6 +310,8 @@ class VariantsFinder:
         args = parser.parse_args()
         print(args)
 
+        sample = Sample(1, "Unit_test", args.alignment_file_path, None, None)
+
         parameters = {
             'x_chromosome_name': args.x_chromosome_name,
             'sort_by_entropy': args.sort_by_entropy,
@@ -318,13 +324,13 @@ class VariantsFinder:
         except FileExistsError:
             pass
 
-        variants_finder = VariantsFinder(
+        variants_finder = VariantsFinderStep(
                                          args.chromosome,
                                          args.alignment_file_path,
                                          ExpressionUtils.create_reference_genome(args.reference_genome_filename),
                                          parameters, args.output_directory)
         start = timer()
-        variants_finder.find_variants()
+        variants_finder.execute()
         end = timer()
         sys.stderr.write(f"Variants Finder: {end - start} sec\n")
 
@@ -457,7 +463,7 @@ class PositionInfo:
 
 
 if __name__ == "__main__":
-    sys.exit(VariantsFinder.main())
+    sys.exit(VariantsFinderStep.main())
 
 '''Example calls
 python variants_finder.py \

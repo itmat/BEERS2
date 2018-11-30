@@ -8,33 +8,31 @@ import resource
 
 import numpy as np
 
-from beers.utilities.general_utils import GeneralUtils
-from beers.molecule_packet import MoleculePacket
 from beers.molecule import Molecule
 
 
 class LibraryPrepPipeline:
 
-    def __init__(self, configuration, molecule_packet=None):
-            self.steps = []
-            input_directory_path = configuration["input"]["directory_path"]
-            output_directory_path = configuration["output"]["directory_path"]
-            self.log_file_path = os.path.join(output_directory_path, configuration["output"]["log_filename"])
-            for step in configuration['steps']:
-                module_name, step_name = step["step_name"].rsplit(".")
-                step_log_filename = step["log_filename"]
-                step_log_file_path = os.path.join(output_directory_path, step_log_filename)
-                parameters = step["parameters"]
-                module = importlib.import_module(f'.{module_name}', package="beers.library_prep")
-                step_class = getattr(module, step_name)
-                self.steps.append(step_class(step_log_file_path, parameters))
-            self.molecule_packet = molecule_packet
-            if not self.molecule_packet:
-                molecule_packet_filename = configuration["input"]["molecule_packet_filename"]
-                self.molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
-                self.populate_molecule_packet()
-            results_filename = configuration["output"]["results_filename"]
-            self.results_file_path = os.path.join(output_directory_path, results_filename)
+    def __init__(self, configuration, output_directory_path, molecule_packet):
+        self.molecule_packet = molecule_packet
+        self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
+        self.print_summary(self.molecule_packet.molecules)
+        self.output_directory_path = output_directory_path
+        log_directory_path = os.path.join(output_directory_path, "logs")
+        data_directory_path = os.path.join(output_directory_path, 'data')
+        self.log_file_path = os.path.join(log_directory_path, "library_pipeline.log")
+        self.steps = []
+        for step in configuration['steps']:
+            module_name, step_name = step["step_name"].rsplit(".")
+            step_log_filename = f"{step_name}_molecule_pkt{self.molecule_packet.molecule_packet_id}.log"
+            step_log_file_path = os.path.join(log_directory_path, step_log_filename)
+            parameters = step["parameters"]
+            module = importlib.import_module(f'.{module_name}', package="beers.library_prep")
+            step_class = getattr(module, step_name)
+            self.steps.append(step_class(step_log_file_path, parameters))
+
+        results_filename = f"library_prep_pipeline_result_molecule_pkt{self.molecule_packet.molecule_packet_id}.pickle"
+        self.results_file_path = os.path.join(data_directory_path, results_filename)
 
     def validate(self, **kwargs):
         if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
@@ -73,13 +71,6 @@ class LibraryPrepPipeline:
         for molecule in self.molecule_packet.molecules:
             log_file.write(molecule.log_entry())
 
-    def populate_molecule_packet(self):
-        print(f"Reading molecule packet from pickle file {self.molecule_packet_file_path}")
-        with open(self.molecule_packet_file_path, 'rb') as molecule_packet_file:
-            self.molecule_packet = pickle.load(molecule_packet_file)
-        self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
-        self.print_summary(self.molecule_packet.molecules)
-
     def print_summary(self, sample, elapsed_time=None):
         '''Output a summary of the sample (number of molecules, time taken, etc.)'''
         if elapsed_time is not None:
@@ -100,8 +91,8 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(configuration):
-        library_prep_pipeline = LibraryPrepPipeline(configuration)
+    def main(configuration, output_directory_path, molecule_packet):
+        library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, molecule_packet)
         library_prep_pipeline.validate()
         library_prep_pipeline.execute()
 

@@ -8,26 +8,24 @@ import resource
 
 class SequencePipeline:
 
-    def __init__(self, configuration, cluster_packet=None):
+    def __init__(self, configuration, output_directory_path, cluster_packet):
+        self.cluster_packet = cluster_packet
+        output_directory_path = output_directory_path
+        log_directory_path = os.path.join(output_directory_path, "logs")
+        data_directory_path = os.path.join(output_directory_path, 'data')
+        self.log_file_path = os.path.join(log_directory_path, "sequence_pipeline.log")
         self.steps = []
-        input_directory_path = configuration["input"]["directory_path"]
-        output_directory_path = configuration["output"]["directory_path"]
-        self.log_file_path = os.path.join(output_directory_path, configuration["output"]["log_filename"])
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
-            step_log_filename = step["log_filename"]
-            step_log_file_path = os.path.join(output_directory_path, step_log_filename)
+            step_log_filename = f"{step_name}_cluster_pkt{self.cluster_packet.cluster_packet_id}.log"
+            step_log_file_path = os.path.join(log_directory_path, step_log_filename)
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package="beers.sequence")
             step_class = getattr(module, step_name)
             self.steps.append(step_class(step_log_file_path, parameters))
-        self.cluster_packet = cluster_packet
-        if not self.cluster_packet:
-            cluster_packet_filename = configuration["input"]["cluster_packet_filename"]
-            self.molecule_packet_file_path = os.path.join(input_directory_path, cluster_packet_filename)
-            self.populate_cluster_packet()
-        results_filename = configuration["output"]["results_filename"]
-        self.results_file_path = os.path.join(output_directory_path, results_filename)
+
+        results_filename = f"sequence_pipeline_result_cluster_pkt{self.cluster_packet.cluster_packet_id}.pickle"
+        self.results_file_path = os.path.join(data_directory_path, results_filename)
 
     def validate(self, **kwargs):
         if not all([step.validate() for step in self.steps]):
@@ -56,18 +54,12 @@ class SequencePipeline:
             pickle.dump(cluster_packet, results_file)
         print(f"Output final sample to {self.results_file_path}")
 
-    def populate_cluster_packet(self):
-        print(f"Reading molecule packet from pickle file {self.cluster_packet_file_path}")
-        with open(self.cluster_packet_file_path, 'rb') as cluster_packet_file:
-            self.cluster_packet = pickle.load(cluster_packet_file)
-
     @staticmethod
-    def main(configuration, cluster_packet=None):
-        sequence_pipeline = SequencePipeline(configuration, cluster_packet)
+    def main(configuration, output_directory_path, cluster_packet):
+        sequence_pipeline = SequencePipeline(configuration, output_directory_path, cluster_packet)
         sequence_pipeline.validate()
         sequence_pipeline.execute()
 
 
 class BeersSequenceValidationException(Exception):
     pass
-

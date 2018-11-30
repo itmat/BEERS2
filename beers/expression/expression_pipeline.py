@@ -1,29 +1,35 @@
 import sys
 import os
-from beers.expression.variants_finder import VariantsFinder
-from beers.expression.beagle import Beagle
+import importlib
+from beers.expression.variants_finder import VariantsFinderStep
+from beers.expression.beagle import BeagleStep
 from beers.utilities.expression_utils import ExpressionUtils
 from beers.sample import Sample
 
 class ExpressionPipeline:
-    def __init__(self, input_samples, configuration):
-        self.reference_genome = dict()
+    def __init__(self, configuration, output_directory_path, input_samples):
+        self.samples = input_samples
+        self.output_directory_path = output_directory_path
+        log_directory_path = os.path.join(output_directory_path, "logs")
+        data_directory_path = os.path.join(output_directory_path, 'data')
+        self.log_file_path = os.path.join(log_directory_path, "expression_pipeline.log")
+        self.steps = {}
+        for step in configuration['steps']:
+            module_name, step_name = step["step_name"].rsplit(".")
+            step_log_filename = f"{step_name}.log"
+            step_log_file_path = os.path.join(log_directory_path, step_log_filename)
+            parameters = step["parameters"]
+            module = importlib.import_module(f'.{module_name}', package="beers.expression")
+            step_class = getattr(module, step_name)
+            self.steps[step_name] = step_class(step_log_file_path, data_directory_path, parameters)
         input_directory_path = configuration["input"]["directory_path"]
+        self.reference_genome = dict()
         self.reference_genome_file_path = \
             os.path.join(input_directory_path, configuration["input"]["model_files"]["reference_genome"])
 
-        self.samples = input_samples
-
-        try:
-            self.output_directory_path = configuration["output"]["directory_path"]
-        except FileExistsError:
-            pass
-        self.parameters = {}
-        for item in configuration["processes"]:
-            self.parameters[item["class_name"]] = item.get("parameters", dict())
-
     def validate(self):
-        pass
+        if not all([step.validate() for step in self.steps.values()]):
+            raise BeersExpressionValidationException(f"Validation error in an expression step. See stderr for details.")
 
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
@@ -34,20 +40,15 @@ class ExpressionPipeline:
 
         for sample in self.samples:
 
-            variants_finder = \
-                VariantsFinder('X',
-                               sample.input_file_path,
-                               self.reference_genome,
-                               self.parameters["VariantsFinder"],
-                               self.output_directory_path)
-            inferred_gender = variants_finder.find_variants()
+            variants_finder = self.steps['VariantsFinderStep']
+            inferred_gender = variants_finder.execute(sample, self.reference_genome, 'X')
             sample.gender = sample.gender or inferred_gender
 
             # Variants to VCF conversion goes here.
 
         for sample in self.samples:
 
-            beagle = Beagle(self.parameters["Beagle"])
+            beagle = self.steps['BeagleStep']
             outcome = beagle.execute()
             if outcome != 0:
                 sys.stderr.write("Beagle process failed.\n")
@@ -76,10 +77,13 @@ class ExpressionPipeline:
         #return molecules
 
     @staticmethod
-    def main(input_samples, configuration):
-        pipeline = ExpressionPipeline(input_samples, configuration)
+    def main(configuration, output_directory_path, input_samples):
+        pipeline = ExpressionPipeline(configuration, output_directory_path, input_samples)
         pipeline.validate()
         pipeline.execute()
+
+class BeersExpressionValidationException(Exception):
+    pass
 
 class ExpressionPipelineException(Exception):
     pass

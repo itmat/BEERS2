@@ -48,12 +48,14 @@ class Flowcell:
         return np.random.choice(molecule_packet.molecules, size=number_samples_to_draw, replace=False)
 
     def convert_molecule_pkt_to_cluster_pkt(self, molecule_packet):
+        cluster_packet_id = ClusterPacket.next_cluster_packet_id
+        ClusterPacket.next_cluster_packet_id += 1
         clusters = []
         for molecule in molecule_packet.molecules:
             cluster_id = Cluster.next_cluster_id
             clusters.append(Cluster(self.run_id, cluster_id, molecule))
             Cluster.next_cluster_id += 1
-        return ClusterPacket(molecule_packet.sample, clusters)
+        return ClusterPacket(cluster_packet_id, molecule_packet.sample, clusters)
 
     def load_flowcell(self, molecule_packet):
         retained_molecules = self.identify_retained_molecules(molecule_packet)

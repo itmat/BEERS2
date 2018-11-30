@@ -13,7 +13,28 @@ import itertools
 SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'position', 'description'])
 
 
-class GenomeBuilder:
+class GenomeBuilderStep:
+
+    def __init__(self, logfile, data_directory_path, parameters):
+
+        self.beagle_file_path =
+        self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
+        self.variants_file_path = variants_file_path
+        self.target_sample_name = target_sample_name
+        self.gender = parameters['gender']
+        self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters['gender_chr_names'])}
+        self.unpaired_chr_list = self.get_unpaired_chr_list()
+        self.unpaired_chr_variants = self.get_unpaired_chr_variant_data()
+        self.ignore_indels = parameters['ignore_indels']
+        self.ignore_snps = parameters['ignore_snps']
+        self.reference_genome = reference_genome
+        self.genome_names = ['maternal', 'paternal']
+        self.log_file_path = os.path.join(output_directory_path, "genome_builder.log")
+        self.chromosome_list = [chromosome] or reference_genome.keys()
+
+        variants_filename = os.path.basename(variants_file_path)
+        self.genome_output_file_stem = \
+            os.path.join(output_directory_path, variants_filename[:variants_filename.find('_variants')])
 
     def __init__(self,
                  chromosome,
@@ -42,24 +63,6 @@ class GenomeBuilder:
         variants_filename = os.path.basename(variants_file_path)
         self.genome_output_file_stem =\
             os.path.join(output_directory_path, variants_filename[:variants_filename.find('_variants')])
-
-        # Make sure the filenames for the genomes are pristine.
-        for genome_name in self.genome_names:
-            try:
-                os.remove(self.genome_output_file_stem + "_" + genome_name + ".fa")
-            except OSError:
-                pass
-
-        # Make sure the filenames for the genome indel lists are pristine.
-        for genome_name in self.genome_names:
-            try:
-                os.remove(self.genome_output_file_stem + "_indels_" + genome_name + ".txt")
-            except OSError:
-                pass
-        try:
-            os.remove(self.log_file_path)
-        except OSError:
-            pass
 
     def get_unpaired_chr_list(self):
         unpaired_chr_list = [self.gender_chr_names['M']]
@@ -144,7 +147,7 @@ class GenomeBuilder:
                     raise ExpressionPipelineException(f"No sample data found.")
         return sample_index
 
-    def make_genome(self):
+    def execute(self):
         sample_index = self.locate_sample()
         paired_chr_list = self.get_paired_chr_list()
         for chromosome in self.chromosome_list:
@@ -332,7 +335,7 @@ class GenomeBuilder:
             "ignore_snps": args.ignore_snps
         }
 
-        genome_builder = GenomeBuilder(chromosome = args.chromosome,
+        genome_builder = GenomeBuilderStep(chromosome = args.chromosome,
                                      beagle_file_path = args.beagle_file_path,
                                      variants_file_path = args.variants_file_path,
                                      target_sample_name = args.sample_name,
@@ -340,7 +343,7 @@ class GenomeBuilder:
                                      parameters = parameters,
                                      output_directory_path = args.output_directory)
         start = timer()
-        genome_builder.make_genome()
+        genome_builder.execute()
         end = timer()
         sys.stderr.write(f"Genome Builder: {end - start} sec\n")
 
@@ -426,7 +429,7 @@ class Genome:
 
 
 if __name__ == "__main__":
-    sys.exit(GenomeBuilder.main())
+    sys.exit(GenomeBuilderStep.main())
 
 
 '''
