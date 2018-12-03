@@ -10,7 +10,6 @@ import pickle
 from datetime import datetime
 from beers.utilities.general_utils import GeneralUtils
 from beers.expression.expression_pipeline import ExpressionPipeline
-from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sequence.sequence_pipeline import SequencePipeline
 from beers.sample import Sample
 from beers.utilities.adapter_generator import AdapterGenerator
@@ -35,12 +34,13 @@ class Controller:
     def run_library_prep_pipeline(self, args):
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
+        self.setup_dispatcher(stage_name, os.path.join(self.output_directory_path, stage_name))
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         molecule_packet_filenames = [filename
                                      for filename in os.listdir(input_directory_path)
                                      if os.path.isfile(os.path.join(input_directory_path, filename))
                                      and filename.endswith(".gzip")]
-        self.dispatcher.dispatch('serial', os.path.join(self.output_directory_path, stage_name), molecule_packet_filenames)
+        self.dispatcher.dispatch('serial', molecule_packet_filenames)
 
     def run_sequence_pipeline(self, args, molecule_packet=None):
         stage_name = "sequence_pipeline"
@@ -67,10 +67,9 @@ class Controller:
         self.plant_seed()
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
-        self.setup_dispatcher()
 
-    def setup_dispatcher(self):
-        self.dispatcher = Dispatcher(self.configuration)
+    def setup_dispatcher(self, stage_name, output_directory_path):
+        self.dispatcher = Dispatcher(stage_name, self.configuration, output_directory_path)
 
     def setup_flowcell(self, molecule_packet):
         flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
