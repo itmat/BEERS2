@@ -19,7 +19,7 @@ class Dispatcher:
     def dispatch(self, method, molecule_packet_filenames):
         if method == 'multicore':
             self.dispatch_multicore(molecule_packet_filenames)
-        elif method == 'pmcas':
+        elif method == 'pmacs':
             self.dispatch_pmacs(molecule_packet_filenames)
         else:
             self.dispatch_serial(molecule_packet_filenames)
