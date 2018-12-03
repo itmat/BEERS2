@@ -5,11 +5,13 @@ import time
 import sys
 import os
 import resource
+import argparse
+import json
 
 import numpy as np
 
 from beers.molecule import Molecule
-
+from beers.molecule_packet import MoleculePacket
 
 class LibraryPrepPipeline:
 
@@ -31,7 +33,8 @@ class LibraryPrepPipeline:
             step_class = getattr(module, step_name)
             self.steps.append(step_class(step_log_file_path, parameters))
 
-        results_filename = f"library_prep_pipeline_result_molecule_pkt{self.molecule_packet.molecule_packet_id}.pickle"
+        #results_filename = f"library_prep_pipeline_result_molecule_pkt{self.molecule_packet.molecule_packet_id}.pickle"
+        results_filename = f"library_prep_pipeline_result_molecule_pkt{self.molecule_packet.molecule_packet_id}.gzip"
         self.results_file_path = os.path.join(data_directory_path, results_filename)
 
     def validate(self, **kwargs):
@@ -62,8 +65,9 @@ class LibraryPrepPipeline:
             print(f"Finished pipeline in {pipeline_elapsed_time:.1f} seconds")
 
         # Write final sample to a pickle file for inspection
-        with open(self.results_file_path, "wb") as results_file:
-            pickle.dump(molecule_packet, results_file)
+        molecule_packet.serialize(self.results_file_path)
+        #with open(self.results_file_path, "wb") as results_file:
+            #pickle.dump(molecule_packet, results_file)
         print(f"Output final sample to {self.results_file_path}")
 
     def log_sample(self, log_file):
@@ -91,10 +95,37 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(configuration, output_directory_path, molecule_packet):
+    def get_serialized_molecule_packet(configuration, molecule_packet_filename):
+        input_directory_path = configuration["input"]["directory_path"]
+        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
+        molecule_packet = MoleculePacket.deserialize(molecule_packet_file_path)
+        print(f"Library Prep Pipeline input loaded - process RAM "
+              f"at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
+        return molecule_packet
+
+    @staticmethod
+    def main(configuration, output_directory_path, molecule_packet_filename):
+        configuration = json.loads(configuration)
+        molecule_packet = LibraryPrepPipeline.get_serialized_molecule_packet(configuration, molecule_packet_filename)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, molecule_packet)
         library_prep_pipeline.validate()
         library_prep_pipeline.execute()
 
 class BeersValidationException(Exception):
     pass
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Library Prep Pipeline')
+    parser.add_argument('-c', '--config', required=True, help='Configuration')
+    parser.add_argument('-o', '--output_directory', required=True, help='Path to output directory.')
+    parser.add_argument('-p', '--molecule_packet_filename', required=True, help="Serialized Molecule Packet Filename.")
+    args = parser.parse_args()
+    LibraryPrepPipeline.main(args.config, args.output_directory, args.molecule_packet_filename)
+
+'''
+Test:
+python library_prep_pipeline.py \
+ -c ../../config/config.json \
+ -o ../../data/library_prep/output \
+ -p ../../data/library_prep/molecule_packet_start_1.gzip
+'''

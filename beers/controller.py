@@ -15,6 +15,8 @@ from beers.sequence.sequence_pipeline import SequencePipeline
 from beers.sample import Sample
 from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
+from beers.molecule_packet import MoleculePacket
+from beers.dispatcher import Dispatcher
 
 
 class Controller:
@@ -30,14 +32,15 @@ class Controller:
                                 os.path.join(self.output_directory_path, stage_name),
                                 self.input_samples)
 
-    def run_library_prep_pipeline(self, args, molecule_packet=None):
+    def run_library_prep_pipeline(self, args):
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
-        if not molecule_packet:
-            molecule_packet = self.get_input_from_pickle(stage_name)
-        LibraryPrepPipeline.main(self.configuration[stage_name],
-                                 os.path.join(self.output_directory_path, stage_name),
-                                 molecule_packet)
+        input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
+        molecule_packet_filenames = [filename
+                                     for filename in os.listdir(input_directory_path)
+                                     if os.path.isfile(os.path.join(input_directory_path, filename))
+                                     and filename.endswith(".gzip")]
+        self.dispatcher.dispatch('serial', os.path.join(self.output_directory_path, stage_name), molecule_packet_filenames)
 
     def run_sequence_pipeline(self, args, molecule_packet=None):
         stage_name = "sequence_pipeline"
@@ -64,6 +67,10 @@ class Controller:
         self.plant_seed()
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
+        self.setup_dispatcher()
+
+    def setup_dispatcher(self):
+        self.dispatcher = Dispatcher(self.configuration)
 
     def setup_flowcell(self, molecule_packet):
         flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
@@ -107,6 +114,15 @@ class Controller:
         for stage_name in stage_names:
             os.makedirs(os.path.join(self.output_directory_path, stage_name, 'logs'), mode=0o0755, exist_ok=True)
             os.makedirs(os.path.join(self.output_directory_path, stage_name, 'data'), mode=0o0755, exist_ok=True)
+
+    def get_serialized_molecule_packet(self, stage_name):
+        input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
+        molecule_packet_filename = self.configuration[stage_name]["input"]["molecule_packet_filename"]
+        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
+        molecule_packet = MoleculePacket.deserialize(molecule_packet_file_path)
+        print(
+            f"{stage_name} input loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
+        return molecule_packet
 
     def get_input_from_pickle(self, stage_name):
         # Molecule packets coming from file location named in configuration when not directly from

@@ -164,6 +164,16 @@ class Molecule:
         Molecule.next_molecule_id += 1
         return f"{parent_id}.{new_id}"
 
+    def serialize(self):
+        return(f"{self.molecule_id}\t{self.sequence}\t{self.start}\t{self.cigar}\t{self.transcript_id}\t"
+               f"{self.source_start}\t{self.source_cigar}")
+
+    @staticmethod
+    def deserialize(data):
+        data = data[1:] if (data.startswith("#")) else data
+        molecule_id, sequence, start, cigar, transcript_id, source_start, source_cigar = data.rstrip().split("\t")
+        return Molecule(molecule_id, sequence, start, cigar, transcript_id, source_start, source_cigar)
+
 class BeersMoleculeException(Exception):
     """Base class for other molecule exceptions."""
     pass

@@ -127,8 +127,7 @@
       }
     ],
     "input": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
-      "molecule_packet_filename": "molecule_packet_plus_source.pickle"
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep"
     }
   },
   "sequence_pipeline": {

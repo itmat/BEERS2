@@ -29,14 +29,14 @@ class BeagleStep:
             'command': args.command
         }
 
-        beagle = Beagle(parameters)
+        beagle_step = BeagleStep(parameters)
         start = timer()
-        beagle.execute()
+        beagle_step.execute()
         end = timer()
-        sys.stderr.write(f"Beagle: {end - start} sec\n")
+        sys.stderr.write(f"Beagle Step: {end - start} sec\n")
 
 if __name__ == "__main__":
-    sys.exit(Beagle.main())
+    sys.exit(BeagleStep.main())
 
 
 '''Example call

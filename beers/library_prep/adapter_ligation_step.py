@@ -16,8 +16,9 @@ class AdapterLigationStep:
         print(f"{self.name} instantiated")
 
     def execute(self, molecule_packet):
-        print("{self.name} starting")
+        print(f"{self.name} starting")
         sample = molecule_packet.sample
+        print(sample.adapter_labels)
         adapter_5_prime = [adapter.sequence for adapter in self.adapter_generator.adapters
                            if adapter.label == sample.adapter_labels[0]][0]
         adapter_3_prime = [adapter.sequence for adapter in self.adapter_generator.adapters
