@@ -52,9 +52,8 @@ class SequencePipeline:
             pipeline_elapsed_time = time.time() - pipeline_start
             print(f"Finished sequence pipeline in {pipeline_elapsed_time:.1f} seconds")
 
-        # Write final sample to a pickle file for inspection
-        with open(self.results_file_path, "wb") as results_file:
-            pickle.dump(cluster_packet, results_file)
+        # Write final sample to a gzip file for inspection
+        cluster_packet.serialize(self.results_file_path)
         print(f"Output final sample to {self.results_file_path}")
 
     @staticmethod

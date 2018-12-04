@@ -151,5 +151,5 @@ class Cluster:
                 T_counts.append(int(T_count))
                 C_counts.append(int(C_count))
         base_counts = BaseCounts(G_counts, A_counts, T_counts, C_counts)
-        return Cluster(run_id, cluster_id, molecule, coordinates, int(molecule_count), diameter,
+        return Cluster(int(run_id), cluster_id, molecule, coordinates, int(molecule_count), int(diameter),
                        called_sequences, quality_scores, base_counts)
