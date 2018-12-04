@@ -28,7 +28,7 @@ class Dispatcher:
         stage_configuration = json.dumps(self.configuration['library_prep_pipeline'])
         for molecule_packet_filename in molecule_packet_filenames:
             result = subprocess.call(
-            f"python ../beers/library_prep/library_prep_pipeline.py"
+            f"python ./run_library_prep_pipeline.py"
             f" -c '{stage_configuration}' -o {self.output_directory_path}"
             f" -p {molecule_packet_filename}", shell=True)
 
@@ -41,8 +41,13 @@ class Dispatcher:
     def dispatch_pmacs(self, molecule_packet_filenames):
         stage_configuration = json.dumps(self.configuration['library_prep_pipeline'])
         for molecule_packet_filename in molecule_packet_filenames:
+            # result = subprocess.call(
+            #     f"bsub -o {self.std_ouput_file_path} -e {self.std_error_file_path} -J "
+            #     f"python ../beers/library_prep/library_prep_pipeline.py"
+            #     f" -c '{stage_configuration}' -o {self.output_directory_path}"
+            #     f" -p {molecule_packet_filename}", shell=True)
             result = subprocess.call(
                 f"bsub -o {self.std_ouput_file_path} -e {self.std_error_file_path} -J "
-                f"python ../beers/library_prep/library_prep_pipeline.py"
+                f" ./run_library_prep_pipeline.py"
                 f" -c '{stage_configuration}' -o {self.output_directory_path}"
                 f" -p {molecule_packet_filename}", shell=True)

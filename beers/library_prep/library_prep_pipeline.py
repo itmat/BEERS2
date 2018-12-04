@@ -15,6 +15,9 @@ from beers.molecule_packet import MoleculePacket
 
 class LibraryPrepPipeline:
 
+    stage_name = "library_prep_pipeline"
+    package = "beers.library_prep"
+
     def __init__(self, configuration, output_directory_path, molecule_packet):
         self.molecule_packet = molecule_packet
         self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
@@ -22,19 +25,18 @@ class LibraryPrepPipeline:
         self.output_directory_path = output_directory_path
         log_directory_path = os.path.join(output_directory_path, "logs")
         data_directory_path = os.path.join(output_directory_path, 'data')
-        self.log_file_path = os.path.join(log_directory_path, "library_pipeline.log")
+        self.log_file_path = os.path.join(log_directory_path, f"{LibraryPrepPipeline.stage_name}_molecule_pkt{self.molecule_packet.molecule_packet_id}.log")
         self.steps = []
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             step_log_filename = f"{step_name}_molecule_pkt{self.molecule_packet.molecule_packet_id}.log"
             step_log_file_path = os.path.join(log_directory_path, step_log_filename)
             parameters = step["parameters"]
-            module = importlib.import_module(f'.{module_name}', package="beers.library_prep")
+            module = importlib.import_module(f'.{module_name}', package=LibraryPrepPipeline.package)
             step_class = getattr(module, step_name)
             self.steps.append(step_class(step_log_file_path, parameters))
-
-        #results_filename = f"library_prep_pipeline_result_molecule_pkt{self.molecule_packet.molecule_packet_id}.pickle"
-        results_filename = f"library_prep_pipeline_result_molecule_pkt{self.molecule_packet.molecule_packet_id}.gzip"
+        results_filename = f"{LibraryPrepPipeline.stage_name}_" \
+                           f"result_molecule_pkt{self.molecule_packet.molecule_packet_id}.gzip"
         self.results_file_path = os.path.join(data_directory_path, results_filename)
 
     def validate(self, **kwargs):
@@ -62,12 +64,10 @@ class LibraryPrepPipeline:
                       f" {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
 
             pipeline_elapsed_time = time.time() - pipeline_start
-            print(f"Finished pipeline in {pipeline_elapsed_time:.1f} seconds")
+            print(f"Finished {LibraryPrepPipeline.stage_name} in {pipeline_elapsed_time:.1f} seconds")
 
-        # Write final sample to a pickle file for inspection
+        # Write final sample to a gzip file for inspection
         molecule_packet.serialize(self.results_file_path)
-        #with open(self.results_file_path, "wb") as results_file:
-            #pickle.dump(molecule_packet, results_file)
         print(f"Output final sample to {self.results_file_path}")
 
     def log_sample(self, log_file):
@@ -122,10 +122,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     LibraryPrepPipeline.main(args.config, args.output_directory, args.molecule_packet_filename)
 
-'''
-Test:
-python library_prep_pipeline.py \
- -c ../../config/config.json \
- -o ../../data/library_prep/output \
- -p ../../data/library_prep/molecule_packet_start_1.gzip
-'''
