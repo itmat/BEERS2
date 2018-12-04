@@ -3,6 +3,8 @@ import pickle
 from beers.molecule import Molecule
 from beers.molecule_packet import MoleculePacket
 from beers.sample import Sample
+import resource
+import os
 
 class GeneralUtils:
 
@@ -49,6 +51,15 @@ class GeneralUtils:
         molecule_packet = MoleculePacket(molecule_packet_id, sample, molecules)
         with open(molecule_packet_file_path, 'wb') as molecule_packet_file:
             pickle.dump(molecule_packet, molecule_packet_file)
+
+    @staticmethod
+    def get_serialized_molecule_packet(input_directory_path, molecule_packet_filename):
+        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
+        molecule_packet = MoleculePacket.deserialize(molecule_packet_file_path)
+        print(
+            f"Input loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
+        return molecule_packet
+
 
 if __name__ == "__main__":
     pass

@@ -25,10 +25,11 @@ class Dispatcher:
             self.dispatch_serial(molecule_packet_filenames)
 
     def dispatch_serial(self, molecule_packet_filenames):
-        stage_configuration = json.dumps(self.configuration['library_prep_pipeline'])
+        stage_configuration = json.dumps(self.configuration[self.stage_name])
+        stage_process = f"./run_{self.stage_name}.py"
         for molecule_packet_filename in molecule_packet_filenames:
             result = subprocess.call(
-            f"python ./run_library_prep_pipeline.py"
+            f"{stage_process}"
             f" -c '{stage_configuration}' -o {self.output_directory_path}"
             f" -p {molecule_packet_filename}", shell=True)
 
@@ -39,7 +40,8 @@ class Dispatcher:
         pool.starmap(LibraryPrepPipeline.main, data)
 
     def dispatch_pmacs(self, molecule_packet_filenames):
-        stage_configuration = json.dumps(self.configuration['library_prep_pipeline'])
+        stage_configuration = json.dumps(self.configuration[self.stage_name])
+        stage_process = f"./run_{self.stage_name}.py"
         for molecule_packet_filename in molecule_packet_filenames:
             # result = subprocess.call(
             #     f"bsub -o {self.std_ouput_file_path} -e {self.std_error_file_path} -J "
@@ -48,6 +50,6 @@ class Dispatcher:
             #     f" -p {molecule_packet_filename}", shell=True)
             result = subprocess.call(
                 f"bsub -o {self.std_ouput_file_path} -e {self.std_error_file_path} -J "
-                f" ./run_library_prep_pipeline.py"
+                f"{stage_process}"
                 f" -c '{stage_configuration}' -o {self.output_directory_path}"
                 f" -p {molecule_packet_filename}", shell=True)

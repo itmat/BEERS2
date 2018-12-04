@@ -12,6 +12,7 @@ import numpy as np
 
 from beers.molecule import Molecule
 from beers.molecule_packet import MoleculePacket
+from beers.utilities.general_utils import GeneralUtils
 
 class LibraryPrepPipeline:
 
@@ -106,7 +107,8 @@ class LibraryPrepPipeline:
     @staticmethod
     def main(configuration, output_directory_path, molecule_packet_filename):
         configuration = json.loads(configuration)
-        molecule_packet = LibraryPrepPipeline.get_serialized_molecule_packet(configuration, molecule_packet_filename)
+        input_directory_path = configuration["input"]["directory_path"]
+        molecule_packet = GeneralUtils.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, molecule_packet)
         library_prep_pipeline.validate()
         library_prep_pipeline.execute()

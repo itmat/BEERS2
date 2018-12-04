@@ -7,3 +7,5 @@ __pycache__
 beers/personal
 venv*
 beers.egg-info
+config/*_config.json
+

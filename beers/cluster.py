@@ -4,6 +4,8 @@ from io import StringIO
 import math
 from contextlib import closing
 from beers.utilities.general_utils import GeneralUtils
+from beers.flowcell_lane import LaneCoordinates
+from beers.molecule import Molecule
 
 
 BaseCounts = namedtuple('BaseCounts', ["G", "A", "T", "C"])
@@ -15,18 +17,22 @@ class Cluster:
     MIN_ASCII = 33
     MAX_QUALITY = 41
 
-    def __init__(self, run_id, cluster_id, molecule):
-        self.coordinates = None
+    def __init__(self, run_id, cluster_id, molecule, molecule_count=1, diameter=0, coordinates=None,
+                 called_sequences=None, quality_scores=None, base_counts=None):
+        self.coordinates = coordinates
         self.cluster_id = cluster_id
         self.run_id = run_id
         self.molecule = molecule
-        self.diameter = 0
-        self.molecule_count = 1
-        self.quality_scores = []
-        self.called_sequences = []
+        self.diameter = diameter
+        self.molecule_count = molecule_count
+        self.quality_scores = quality_scores or []
+        self.called_sequences = called_sequences or []
         encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
-        counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"} 
-        self.base_counts = BaseCounts(counts['G'],counts['A'], counts['T'], counts['C'])
+        counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"}
+        if base_counts:
+            self.base_counts = base_counts
+        else:
+            self.base_counts = BaseCounts(counts['G'],counts['A'], counts['T'], counts['C'])
 
     def assign_coordinates(self, coordinates):
         self.coordinates = coordinates
@@ -92,6 +98,8 @@ class Cluster:
                  self.base_counts.C[index])
 
     def __str__(self):
+        header = f"run id: {self.run_id}, cluster_id: {self.cluster_id}, molecule_id: {self.molecule.molecule_id}," \
+                 f"molecule_count: {self.molecule_count}, coordinates: {self.coordinates}"
         with closing(StringIO()) as output:
             output.write("pos\tG\tA\tT\tC\torig\n")
             for index in range(len(self.molecule.sequence)):
@@ -99,3 +107,45 @@ class Cluster:
                 [output.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
                 output.write(f"{self.molecule.sequence[index]}\n")
             return output.getvalue()
+
+    def serialize(self):
+        output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\t"
+        if self.coordinates:
+            output += f"{self.coordinates.serialize()}\t{self.molecule.serialize()}\n"
+        else:
+            output += f"null\t{self.molecule.serialize()}\n"
+        for index in range(len(self.called_sequences)):
+            output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\n"
+        with closing(StringIO()) as counts:
+            for index in range(len(self.molecule.sequence)):
+                [counts.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
+                counts.write("\n")
+            output += counts.getvalue()
+        return output
+
+    @staticmethod
+    def deserialize(data):
+        called_sequences = []
+        quality_scores = []
+        G_counts = []
+        A_counts = []
+        T_counts = []
+        C_counts = []
+        for line_number, line in enumerate(data):
+            if line.startswith("##"):
+                called_sequence, quality_score = line[2:].rstrip().split("\t")
+                called_sequences.append(called_sequence)
+                quality_scores.append(quality_score)
+            elif line.startswith("#"):
+                cluster_id, run_id, molecule_count, diameter, objs = line[1:].rstrip().split("\t")
+                coordinates = LaneCoordinates.deserialize(objs[0])
+                molecule = Molecule.deserialize(objs[1])
+            else:
+                G_count, A_count, T_count, C_count = line.rstrip().split("\t")
+                G_counts.append(G_count)
+                A_counts.append(A_count)
+                T_counts.append(T_count)
+                C_counts.append(C_count)
+        base_counts = BaseCounts(G_counts, A_counts, T_counts, C_counts)
+        return Cluster(run_id, cluster_id, molecule, molecule_count, diameter, coordinates,
+                       called_sequences, quality_scores, base_counts)

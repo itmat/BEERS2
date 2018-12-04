@@ -42,3 +42,12 @@ class LaneCoordinates:
 
     def __str__(self):
         return f"lane: {self.lane}, tile: {self.tile}, x: {self.x}, y: {self.y}"
+
+    def serialize(self):
+        return f"#{self.lane}\t{self.tile}\t{self.x}\t{self.y}"
+
+    @staticmethod
+    def deserialize(self, data):
+        data = data[1:] if (data.startswith("#")) else data
+        lane, tile, x, y = data.rstrip().split("\t")
+        return LaneCoordinates(lane, tile, x, y)

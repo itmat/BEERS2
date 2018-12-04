@@ -42,11 +42,12 @@ class Controller:
                                      and filename.endswith(".gzip")]
         self.dispatcher.dispatch('serial', molecule_packet_filenames)
 
-    def run_sequence_pipeline(self, args, molecule_packet=None):
+    def run_sequence_pipeline(self, args):
         stage_name = "sequence_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
-        if not molecule_packet:
-            molecule_packet = self.get_input_from_pickle(stage_name)
+        input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
+        molecule_packet_filename = self.configuration[stage_name]["input"]["molecule_packet_filename"]
+        molecule_packet = GeneralUtils.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
         cluster_packet = self.setup_flowcell(molecule_packet)
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
