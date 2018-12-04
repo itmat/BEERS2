@@ -17,7 +17,7 @@ class Cluster:
     MIN_ASCII = 33
     MAX_QUALITY = 41
 
-    def __init__(self, run_id, cluster_id, molecule, molecule_count=1, diameter=0, coordinates=None,
+    def __init__(self, run_id, cluster_id, molecule, coordinates, molecule_count=1, diameter=0,
                  called_sequences=None, quality_scores=None, base_counts=None):
         self.coordinates = coordinates
         self.cluster_id = cluster_id
@@ -98,22 +98,22 @@ class Cluster:
                  self.base_counts.C[index])
 
     def __str__(self):
-        header = f"run id: {self.run_id}, cluster_id: {self.cluster_id}, molecule_id: {self.molecule.molecule_id}," \
-                 f"molecule_count: {self.molecule_count}, coordinates: {self.coordinates}"
+        header = f"run id: {self.run_id}, cluster_id: {self.cluster_id}, molecule_id: {self.molecule.molecule_id}, " \
+                 f"molecule_count: {self.molecule_count}, coordinates: {self.coordinates}\n"
+        for index in range(len(self.called_sequences)):
+            header += f"called sequence: {self.called_sequences[index]}\n"
+            header += f"quality score: {self.quality_scores[index]}\n"
         with closing(StringIO()) as output:
             output.write("pos\tG\tA\tT\tC\torig\n")
             for index in range(len(self.molecule.sequence)):
                 output.write(f"{index}\t")
                 [output.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
                 output.write(f"{self.molecule.sequence[index]}\n")
-            return output.getvalue()
+            return header + output.getvalue()
 
     def serialize(self):
-        output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\t"
-        if self.coordinates:
-            output += f"{self.coordinates.serialize()}\t{self.molecule.serialize()}\n"
-        else:
-            output += f"null\t{self.molecule.serialize()}\n"
+        output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\n"
+        output += f"#{self.coordinates.serialize()}\n#{self.molecule.serialize()}\n"
         for index in range(len(self.called_sequences)):
             output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\n"
         with closing(StringIO()) as counts:
@@ -121,7 +121,7 @@ class Cluster:
                 [counts.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
                 counts.write("\n")
             output += counts.getvalue()
-        return output
+        return output.rstrip()
 
     @staticmethod
     def deserialize(data):
@@ -131,15 +131,18 @@ class Cluster:
         A_counts = []
         T_counts = []
         C_counts = []
-        for line_number, line in enumerate(data):
+        for line_number, line in enumerate(data.split("\n")):
             if line.startswith("##"):
                 called_sequence, quality_score = line[2:].rstrip().split("\t")
                 called_sequences.append(called_sequence)
                 quality_scores.append(quality_score)
             elif line.startswith("#"):
-                cluster_id, run_id, molecule_count, diameter, objs = line[1:].rstrip().split("\t")
-                coordinates = LaneCoordinates.deserialize(objs[0])
-                molecule = Molecule.deserialize(objs[1])
+                if line_number == 0:
+                    cluster_id, run_id, molecule_count, diameter = line[1:].rstrip().split("\t")
+                if line_number == 1:
+                    coordinates = LaneCoordinates.deserialize(line[1:].rstrip())
+                if line_number == 2:
+                    molecule = Molecule.deserialize(line[1:].rstrip())
             else:
                 G_count, A_count, T_count, C_count = line.rstrip().split("\t")
                 G_counts.append(G_count)
@@ -147,5 +150,5 @@ class Cluster:
                 T_counts.append(T_count)
                 C_counts.append(C_count)
         base_counts = BaseCounts(G_counts, A_counts, T_counts, C_counts)
-        return Cluster(run_id, cluster_id, molecule, molecule_count, diameter, coordinates,
+        return Cluster(run_id, cluster_id, molecule, coordinates, molecule_count, diameter,
                        called_sequences, quality_scores, base_counts)

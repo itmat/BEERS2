@@ -51,9 +51,11 @@ class Flowcell:
         cluster_packet_id = ClusterPacket.next_cluster_packet_id
         ClusterPacket.next_cluster_packet_id += 1
         clusters = []
-        for molecule in molecule_packet.molecules:
+        for counter, molecule in enumerate(molecule_packet.molecules):
             cluster_id = Cluster.next_cluster_id
-            clusters.append(Cluster(self.run_id, cluster_id, molecule))
+            clusters.append(Cluster(self.run_id, cluster_id, molecule, next(self.coordinate_generator)))
+            if (counter + 1) % 100 == 0:
+                print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
             Cluster.next_cluster_id += 1
         return ClusterPacket(cluster_packet_id, molecule_packet.sample, clusters)
 
@@ -62,14 +64,8 @@ class Flowcell:
         print(f"Number of molecules to be attached to flowcell {len(retained_molecules)}")
         retained_molecule_packet = MoleculePacket(MoleculePacket.next_molecule_packet_id,
                                                   molecule_packet.sample, retained_molecules)
-        # Attempt to keep memory footprint in bounds.
-        molecule_packet = None
         MoleculePacket.next_molecule_packet_id += 1
         cluster_packet = self.convert_molecule_pkt_to_cluster_pkt(retained_molecule_packet)
-        for counter, cluster in enumerate(cluster_packet.clusters):
-            cluster.assign_coordinates(next(self.coordinate_generator))
-            if (counter + 1) % 100 == 0:
-                print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
         return cluster_packet
 
     def generate_coordinates(self):
