@@ -15,6 +15,7 @@ from beers.sample import Sample
 from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
 from beers.molecule_packet import MoleculePacket
+from beers.cluster_packet import ClusterPacket
 from beers.dispatcher import Dispatcher
 
 
@@ -49,6 +50,10 @@ class Controller:
         molecule_packet_filename = self.configuration[stage_name]["input"]["molecule_packet_filename"]
         molecule_packet = GeneralUtils.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
         cluster_packet = self.setup_flowcell(molecule_packet)
+        cluster_packet_file_path = os.path.join(self.output_directory_path, "controller", "data",
+                                              f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip")
+        cluster_packet.serialize(cluster_packet_file_path)
+        cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
         SequencePipeline.main(self.configuration[stage_name],
@@ -114,15 +119,6 @@ class Controller:
         for stage_name in stage_names:
             os.makedirs(os.path.join(self.output_directory_path, stage_name, 'logs'), mode=0o0755, exist_ok=True)
             os.makedirs(os.path.join(self.output_directory_path, stage_name, 'data'), mode=0o0755, exist_ok=True)
-
-    def get_serialized_molecule_packet(self, stage_name):
-        input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
-        molecule_packet_filename = self.configuration[stage_name]["input"]["molecule_packet_filename"]
-        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
-        molecule_packet = MoleculePacket.deserialize(molecule_packet_file_path)
-        print(
-            f"{stage_name} input loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
-        return molecule_packet
 
     def get_input_from_pickle(self, stage_name):
         # Molecule packets coming from file location named in configuration when not directly from

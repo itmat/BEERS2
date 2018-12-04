@@ -121,10 +121,11 @@ class Cluster:
                 [counts.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
                 counts.write("\n")
             output += counts.getvalue()
-        return output.rstrip()
+        return output
 
     @staticmethod
     def deserialize(data):
+        data = data.rstrip()
         called_sequences = []
         quality_scores = []
         G_counts = []
@@ -145,10 +146,10 @@ class Cluster:
                     molecule = Molecule.deserialize(line[1:].rstrip())
             else:
                 G_count, A_count, T_count, C_count = line.rstrip().split("\t")
-                G_counts.append(G_count)
-                A_counts.append(A_count)
-                T_counts.append(T_count)
-                C_counts.append(C_count)
+                G_counts.append(int(G_count))
+                A_counts.append(int(A_count))
+                T_counts.append(int(T_count))
+                C_counts.append(int(C_count))
         base_counts = BaseCounts(G_counts, A_counts, T_counts, C_counts)
-        return Cluster(run_id, cluster_id, molecule, coordinates, molecule_count, diameter,
+        return Cluster(run_id, cluster_id, molecule, coordinates, int(molecule_count), diameter,
                        called_sequences, quality_scores, base_counts)

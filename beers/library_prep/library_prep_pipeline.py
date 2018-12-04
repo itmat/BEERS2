@@ -96,15 +96,6 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def get_serialized_molecule_packet(configuration, molecule_packet_filename):
-        input_directory_path = configuration["input"]["directory_path"]
-        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
-        molecule_packet = MoleculePacket.deserialize(molecule_packet_file_path)
-        print(f"Library Prep Pipeline input loaded - process RAM "
-              f"at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
-        return molecule_packet
-
-    @staticmethod
     def main(configuration, output_directory_path, molecule_packet_filename):
         configuration = json.loads(configuration)
         input_directory_path = configuration["input"]["directory_path"]
