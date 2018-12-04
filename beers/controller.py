@@ -15,8 +15,8 @@ from beers.sample import Sample
 from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
 from beers.molecule_packet import MoleculePacket
-from beers.cluster_packet import ClusterPacket
 from beers.dispatcher import Dispatcher
+from beers.fast_q import FastQ
 
 
 class Controller:
@@ -35,8 +35,8 @@ class Controller:
     def run_library_prep_pipeline(self, args):
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
-        self.setup_dispatcher(stage_name, os.path.join(self.output_directory_path, stage_name))
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
+        self.setup_dispatcher(stage_name, input_directory_path, os.path.join(self.output_directory_path, stage_name))
         molecule_packet_filenames = [filename
                                      for filename in os.listdir(input_directory_path)
                                      if os.path.isfile(os.path.join(input_directory_path, filename))
@@ -47,18 +47,33 @@ class Controller:
         stage_name = "sequence_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
-        molecule_packet_filename = self.configuration[stage_name]["input"]["molecule_packet_filename"]
-        molecule_packet = GeneralUtils.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
-        cluster_packet = self.setup_flowcell(molecule_packet)
-        cluster_packet_file_path = os.path.join(self.output_directory_path, "controller", "data",
-                                              f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip")
-        cluster_packet.serialize(cluster_packet_file_path)
-        cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
+        intermediate_directory_path = os.path.join(self.output_directory_path, self.controller_name, "data")
+        self.setup_dispatcher(stage_name, intermediate_directory_path, os.path.join(self.output_directory_path, stage_name))
+        molecule_packet_filenames = [filename
+                                     for filename in os.listdir(input_directory_path)
+                                     if os.path.isfile(os.path.join(input_directory_path, filename))
+                                     and filename.endswith(".gzip")]
+        for molecule_packet_filename in molecule_packet_filenames:
+            molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
+            cluster_packet = self.setup_flowcell(molecule_packet)
+            cluster_packet_filename = f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip"
+            cluster_packet.serialize(os.path.join(intermediate_directory_path, cluster_packet_filename))
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
-        SequencePipeline.main(self.configuration[stage_name],
-                              os.path.join(self.output_directory_path, stage_name),
-                              cluster_packet)
+        cluster_packet_filenames = [filename
+                                    for filename in os.listdir(intermediate_directory_path)
+                                    if os.path.isfile(os.path.join(intermediate_directory_path, filename))
+                                    and filename.endswith(".gzip")]
+        self.dispatcher.dispatch('serial', cluster_packet_filenames)
+        #cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
+        #SequencePipeline.main(self.configuration[stage_name],
+        #                      os.path.join(self.output_directory_path, stage_name),
+        #                      cluster_packet)
+        for lane in self.flowcell.lanes_to_use:
+            fast_q = FastQ(lane,
+                           os.path.join(self.output_directory_path, stage_name, "data"),
+                           os.path.join(self.output_directory_path, self.controller_name, "data"))
+            fast_q.generate_report()
 
     def perform_setup(self, args, stage_names):
         self.debug = args.debug
@@ -74,15 +89,15 @@ class Controller:
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
 
-    def setup_dispatcher(self, stage_name, output_directory_path):
-        self.dispatcher = Dispatcher(stage_name, self.configuration, output_directory_path)
+    def setup_dispatcher(self, stage_name, input_directory_path, output_directory_path):
+        self.dispatcher = Dispatcher(stage_name, self.configuration, input_directory_path, output_directory_path)
 
     def setup_flowcell(self, molecule_packet):
-        flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
-        valid, msg = flowcell.validate()
+        self.flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
+        valid, msg = self.flowcell.validate()
         if not valid:
             raise (ControllerValidationException(msg))
-        return flowcell.load_flowcell(molecule_packet)
+        return self.flowcell.load_flowcell(molecule_packet)
 
     def retrieve_configuration(self, configuration_file_path):
         with open(configuration_file_path, "r+") as configuration_file:

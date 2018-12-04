@@ -1,5 +1,7 @@
 from beers.sample import Sample
 from beers.cluster import Cluster
+import os
+import resource
 
 class ClusterPacket:
 
@@ -41,3 +43,11 @@ class ClusterPacket:
                     else:
                         cluster_lines.append(line.decode())
         return ClusterPacket(cluster_packet_id, sample, clusters)
+
+    @staticmethod
+    def get_serialized_cluster_packet(intermediate_directory_path, cluster_packet_filename):
+        cluster_packet_file_path = os.path.join(intermediate_directory_path, cluster_packet_filename)
+        cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
+        print(
+            f"Intermediate loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
+        return cluster_packet

@@ -1,10 +1,4 @@
 import time as time
-import pickle
-from beers.molecule import Molecule
-from beers.molecule_packet import MoleculePacket
-from beers.sample import Sample
-import resource
-import os
 
 class GeneralUtils:
 
@@ -35,30 +29,6 @@ class GeneralUtils:
         """
         complement_strand = ''.join(GeneralUtils.base_complements[base] for base in strand)
         return complement_strand[::-1]
-
-    @staticmethod
-    def reset_molecule_ids(sample_file_path):
-        with open(sample_file_path, 'rb') as sample_file:
-            molecules = list(pickle.load(sample_file))
-        for molecule in molecules:
-            molecule.molecule_id = Molecule.next_molecule_id
-            Molecule.next_molecule_id += 1
-        with open(sample_file_path, "wb") as sample_file:
-            pickle.dump(molecules, sample_file)
-
-    @staticmethod
-    def create_pickled_molecule_packet(molecule_packet_id, sample, molecules, molecule_packet_file_path):
-        molecule_packet = MoleculePacket(molecule_packet_id, sample, molecules)
-        with open(molecule_packet_file_path, 'wb') as molecule_packet_file:
-            pickle.dump(molecule_packet, molecule_packet_file)
-
-    @staticmethod
-    def get_serialized_molecule_packet(input_directory_path, molecule_packet_filename):
-        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
-        molecule_packet = MoleculePacket.deserialize(molecule_packet_file_path)
-        print(
-            f"Input loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
-        return molecule_packet
 
 
 if __name__ == "__main__":

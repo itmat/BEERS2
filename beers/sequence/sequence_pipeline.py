@@ -4,6 +4,8 @@ import os
 import time
 import numpy as np
 import resource
+import json
+from beers.cluster_packet import ClusterPacket
 
 
 class SequencePipeline:
@@ -27,7 +29,7 @@ class SequencePipeline:
             step_class = getattr(module, step_name)
             self.steps.append(step_class(step_log_file_path, parameters))
 
-        results_filename = f"{SequencePipeline.stage_name}_result_cluster_pkt{self.cluster_packet.cluster_packet_id}.pickle"
+        results_filename = f"{SequencePipeline.stage_name}_result_cluster_pkt{self.cluster_packet.cluster_packet_id}.gzip"
         self.results_file_path = os.path.join(data_directory_path, results_filename)
 
     def validate(self, **kwargs):
@@ -57,7 +59,9 @@ class SequencePipeline:
         print(f"Output final sample to {self.results_file_path}")
 
     @staticmethod
-    def main(configuration, output_directory_path, cluster_packet):
+    def main(configuration, input_directory_path, output_directory_path, cluster_packet_filename):
+        configuration = json.loads(configuration)
+        cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_directory_path, cluster_packet_filename)
         sequence_pipeline = SequencePipeline(configuration, output_directory_path, cluster_packet)
         sequence_pipeline.validate()
         sequence_pipeline.execute()

@@ -1,5 +1,7 @@
 from beers.sample import Sample
 from beers.molecule import Molecule
+import os
+import resource
 
 class MoleculePacket:
 
@@ -30,3 +32,10 @@ class MoleculePacket:
                     molecules.append(Molecule.deserialize(line.decode()))
         return MoleculePacket(molecule_packet_id, sample, molecules)
 
+    @staticmethod
+    def get_serialized_molecule_packet(input_directory_path, molecule_packet_filename):
+        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
+        molecule_packet = MoleculePacket.deserialize(molecule_packet_file_path)
+        print(
+            f"Input loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
+        return molecule_packet

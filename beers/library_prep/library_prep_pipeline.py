@@ -12,7 +12,7 @@ import numpy as np
 
 from beers.molecule import Molecule
 from beers.molecule_packet import MoleculePacket
-from beers.utilities.general_utils import GeneralUtils
+
 
 class LibraryPrepPipeline:
 
@@ -96,10 +96,9 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(configuration, output_directory_path, molecule_packet_filename):
+    def main(configuration, input_directory_path, output_directory_path, molecule_packet_filename):
         configuration = json.loads(configuration)
-        input_directory_path = configuration["input"]["directory_path"]
-        molecule_packet = GeneralUtils.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
+        molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, molecule_packet)
         library_prep_pipeline.validate()
         library_prep_pipeline.execute()

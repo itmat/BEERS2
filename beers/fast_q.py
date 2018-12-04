@@ -1,6 +1,7 @@
 import os
 import pickle
 from collections import namedtuple
+from beers.cluster_packet import ClusterPacket
 
 
 class FastQ:
@@ -16,9 +17,8 @@ class FastQ:
                      if os.path.isfile(os.path.join(self.cluster_packet_directory, cluster_packet_filename))]
         for cluster_packet_filename in cluster_packet_filenames:
             cluster_packet_file_path = os.path.join(self.cluster_packet_directory, cluster_packet_filename)
-            with open(cluster_packet_file_path, 'rb') as cluster_packet_file:
-                cluster_packet = pickle.load(cluster_packet_file)
-                sample_name = cluster_packet.sample.sample_name
+            cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
+            sample_name = cluster_packet.sample.sample_name
             lane_clusters.extend([cluster for cluster in cluster_packet.clusters
                                   if cluster.coordinates.lane == self.lane])
             [cluster.generate_fasta_header(sample_name) for cluster in lane_clusters]
