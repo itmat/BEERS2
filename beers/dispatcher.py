@@ -47,7 +47,7 @@ class Dispatcher:
             #     f" -c '{stage_configuration}' -o {self.output_directory_path}"
             #     f" -p {molecule_packet_filename}", shell=True)
             result = subprocess.call(
-                f"bsub -o {self.std_ouput_file_path} -e {self.std_error_file_path} -J "
+                f"bsub -o {self.std_ouput_file_path} -e {self.std_error_file_path}"
                 f" ./run_library_prep_pipeline.py"
                 f" -c '{stage_configuration}' -o {self.output_directory_path}"
                 f" -p {molecule_packet_filename}", shell=True)
