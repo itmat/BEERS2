@@ -2,6 +2,7 @@
   "controller": {
     "run_id": null,
     "seed": 100,
+    "dispatcher_mode": "serial",
     "input": {
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
       "data": [

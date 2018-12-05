@@ -36,19 +36,19 @@ class Controller:
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
-        self.setup_dispatcher(stage_name, input_directory_path, os.path.join(self.output_directory_path, stage_name))
+        self.setup_dispatcher(args.dispatcher_mode, stage_name, input_directory_path, os.path.join(self.output_directory_path, stage_name))
         molecule_packet_filenames = [filename
                                      for filename in os.listdir(input_directory_path)
                                      if os.path.isfile(os.path.join(input_directory_path, filename))
                                      and filename.endswith(".gzip")]
-        self.dispatcher.dispatch('serial', molecule_packet_filenames)
+        self.dispatcher.dispatch(molecule_packet_filenames)
 
     def run_sequence_pipeline(self, args):
         stage_name = "sequence_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         intermediate_directory_path = os.path.join(self.output_directory_path, self.controller_name, "data")
-        self.setup_dispatcher(stage_name, intermediate_directory_path, os.path.join(self.output_directory_path, stage_name))
+        self.setup_dispatcher(args.dispatcher_mode, stage_name, intermediate_directory_path, os.path.join(self.output_directory_path, stage_name))
         molecule_packet_filenames = [filename
                                      for filename in os.listdir(input_directory_path)
                                      if os.path.isfile(os.path.join(input_directory_path, filename))
@@ -64,7 +64,7 @@ class Controller:
                                     for filename in os.listdir(intermediate_directory_path)
                                     if os.path.isfile(os.path.join(intermediate_directory_path, filename))
                                     and filename.endswith(".gzip")]
-        self.dispatcher.dispatch('serial', cluster_packet_filenames)
+        self.dispatcher.dispatch(cluster_packet_filenames)
         #cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
         #SequencePipeline.main(self.configuration[stage_name],
         #                      os.path.join(self.output_directory_path, stage_name),
@@ -74,6 +74,9 @@ class Controller:
                            os.path.join(self.output_directory_path, stage_name, "data"),
                            os.path.join(self.output_directory_path, self.controller_name, "data"))
             fast_q.generate_report()
+
+    def run_prep_and_sequence_pipeline(self, args):
+        pass
 
     def perform_setup(self, args, stage_names):
         self.debug = args.debug
@@ -89,8 +92,13 @@ class Controller:
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
 
-    def setup_dispatcher(self, stage_name, input_directory_path, output_directory_path):
-        self.dispatcher = Dispatcher(stage_name, self.configuration, input_directory_path, output_directory_path)
+    def setup_dispatcher(self, dispatcher_mode, stage_name, input_directory_path, output_directory_path):
+        if not dispatcher_mode:
+            if not self.controller_configuration.get('dispatcher_mode', None):
+                raise ControllerValidationException('No dispatcher_mode given either on the command line'
+                                                    ' or in the configuration file')
+            dispatcher_mode = self.controller_configuration['dispatcher_mode']
+        self.dispatcher = Dispatcher(dispatcher_mode, stage_name, self.configuration, input_directory_path, output_directory_path)
 
     def setup_flowcell(self, molecule_packet):
         self.flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])

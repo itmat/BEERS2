@@ -12,6 +12,8 @@ optional_named = parser.add_argument_group('optional named arguments - these ove
 optional_named.add_argument('-r', '--run_id', type=int, help="Integer used to specify run id.")
 optional_named.add_argument('-d', '--debug', action='store_true',
                             help='Indicates whether additional diagnostics are printed.')
+optional_named.add_argument('-m', '--dispatcher_mode', choices=['serial', 'multicore', 'lsf'],
+                            help='Indicates whether to dispatch jobs serially, using multicore, or using lsf')
 subparsers = parser.add_subparsers(help='pipeline subcommand', dest="subcommand")
 subparsers.required = True
 
@@ -23,6 +25,10 @@ parser_library_prep_pipeline.set_defaults(func=controller.run_library_prep_pipel
 
 parser_sequence_pipeline = subparsers.add_parser('sequence_pipeline', help='Run the sequence pipeline only')
 parser_sequence_pipeline.set_defaults(func=controller.run_sequence_pipeline)
+
+parser_prep_and_sequence_pipeline = subparsers.add_parser('prep_and_sequence_pipeline',
+                                                          help='Run both the library prep and sequence pipelines')
+parser_prep_and_sequence_pipeline.set_defaults(func=controller.run_prep_and_sequence_pipeline)
 
 args = parser.parse_args()
 args.func(args)

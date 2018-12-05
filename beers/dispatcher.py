@@ -3,27 +3,28 @@ import os
 import re
 import json
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
+from beers.sequence.sequence_pipeline import SequencePipeline
 from multiprocessing import Pool
 
 class Dispatcher:
 
     next_molecule_packet_id = 1
 
-    def __init__(self, stage_name, configuration, input_directory_path, output_directory_path):
+    def __init__(self, dispatcher_mode, stage_name, configuration, input_directory_path, output_directory_path):
+        self.dispatcher_mode = dispatcher_mode
         self.stage_name = stage_name
         self.configuration = configuration
         self.input_directory_path = input_directory_path
         self.output_directory_path = output_directory_path
         self.log_directory_path = os.path.join(output_directory_path, "logs")
-        leading_roman_pattern = '^([ivx]+)(.*)$'
 
-    def dispatch(self, method, molecule_packet_filenames):
-        if method == 'multicore':
-            self.dispatch_multicore(molecule_packet_filenames)
-        elif method == 'pmacs':
-            self.dispatch_pmacs(molecule_packet_filenames)
+    def dispatch(self, packet_filenames):
+        if self.dispatcher_mode == 'multicore':
+            self.dispatch_multicore(packet_filenames)
+        elif self.dispatcher_mode == 'lsf':
+            self.dispatch_lsf(packet_filenames)
         else:
-            self.dispatch_serial(molecule_packet_filenames)
+            self.dispatch_serial(packet_filenames)
 
     def dispatch_serial(self, packet_filenames):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
@@ -34,14 +35,16 @@ class Dispatcher:
             f" -c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path}"
             f" -p {packet_filename}", shell=True)
 
-    def dispatch_multicore(self, molecule_packet_filenames):
+    def dispatch_multicore(self, packet_filenames):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        data = [(stage_configuration, self.output_directory_path, molecule_packet_filename) for molecule_packet_filename in molecule_packet_filenames]
+        data = [(stage_configuration, self.output_directory_path, packet_filename) for packet_filename in packet_filenames]
         pool = Pool(processes=2)
-        # TODO - class cannot be hardcoded
-        pool.starmap(LibraryPrepPipeline.main, data)
+        if self.stage_name == 'library_prep_pipeline':
+            pool.starmap(LibraryPrepPipeline.main, data)
+        else:
+            pool.starmap(SequencePipeline.main, data)
 
-    def dispatch_pmacs(self, packet_filenames):
+    def dispatch_lsf(self, packet_filenames):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"./run_{self.stage_name}.py"
         for ctr, packet_filename in enumerate(packet_filenames):
