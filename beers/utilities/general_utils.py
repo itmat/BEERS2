@@ -4,6 +4,8 @@ import glob
 
 class GeneralUtils:
 
+    NUMBER_OF_FILE_PER_DIRECTORY = 200
+
     @staticmethod
     def generate_seed():
         """
@@ -33,10 +35,22 @@ class GeneralUtils:
         return complement_strand[::-1]
 
     @staticmethod
+    def create_subdirectories(packet_count, parent_directory_path):
+        max_packet_group = packet_count // GeneralUtils.NUMBER_OF_FILE_PER_DIRECTORY
+        log_directory_path = os.path.join(parent_directory_path, "logs")
+        data_directory_path = os.path.join(parent_directory_path, 'data')
+        for packet_group in range(max_packet_group + 1):
+            log_subdirectory_path = os.path.join(log_directory_path, f'pkt_grp{packet_group}')
+            data_subdirectory_path = os.path.join(data_directory_path, f'pkt_grp{packet_group}')
+            os.makedirs(log_subdirectory_path, mode=0o0755, exist_ok=True)
+            os.makedirs(data_subdirectory_path, mode=0o0755, exist_ok=True)
+        return log_subdirectory_path, data_subdirectory_path
+
+    @staticmethod
     def get_output_subdirectories(packet_id, output_directory_path):
         log_directory_path = os.path.join(output_directory_path, "logs")
         data_directory_path = os.path.join(output_directory_path, 'data')
-        packet_group = packet_id // 200
+        packet_group = packet_id // GeneralUtils.NUMBER_OF_FILE_PER_DIRECTORY
         log_subdirectory_path = os.path.join(log_directory_path, f'pkt_grp{packet_group}')
         data_subdirectory_path = os.path.join(data_directory_path, f'pkt_grp{packet_group}')
         return log_subdirectory_path, data_subdirectory_path
