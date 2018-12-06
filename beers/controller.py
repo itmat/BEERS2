@@ -17,6 +17,7 @@ from beers.flowcell import Flowcell
 from beers.molecule_packet import MoleculePacket
 from beers.dispatcher import Dispatcher
 from beers.fast_q import FastQ
+import glob
 
 
 class Controller:
@@ -37,10 +38,8 @@ class Controller:
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         self.setup_dispatcher(args.dispatcher_mode, stage_name, input_directory_path, os.path.join(self.output_directory_path, stage_name))
-        molecule_packet_filenames = [filename
-                                     for filename in os.listdir(input_directory_path)
-                                     if os.path.isfile(os.path.join(input_directory_path, filename))
-                                     and filename.endswith(".gzip")]
+        # Packet files will be in nested directories (at least one level deep)
+        molecule_packet_filenames = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
         self.dispatcher.dispatch(molecule_packet_filenames)
 
     def run_sequence_pipeline(self, args):
@@ -49,26 +48,19 @@ class Controller:
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         intermediate_directory_path = os.path.join(self.output_directory_path, self.controller_name, "data")
         self.setup_dispatcher(args.dispatcher_mode, stage_name, intermediate_directory_path, os.path.join(self.output_directory_path, stage_name))
-        molecule_packet_filenames = [filename
-                                     for filename in os.listdir(input_directory_path)
-                                     if os.path.isfile(os.path.join(input_directory_path, filename))
-                                     and filename.endswith(".gzip")]
-        for molecule_packet_filename in molecule_packet_filenames:
+        cluster_packet_file_paths = []
+        for molecule_packet_filename in glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True):
             molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
             cluster_packet = self.setup_flowcell(molecule_packet)
             cluster_packet_filename = f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip"
-            cluster_packet.serialize(os.path.join(intermediate_directory_path, cluster_packet_filename))
+            log_subdirectory_path, data_subdirectory_path = \
+                GeneralUtils.create_output_subdirectories(cluster_packet.cluster_packet_id, intermediate_directory_path)
+            cluster_packet_file_path = os.path.join(data_subdirectory_path, cluster_packet_filename)
+            cluster_packet.serialize(cluster_packet_file_path)
+            cluster_packet_file_paths.append(cluster_packet_file_path)
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
-        cluster_packet_filenames = [filename
-                                    for filename in os.listdir(intermediate_directory_path)
-                                    if os.path.isfile(os.path.join(intermediate_directory_path, filename))
-                                    and filename.endswith(".gzip")]
-        self.dispatcher.dispatch(cluster_packet_filenames)
-        #cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
-        #SequencePipeline.main(self.configuration[stage_name],
-        #                      os.path.join(self.output_directory_path, stage_name),
-        #                      cluster_packet)
+        self.dispatcher.dispatch(cluster_packet_file_paths)
         for lane in self.flowcell.lanes_to_use:
             fast_q = FastQ(lane,
                            os.path.join(self.output_directory_path, stage_name, "data"),

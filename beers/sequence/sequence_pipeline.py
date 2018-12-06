@@ -6,6 +6,7 @@ import numpy as np
 import resource
 import json
 from beers.cluster_packet import ClusterPacket
+from beers.utilities.general_utils import GeneralUtils
 
 
 class SequencePipeline:
@@ -15,22 +16,23 @@ class SequencePipeline:
 
     def __init__(self, configuration, output_directory_path, cluster_packet):
         self.cluster_packet = cluster_packet
-        output_directory_path = output_directory_path
-        log_directory_path = os.path.join(output_directory_path, "logs")
-        data_directory_path = os.path.join(output_directory_path, 'data')
-        self.log_file_path = os.path.join(log_directory_path, "sequence_pipeline.log")
+        log_subdirectory_path, data_subdirectory_path = \
+            GeneralUtils.create_output_subdirectories(self.cluster_packet.cluster_packet_id, output_directory_path)
+        self.log_file_path = os.path.join(log_subdirectory_path,
+                                          f"{SequencePipeline.stage_name}_"
+                                          f"cluster_pkt{self.cluster_packet.cluster_packet_id}.log")
         self.steps = []
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             step_log_filename = f"{step_name}_cluster_pkt{self.cluster_packet.cluster_packet_id}.log"
-            step_log_file_path = os.path.join(log_directory_path, step_log_filename)
+            step_log_file_path = os.path.join(log_subdirectory_path, step_log_filename)
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=SequencePipeline.package)
             step_class = getattr(module, step_name)
             self.steps.append(step_class(step_log_file_path, parameters))
 
         results_filename = f"{SequencePipeline.stage_name}_result_cluster_pkt{self.cluster_packet.cluster_packet_id}.gzip"
-        self.results_file_path = os.path.join(data_directory_path, results_filename)
+        self.results_file_path = os.path.join(data_subdirectory_path, results_filename)
 
     def validate(self, **kwargs):
         if not all([step.validate() for step in self.steps]):

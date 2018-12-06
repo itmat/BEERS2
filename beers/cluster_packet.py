@@ -32,7 +32,7 @@ class ClusterPacket:
             for line_number, line in enumerate(obj_file):
                 line = line.rstrip()
                 if line_number == 0:
-                    cluster_packet_id = line[1:].decode()
+                    cluster_packet_id = int(line[1:].decode())
                 elif line_number == 1:
                     sample = Sample.deserialize(line.decode())
                 else:

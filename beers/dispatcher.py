@@ -18,45 +18,40 @@ class Dispatcher:
         self.output_directory_path = output_directory_path
         self.log_directory_path = os.path.join(output_directory_path, "logs")
 
-    def dispatch(self, packet_filenames):
+    def dispatch(self, packet_file_paths):
         if self.dispatcher_mode == 'multicore':
-            self.dispatch_multicore(packet_filenames)
+            self.dispatch_multicore(packet_file_paths)
         elif self.dispatcher_mode == 'lsf':
-            self.dispatch_lsf(packet_filenames)
+            self.dispatch_lsf(packet_file_paths)
         else:
-            self.dispatch_serial(packet_filenames)
+            self.dispatch_serial(packet_file_paths)
 
-    def dispatch_serial(self, packet_filenames):
+    def dispatch_serial(self, packet_file_paths):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"./run_{self.stage_name}.py"
-        for packet_filename in packet_filenames:
+        for packet_file_path in packet_file_paths:
             result = subprocess.call(
             f"{stage_process}"
             f" -c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path}"
-            f" -p {packet_filename}", shell=True)
+            f" -p {packet_file_path}", shell=True)
 
-    def dispatch_multicore(self, packet_filenames):
+    def dispatch_multicore(self, packet_file_paths):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        data = [(stage_configuration, self.output_directory_path, packet_filename) for packet_filename in packet_filenames]
+        data = [(stage_configuration, self.output_directory_path, packet_file_path) for packet_file_path in packet_file_paths]
         pool = Pool(processes=2)
         if self.stage_name == 'library_prep_pipeline':
             pool.starmap(LibraryPrepPipeline.main, data)
         else:
             pool.starmap(SequencePipeline.main, data)
 
-    def dispatch_lsf(self, packet_filenames):
+    def dispatch_lsf(self, packet_file_paths):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"./run_{self.stage_name}.py"
-        for ctr, packet_filename in enumerate(packet_filenames):
-            # result = subprocess.call(
-            #     f"bsub -o {self.std_ouput_file_path} -e {self.std_error_file_path} -J "
-            #     f"python ../beers/library_prep/library_prep_pipeline.py"
-            #     f" -c '{stage_configuration}' -o {self.output_directory_path}"
-            #     f" -p {molecule_packet_filename}", shell=True)
+        for ctr, packet_file_path in enumerate(packet_file_paths):
             std_ouput_file_path = os.path.join(self.log_directory_path, f'std_out_{ctr}.txt')
             std_error_file_path = os.path.join(self.log_directory_path, f'std_err_{ctr}.txt')
             result = subprocess.call(
                 f"bsub -o {std_ouput_file_path} -e {std_error_file_path} -J {self.stage_name}_{ctr} "
                 f"{stage_process}"
                 f" -c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path}"
-                f" -p {packet_filename}", shell=True)
+                f" -p {packet_file_path}", shell=True)
