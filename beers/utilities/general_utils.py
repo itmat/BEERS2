@@ -33,14 +33,12 @@ class GeneralUtils:
         return complement_strand[::-1]
 
     @staticmethod
-    def create_output_subdirectories(packet_id, output_directory_path):
+    def get_output_subdirectories(packet_id, output_directory_path):
         log_directory_path = os.path.join(output_directory_path, "logs")
         data_directory_path = os.path.join(output_directory_path, 'data')
         packet_group = packet_id // 200
         log_subdirectory_path = os.path.join(log_directory_path, f'pkt_grp{packet_group}')
         data_subdirectory_path = os.path.join(data_directory_path, f'pkt_grp{packet_group}')
-        os.makedirs(log_subdirectory_path, mode=0o0755, exist_ok=True)
-        os.makedirs(data_subdirectory_path, mode=0o0755, exist_ok=True)
         return log_subdirectory_path, data_subdirectory_path
 
 

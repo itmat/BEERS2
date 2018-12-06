@@ -22,10 +22,10 @@ class LibraryPrepPipeline:
 
     def __init__(self, configuration, output_directory_path, molecule_packet):
         self.molecule_packet = molecule_packet
+        log_subdirectory_path, data_subdirectory_path = \
+            GeneralUtils.get_output_subdirectories(self.molecule_packet.molecule_packet_id, output_directory_path)
         self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
         self.print_summary(self.molecule_packet.molecules)
-        log_subdirectory_path, data_subdirectory_path = \
-            GeneralUtils.create_output_subdirectories(self.molecule_packet.molecule_packet_id, output_directory_path)
         self.log_file_path = os.path.join(log_subdirectory_path,
                                           f"{LibraryPrepPipeline.stage_name}_"
                                           f"molecule_pkt{self.molecule_packet.molecule_packet_id}.log")

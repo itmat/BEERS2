@@ -40,6 +40,7 @@ class Controller:
         self.setup_dispatcher(args.dispatcher_mode, stage_name, input_directory_path, os.path.join(self.output_directory_path, stage_name))
         # Packet files will be in nested directories (at least one level deep)
         molecule_packet_filenames = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
+        self.create_subdirectories(len(molecule_packet_filenames), os.path.join(self.output_directory_path, stage_name))
         self.dispatcher.dispatch(molecule_packet_filenames)
 
     def run_sequence_pipeline(self, args):
@@ -54,12 +55,13 @@ class Controller:
             cluster_packet = self.setup_flowcell(molecule_packet)
             cluster_packet_filename = f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip"
             log_subdirectory_path, data_subdirectory_path = \
-                GeneralUtils.create_output_subdirectories(cluster_packet.cluster_packet_id, intermediate_directory_path)
+                Controller.create_subdirectories(cluster_packet.cluster_packet_id, intermediate_directory_path)
             cluster_packet_file_path = os.path.join(data_subdirectory_path, cluster_packet_filename)
             cluster_packet.serialize(cluster_packet_file_path)
             cluster_packet_file_paths.append(cluster_packet_file_path)
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
+        self.create_subdirectories(len(cluster_packet_file_paths), os.path.join(self.output_directory_path, stage_name))
         self.dispatcher.dispatch(cluster_packet_file_paths)
         for lane in self.flowcell.lanes_to_use:
             fast_q = FastQ(lane,
@@ -145,6 +147,18 @@ class Controller:
             molecule_packet = pickle.load(molecule_packet_file)
         print(f"{stage_name} input loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
         return molecule_packet
+
+    @staticmethod
+    def create_subdirectories(packet_count, parent_directory_path):
+        max_packet_group = packet_count // 200
+        log_directory_path = os.path.join(parent_directory_path, "logs")
+        data_directory_path = os.path.join(parent_directory_path, 'data')
+        for packet_group in range(max_packet_group + 1):
+            log_subdirectory_path = os.path.join(log_directory_path, f'pkt_grp{packet_group}')
+            data_subdirectory_path = os.path.join(data_directory_path, f'pkt_grp{packet_group}')
+            os.makedirs(log_subdirectory_path, mode=0o0755, exist_ok=True)
+            os.makedirs(data_subdirectory_path, mode=0o0755, exist_ok=True)
+        return log_subdirectory_path, data_subdirectory_path
 
     def create_controller_log(self):
         log_file_path = os.path.join(self.output_directory_path,'controller','logs','controller.log')

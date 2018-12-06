@@ -16,8 +16,9 @@ class SequencePipeline:
 
     def __init__(self, configuration, output_directory_path, cluster_packet):
         self.cluster_packet = cluster_packet
+
         log_subdirectory_path, data_subdirectory_path = \
-            GeneralUtils.create_output_subdirectories(self.cluster_packet.cluster_packet_id, output_directory_path)
+            GeneralUtils.get_output_subdirectories(self.cluster_packet.cluster_packet_id, output_directory_path)
         self.log_file_path = os.path.join(log_subdirectory_path,
                                           f"{SequencePipeline.stage_name}_"
                                           f"cluster_pkt{self.cluster_packet.cluster_packet_id}.log")
