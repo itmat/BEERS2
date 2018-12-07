@@ -5,7 +5,7 @@ import numpy as np
 
 class GeneralUtils:
 
-    FILES_PER_DIRECTORY_LIMIT = 4
+    FILES_PER_DIRECTORY_LIMIT = 100
 
     @staticmethod
     def generate_seed():
@@ -89,7 +89,7 @@ class GeneralUtils:
         directory_counts = [int(directory_count) for directory_count in directory_structure.split(",")]
         subdirectory_list = []
         remaining_file_count = pkt_id
-        level_file_count = np.product(directory_counts)
+        level_file_count = max(np.product(directory_counts),GeneralUtils.FILES_PER_DIRECTORY_LIMIT)
         nesting_depth = len(directory_counts)
         for _ in range(nesting_depth):
             assert level_file_count > 0, f"Too many nesting levels {nesting_depth}"
