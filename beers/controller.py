@@ -37,12 +37,14 @@ class Controller:
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
-        directory_structure = \
-            GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
-                                               os.path.join(self.output_directory_path, stage_name, "data"))
-        directory_structure = \
-            GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
-                                               os.path.join(self.output_directory_path, stage_name, "logs"))
+        file_count = len(molecule_packet_file_paths)
+        data_directory = os.path.join(self.output_directory_path, stage_name, "data")
+        log_directory = os.path.join(self.output_directory_path, stage_name, "logs")
+        directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory)
+        self.create_step_log_directories(file_count, stage_name, log_directory)
+        #directory_structure = \
+        #    GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
+        #                                       os.path.join(self.output_directory_path, stage_name, "logs"))
         self.setup_dispatcher(args.dispatcher_mode,
                               stage_name,
                               input_directory_path,
@@ -58,8 +60,11 @@ class Controller:
         data_directory_path = os.path.join(intermediate_directory_path, 'data')
         cluster_packet_file_paths = []
         molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
-        directory_structure = GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
-                                                                 data_directory_path)
+        if not molecule_packet_file_paths:
+            raise ControllerValidationException(f"No molecule packet files were found in the given input directory, "
+                                                f"{input_directory_path}, or any of its subdirectories")
+        file_count = len(molecule_packet_file_paths)
+        directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory_path)
         for molecule_packet_filename in molecule_packet_file_paths:
             molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
             cluster_packet = self.setup_flowcell(molecule_packet)
@@ -72,14 +77,16 @@ class Controller:
             cluster_packet_file_paths.append(cluster_packet_file_path)
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
-        directory_structure = \
-            GeneralUtils.create_subdirectories(len(cluster_packet_file_paths),
-                                               os.path.join(self.output_directory_path, stage_name, "data"))
-        directory_structure = \
-            GeneralUtils.create_subdirectories(len(cluster_packet_file_paths),
-                                               os.path.join(self.output_directory_path, stage_name, "logs"))
-        self.setup_dispatcher(args.dispatcher_mode, stage_name, intermediate_directory_path,
-                              os.path.join(self.output_directory_path, stage_name), directory_structure)
+        packet_file_count = len(cluster_packet_file_paths)
+        data_directory_path = os.path.join(self.output_directory_path, stage_name, "data")
+        log_directory_path = os.path.join(self.output_directory_path, stage_name, "log")
+        directory_structure = GeneralUtils.create_subdirectories(packet_file_count, data_directory_path)
+        self.create_step_log_directories(file_count, stage_name, log_directory_path)
+        self.setup_dispatcher(args.dispatcher_mode,
+                              stage_name,
+                              intermediate_directory_path,
+                              os.path.join(self.output_directory_path, stage_name),
+                              directory_structure)
         self.dispatcher.dispatch(cluster_packet_file_paths)
         for lane in self.flowcell.lanes_to_use:
             fast_q = FastQ(lane,
@@ -155,17 +162,6 @@ class Controller:
             os.makedirs(os.path.join(self.output_directory_path, stage_name, 'logs'), mode=0o0755, exist_ok=True)
             os.makedirs(os.path.join(self.output_directory_path, stage_name, 'data'), mode=0o0755, exist_ok=True)
 
-    def get_input_from_pickle(self, stage_name):
-        # Molecule packets coming from file location named in configuration when not directly from
-        # the library pipeline
-        input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
-        molecule_packet_filename = self.configuration[stage_name]["input"]["molecule_packet_filename"]
-        molecule_packet_file_path = os.path.join(input_directory_path, molecule_packet_filename)
-        with open(molecule_packet_file_path, 'rb') as molecule_packet_file:
-            molecule_packet = pickle.load(molecule_packet_file)
-        print(f"{stage_name} input loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
-        return molecule_packet
-
     def create_controller_log(self):
         log_file_path = os.path.join(self.output_directory_path,'controller','logs','controller.log')
         with open(log_file_path, 'w') as controller_log_file:
@@ -192,6 +188,11 @@ class Controller:
                        input_sample.get("gender", None),
                        adapter_generator.get_unique_adapter_labels()))
             Sample.next_sample_id += 1
+
+    def create_step_log_directories(self, file_count, stage_name, log_directory_path):
+        for step in self.configuration[stage_name]['steps']:
+            step_name = step['step_name'].split(".")[1]
+            GeneralUtils.create_subdirectories(file_count, os.path.join(log_directory_path, step_name))
 
 
 class ControllerValidationException(Exception):

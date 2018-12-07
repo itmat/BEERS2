@@ -37,6 +37,15 @@ class GeneralUtils:
 
     @staticmethod
     def create_subdirectories(file_count, directory_path):
+        """
+        This method creates a series of subdirectories extending from the given directory path organized such as to
+        avoid exceeding the FILES_PER_DIRECTORY_LIMIT in any given subdirectory.  The number of files to be housed
+        under the given directory path is used to determine the number of and nesting level of the subdirectories
+        needed.  A string representation of the resulting directory structure is returned.
+        :param file_count: The number of files to be housed under the given directory path
+        :param directory_path: the path of the parent directory to house the expected number of files
+        :return: A string representation of the number of level of nesting and the number of directories on each level.
+        """
         directory_structure = {}
         GeneralUtils.create_nested_subdirectories(file_count, directory_structure, directory_path, 1)
         directory_structure = [directory_structure[key] for key in sorted(directory_structure.keys())]

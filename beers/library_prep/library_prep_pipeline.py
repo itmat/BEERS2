@@ -26,18 +26,17 @@ class LibraryPrepPipeline:
         data_directory_path = os.path.join(output_directory_path, 'data')
         subdirectory_list = \
             GeneralUtils.get_output_subdirectories(self.molecule_packet.molecule_packet_id, directory_structure)
-        log_subdirectory_path = os.path.join(log_directory_path, *(subdirectory_list))
         data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
         self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
         self.print_summary(self.molecule_packet.molecules)
-        self.log_file_path = os.path.join(log_subdirectory_path,
+        self.log_file_path = os.path.join(log_directory_path,
                                           f"{LibraryPrepPipeline.stage_name}_"
                                           f"molecule_pkt{self.molecule_packet.molecule_packet_id}.log")
         self.steps = []
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             step_log_filename = f"{step_name}_molecule_pkt{self.molecule_packet.molecule_packet_id}.log"
-            step_log_file_path = os.path.join(log_subdirectory_path, step_log_filename)
+            step_log_file_path = os.path.join(log_directory_path, step_name, *(subdirectory_list), step_log_filename)
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=LibraryPrepPipeline.package)
             step_class = getattr(module, step_name)

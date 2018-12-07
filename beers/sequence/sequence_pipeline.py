@@ -20,16 +20,15 @@ class SequencePipeline:
         data_directory_path = os.path.join(output_directory_path, 'data')
         subdirectory_list = \
             GeneralUtils.get_output_subdirectories(self.cluster_packet.cluster_packet_id, directory_structure)
-        log_subdirectory_path = os.path.join(log_directory_path, *(subdirectory_list))
         data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
-        self.log_file_path = os.path.join(log_subdirectory_path,
+        self.log_file_path = os.path.join(log_directory_path,
                                           f"{SequencePipeline.stage_name}_"
                                           f"cluster_pkt{self.cluster_packet.cluster_packet_id}.log")
         self.steps = []
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             step_log_filename = f"{step_name}_cluster_pkt{self.cluster_packet.cluster_packet_id}.log"
-            step_log_file_path = os.path.join(log_subdirectory_path, step_log_filename)
+            step_log_file_path = os.path.join(log_directory_path, step_name, *(subdirectory_list), step_log_filename)
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=SequencePipeline.package)
             step_class = getattr(module, step_name)
