@@ -35,19 +35,6 @@ class GeneralUtils:
         complement_strand = ''.join(GeneralUtils.base_complements[base] for base in strand)
         return complement_strand[::-1]
 
-
-    # @staticmethod
-    # def create_subdirectories(packet_count, parent_directory_path):
-    #     max_packet_group = packet_count // GeneralUtils.NUMBER_OF_FILES_PER_DIRECTORY
-    #     log_directory_path = os.path.join(parent_directory_path, "logs")
-    #     data_directory_path = os.path.join(parent_directory_path, 'data')
-    #     for packet_group in range(max_packet_group + 1):
-    #         log_subdirectory_path = os.path.join(log_directory_path, f'pkt_grp{packet_group}')
-    #         data_subdirectory_path = os.path.join(data_directory_path, f'pkt_grp{packet_group}')
-    #         os.makedirs(log_subdirectory_path, mode=0o0755, exist_ok=True)
-    #         os.makedirs(data_subdirectory_path, mode=0o0755, exist_ok=True)
-    #     return log_subdirectory_path, data_subdirectory_path
-
     @staticmethod
     def create_subdirectories(file_count, directory_path):
         directory_structure = {}
@@ -89,6 +76,7 @@ class GeneralUtils:
         directory_counts = [int(directory_count) for directory_count in directory_structure.split(",")]
         subdirectory_list = []
         remaining_file_count = pkt_id
+        # Handles edge case where everything fits into one directory.
         level_file_count = max(np.product(directory_counts),GeneralUtils.FILES_PER_DIRECTORY_LIMIT)
         nesting_depth = len(directory_counts)
         for _ in range(nesting_depth):
