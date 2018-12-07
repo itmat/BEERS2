@@ -36,31 +36,50 @@ class Controller:
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
-        self.setup_dispatcher(args.dispatcher_mode, stage_name, input_directory_path, os.path.join(self.output_directory_path, stage_name))
-        # Packet files will be in nested directories (at least one level deep)
-        molecule_packet_filenames = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
-        GeneralUtils.create_subdirectories(len(molecule_packet_filenames), os.path.join(self.output_directory_path, stage_name))
-        self.dispatcher.dispatch(molecule_packet_filenames)
+        molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
+        directory_structure = \
+            GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
+                                               os.path.join(self.output_directory_path, stage_name, "data"))
+        directory_structure = \
+            GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
+                                               os.path.join(self.output_directory_path, stage_name, "logs"))
+        self.setup_dispatcher(args.dispatcher_mode,
+                              stage_name,
+                              input_directory_path,
+                              os.path.join(self.output_directory_path, stage_name),
+                              directory_structure)
+        self.dispatcher.dispatch(molecule_packet_file_paths)
 
     def run_sequence_pipeline(self, args):
         stage_name = "sequence_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         intermediate_directory_path = os.path.join(self.output_directory_path, self.controller_name)
-        self.setup_dispatcher(args.dispatcher_mode, stage_name, intermediate_directory_path, os.path.join(self.output_directory_path, stage_name))
+        data_directory_path = os.path.join(intermediate_directory_path, 'data')
         cluster_packet_file_paths = []
-        for molecule_packet_filename in glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True):
+        molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
+        directory_structure = GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
+                                                                 data_directory_path)
+        for molecule_packet_filename in molecule_packet_file_paths:
             molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
             cluster_packet = self.setup_flowcell(molecule_packet)
             cluster_packet_filename = f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip"
-            log_subdirectory_path, data_subdirectory_path = \
-                GeneralUtils.create_subdirectories(cluster_packet.cluster_packet_id, intermediate_directory_path)
+            subdirectory_list = \
+                GeneralUtils.get_output_subdirectories(cluster_packet.cluster_packet_id, directory_structure)
+            data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
             cluster_packet_file_path = os.path.join(data_subdirectory_path, cluster_packet_filename)
             cluster_packet.serialize(cluster_packet_file_path)
             cluster_packet_file_paths.append(cluster_packet_file_path)
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
-        GeneralUtils.create_subdirectories(len(cluster_packet_file_paths), os.path.join(self.output_directory_path, stage_name))
+        directory_structure = \
+            GeneralUtils.create_subdirectories(len(cluster_packet_file_paths),
+                                               os.path.join(self.output_directory_path, stage_name, "data"))
+        directory_structure = \
+            GeneralUtils.create_subdirectories(len(cluster_packet_file_paths),
+                                               os.path.join(self.output_directory_path, stage_name, "logs"))
+        self.setup_dispatcher(args.dispatcher_mode, stage_name, intermediate_directory_path,
+                              os.path.join(self.output_directory_path, stage_name), directory_structure)
         self.dispatcher.dispatch(cluster_packet_file_paths)
         for lane in self.flowcell.lanes_to_use:
             fast_q = FastQ(lane,
@@ -85,13 +104,13 @@ class Controller:
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
 
-    def setup_dispatcher(self, dispatcher_mode, stage_name, input_directory_path, output_directory_path):
+    def setup_dispatcher(self, dispatcher_mode, stage_name, input_directory_path, output_directory_path, nested_depth):
         if not dispatcher_mode:
             if not self.controller_configuration.get('dispatcher_mode', None):
                 raise ControllerValidationException('No dispatcher_mode given either on the command line'
                                                     ' or in the configuration file')
             dispatcher_mode = self.controller_configuration['dispatcher_mode']
-        self.dispatcher = Dispatcher(dispatcher_mode, stage_name, self.configuration, input_directory_path, output_directory_path)
+        self.dispatcher = Dispatcher(dispatcher_mode, stage_name, self.configuration, input_directory_path, output_directory_path, nested_depth)
 
     def setup_flowcell(self, molecule_packet):
         self.flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])

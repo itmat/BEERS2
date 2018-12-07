@@ -20,10 +20,14 @@ class LibraryPrepPipeline:
     stage_name = "library_prep_pipeline"
     package = "beers.library_prep"
 
-    def __init__(self, configuration, output_directory_path, molecule_packet):
+    def __init__(self, configuration, output_directory_path, directory_structure, molecule_packet):
         self.molecule_packet = molecule_packet
-        log_subdirectory_path, data_subdirectory_path = \
-            GeneralUtils.get_output_subdirectories(self.molecule_packet.molecule_packet_id, output_directory_path)
+        log_directory_path = os.path.join(output_directory_path, "logs")
+        data_directory_path = os.path.join(output_directory_path, 'data')
+        subdirectory_list = \
+            GeneralUtils.get_output_subdirectories(self.molecule_packet.molecule_packet_id, directory_structure)
+        log_subdirectory_path = os.path.join(log_directory_path, *(subdirectory_list))
+        data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
         self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
         self.print_summary(self.molecule_packet.molecules)
         self.log_file_path = os.path.join(log_subdirectory_path,
@@ -98,21 +102,12 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(configuration, input_directory_path, output_directory_path, molecule_packet_filename):
+    def main(configuration, input_directory_path, output_directory_path, directory_structure, molecule_packet_filename):
         configuration = json.loads(configuration)
         molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
-        library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, molecule_packet)
+        library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, directory_structure, molecule_packet)
         library_prep_pipeline.validate()
         library_prep_pipeline.execute()
 
 class BeersValidationException(Exception):
     pass
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Library Prep Pipeline')
-    parser.add_argument('-c', '--config', required=True, help='Configuration')
-    parser.add_argument('-o', '--output_directory', required=True, help='Path to output directory.')
-    parser.add_argument('-p', '--molecule_packet_filename', required=True, help="Serialized Molecule Packet Filename.")
-    args = parser.parse_args()
-    LibraryPrepPipeline.main(args.config, args.output_directory, args.molecule_packet_filename)
-

@@ -14,11 +14,14 @@ class SequencePipeline:
     stage_name = "sequence_pipeline"
     package = "beers.sequence"
 
-    def __init__(self, configuration, output_directory_path, cluster_packet):
+    def __init__(self, configuration, output_directory_path, directory_structure, cluster_packet):
         self.cluster_packet = cluster_packet
-
-        log_subdirectory_path, data_subdirectory_path = \
-            GeneralUtils.get_output_subdirectories(self.cluster_packet.cluster_packet_id, output_directory_path)
+        log_directory_path = os.path.join(output_directory_path, "logs")
+        data_directory_path = os.path.join(output_directory_path, 'data')
+        subdirectory_list = \
+            GeneralUtils.get_output_subdirectories(self.cluster_packet.cluster_packet_id, directory_structure)
+        log_subdirectory_path = os.path.join(log_directory_path, *(subdirectory_list))
+        data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
         self.log_file_path = os.path.join(log_subdirectory_path,
                                           f"{SequencePipeline.stage_name}_"
                                           f"cluster_pkt{self.cluster_packet.cluster_packet_id}.log")
@@ -62,10 +65,10 @@ class SequencePipeline:
         print(f"Output final sample to {self.results_file_path}")
 
     @staticmethod
-    def main(configuration, input_directory_path, output_directory_path, cluster_packet_filename):
+    def main(configuration, input_directory_path, output_directory_path, directory_structure, cluster_packet_filename):
         configuration = json.loads(configuration)
         cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_directory_path, cluster_packet_filename)
-        sequence_pipeline = SequencePipeline(configuration, output_directory_path, cluster_packet)
+        sequence_pipeline = SequencePipeline(configuration, output_directory_path, directory_structure, cluster_packet)
         sequence_pipeline.validate()
         sequence_pipeline.execute()
 

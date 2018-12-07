@@ -10,13 +10,20 @@ class Dispatcher:
 
     next_molecule_packet_id = 1
 
-    def __init__(self, dispatcher_mode, stage_name, configuration, input_directory_path, output_directory_path):
+    def __init__(self,
+                 dispatcher_mode,
+                 stage_name,
+                 configuration,
+                 input_directory_path,
+                 output_directory_path,
+                directory_structure):
         self.dispatcher_mode = dispatcher_mode
         self.stage_name = stage_name
         self.configuration = configuration
         self.input_directory_path = input_directory_path
         self.output_directory_path = output_directory_path
         self.log_directory_path = os.path.join(output_directory_path, "logs")
+        self.directory_structure = directory_structure
 
     def dispatch(self, packet_file_paths):
         if self.dispatcher_mode == 'multicore':
@@ -33,11 +40,12 @@ class Dispatcher:
             result = subprocess.call(
             f"{stage_process}"
             f" -c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path}"
-            f" -p {packet_file_path}", shell=True)
+            f" -p {packet_file_path} -d {self.directory_structure}", shell=True)
 
     def dispatch_multicore(self, packet_file_paths):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        data = [(stage_configuration, self.output_directory_path, packet_file_path) for packet_file_path in packet_file_paths]
+        data = [(stage_configuration, self.output_directory_path, packet_file_path, self.directory_structure)
+                for packet_file_path in packet_file_paths]
         pool = Pool(processes=2)
         if self.stage_name == 'library_prep_pipeline':
             pool.starmap(LibraryPrepPipeline.main, data)
@@ -54,4 +62,4 @@ class Dispatcher:
                 f"bsub -o {std_ouput_file_path} -e {std_error_file_path} -J {self.stage_name}_{ctr} "
                 f"{stage_process}"
                 f" -c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path}"
-                f" -p {packet_file_path}", shell=True)
+                f" -p {packet_file_path} -d {self.directory_structure}", shell=True)
