@@ -10,6 +10,7 @@ import json
 
 import numpy as np
 
+from beers.constants import CONSTANTS
 from beers.molecule import Molecule
 from beers.molecule_packet import MoleculePacket
 from beers.utilities.general_utils import GeneralUtils
@@ -18,18 +19,21 @@ from beers.utilities.general_utils import GeneralUtils
 class LibraryPrepPipeline:
 
     stage_name = "library_prep_pipeline"
+    pipeline_log_subdirectory_name = "Pipeline"
     package = "beers.library_prep"
 
     def __init__(self, configuration, output_directory_path, directory_structure, molecule_packet):
         self.molecule_packet = molecule_packet
-        log_directory_path = os.path.join(output_directory_path, "logs")
-        data_directory_path = os.path.join(output_directory_path, 'data')
+        log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
+        data_directory_path = os.path.join(output_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
         subdirectory_list = \
             GeneralUtils.get_output_subdirectories(self.molecule_packet.molecule_packet_id, directory_structure)
         data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
         self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
         self.print_summary(self.molecule_packet.molecules)
         self.log_file_path = os.path.join(log_directory_path,
+                                          LibraryPrepPipeline.pipeline_log_subdirectory_name,
+                                          *subdirectory_list,
                                           f"{LibraryPrepPipeline.stage_name}_"
                                           f"molecule_pkt{self.molecule_packet.molecule_packet_id}.log")
         self.steps = []

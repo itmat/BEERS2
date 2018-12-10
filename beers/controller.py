@@ -9,6 +9,7 @@ from datetime import datetime
 from beers.constants import CONSTANTS
 from beers.utilities.general_utils import GeneralUtils
 from beers.expression.expression_pipeline import ExpressionPipeline
+from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sample import Sample
 from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
@@ -77,7 +78,7 @@ class Controller:
             molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path,
                                                                             molecule_packet_filename)
             cluster_packet = self.setup_flowcell(molecule_packet)
-            cluster_packet_filename = f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip"
+            cluster_packet_filename = f"cluster_packet_start_pkt{cluster_packet.cluster_packet_id}.gzip"
             subdirectory_list = \
                 GeneralUtils.get_output_subdirectories(cluster_packet.cluster_packet_id, directory_structure)
             data_subdirectory_path = os.path.join(data_directory_path, *subdirectory_list)
@@ -215,6 +216,10 @@ class Controller:
             Sample.next_sample_id += 1
 
     def create_step_log_directories(self, file_count, stage_name, log_directory_path):
+        for subdirectory_name in [LibraryPrepPipeline.pipeline_log_subdirectory_name,
+                                  CONSTANTS.STDERR_SUBDIRECTORY_NAME,
+                                  CONSTANTS.STDOUT_SUBDIRECTORY_NAME]:
+            GeneralUtils.create_subdirectories(file_count, os.path.join(log_directory_path, subdirectory_name))
         for step in self.configuration[stage_name]['steps']:
             step_name = step['step_name'].split(".")[1]
             GeneralUtils.create_subdirectories(file_count, os.path.join(log_directory_path, step_name))
