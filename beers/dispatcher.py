@@ -60,10 +60,10 @@ class Dispatcher:
         stage_process = f"./run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
             stdout_file_path, stderr_file_path, packet_id = self.get_stdout_and_stderr_subdirectories(packet_file_path)
-            command = f"bsub -o {stdout_file_path} -e {stderr_file_path} -J {self.stage_name}_pkt{packet_id}" \
-                f"{stage_process}" \
-                f" -c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path}" \
-                f" -p {packet_file_path} -d {self.directory_structure}"
+            command = f"bsub -o {stdout_file_path} -e {stderr_file_path} -J {self.stage_name}_pkt{packet_id} " \
+                f"{stage_process} " \
+                f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
+                f"-p {packet_file_path} -d {self.directory_structure}"
             print(command)
             result = subprocess.call(command, shell=True)
 
