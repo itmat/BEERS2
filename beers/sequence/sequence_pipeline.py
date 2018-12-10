@@ -67,12 +67,14 @@ class SequencePipeline:
 
     @staticmethod
     def main(configuration, input_directory_path, output_directory_path, directory_structure, cluster_packet_filename):
-        configuration = json.loads(configuration)
-        cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_directory_path, cluster_packet_filename)
-        sequence_pipeline = SequencePipeline(configuration, output_directory_path, directory_structure, cluster_packet)
-        sequence_pipeline.validate()
-        sequence_pipeline.execute()
-        Auditor.note_packet_completed(cluster_packet.cluster_packet_id, output_directory_path)
+        try:
+            configuration = json.loads(configuration)
+            cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_directory_path, cluster_packet_filename)
+            sequence_pipeline = SequencePipeline(configuration, output_directory_path, directory_structure, cluster_packet)
+            sequence_pipeline.validate()
+            sequence_pipeline.execute()
+        finally:
+            Auditor.note_packet_completed(cluster_packet.cluster_packet_id, output_directory_path)
 
 
 class BeersSequenceValidationException(Exception):

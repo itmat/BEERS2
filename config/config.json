@@ -154,8 +154,7 @@
       }
     ],
     "input": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
-      "molecule_packet_filename": "final_output.pickle"
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output"
     }
   }
 }
