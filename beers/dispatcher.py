@@ -11,15 +11,17 @@ from beers.constants import CONSTANTS
 
 class Dispatcher:
 
-    packet_pattern = '^.*_pkt(\d+).gzip$'
+    packet_pattern = re.compile(r'^.*_pkt(\d+).gzip$')
 
     def __init__(self,
+                 run_id,
                  dispatcher_mode,
                  stage_name,
                  configuration,
                  input_directory_path,
                  output_directory_path,
                  directory_structure):
+        self.run_id = run_id
         self.dispatcher_mode = dispatcher_mode
         self.stage_name = stage_name
         self.configuration = configuration
@@ -40,10 +42,10 @@ class Dispatcher:
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"./run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
-            result = subprocess.call(
-            f"{stage_process}"
-            f" -c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path}"
-            f" -p {packet_file_path} -d {self.directory_structure}", shell=True)
+            command = f"{stage_process} " \
+                      f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
+                      f"-p {packet_file_path} -d {self.directory_structure}"
+            subprocess.call(command, shell=True)
 
     def dispatch_multicore(self, packet_file_paths):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
@@ -60,14 +62,15 @@ class Dispatcher:
         stage_process = f"./run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
             stdout_file_path, stderr_file_path, packet_id = self.get_stdout_and_stderr_subdirectories(packet_file_path)
-            command = f"bsub -o {stdout_file_path} -e {stderr_file_path} -J {self.stage_name}_pkt{packet_id} " \
-                f"{stage_process} " \
-                f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
-                f"-p {packet_file_path} -d {self.directory_structure}"
-            print(command)
-            result = subprocess.call(command, shell=True)
+            command = f"bsub -o {stdout_file_path} -e {stderr_file_path} " \
+                      f"-J run{self.run_id}_{self.stage_name}_pkt{packet_id} " \
+                      f"{stage_process} " \
+                      f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
+                      f"-p {packet_file_path} -d {self.directory_structure}"
+            subprocess.call(command, shell=True)
 
-    def get_packet_id_from_file(self, packet_file_path):
+    @staticmethod
+    def get_packet_id_from_file(packet_file_path):
         packet_filename = os.path.split(packet_file_path)[1]
         packet_pattern_match = re.match(Dispatcher.packet_pattern, packet_filename)
         if packet_pattern_match:
@@ -75,7 +78,7 @@ class Dispatcher:
         assert False, f"The packet filename, {packet_filename} does not follow convention."
 
     def get_stdout_and_stderr_subdirectories(self, packet_file_path):
-        packet_id = self.get_packet_id_from_file(packet_file_path)
+        packet_id = Dispatcher.get_packet_id_from_file(packet_file_path)
         subdirectory_list = GeneralUtils.get_output_subdirectories(packet_id, self.directory_structure)
         stdout_filename = f"{CONSTANTS.STDOUT_SUBDIRECTORY_NAME}_pkt{packet_id}.log"
         stdout_file_path = os.path.join(self.log_directory_path,

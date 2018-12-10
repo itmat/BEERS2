@@ -54,7 +54,8 @@ class Controller:
         log_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
         directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory)
         self.create_step_log_directories(file_count, stage_name, log_directory)
-        self.setup_dispatcher(args.dispatcher_mode,
+        self.setup_dispatcher(self.run_id,
+                              args.dispatcher_mode,
                               stage_name,
                               input_directory_path,
                               os.path.join(self.output_directory_path, stage_name),
@@ -93,7 +94,8 @@ class Controller:
         directory_structure = GeneralUtils.create_subdirectories(packet_file_count, data_directory_path)
         self.create_step_log_directories(file_count, stage_name, log_directory_path)
         auditor = Auditor(packet_file_count, os.path.join(self.output_directory_path, stage_name))
-        self.setup_dispatcher(args.dispatcher_mode,
+        self.setup_dispatcher(self.run_id,
+                              args.dispatcher_mode,
                               stage_name,
                               intermediate_directory_path,
                               os.path.join(self.output_directory_path, stage_name),
