@@ -5,8 +5,10 @@ import time
 import numpy as np
 import resource
 import json
+from beers.constants import CONSTANTS
 from beers.cluster_packet import ClusterPacket
 from beers.utilities.general_utils import GeneralUtils
+from beers.auditor import Auditor
 
 
 class SequencePipeline:
@@ -16,8 +18,8 @@ class SequencePipeline:
 
     def __init__(self, configuration, output_directory_path, directory_structure, cluster_packet):
         self.cluster_packet = cluster_packet
-        log_directory_path = os.path.join(output_directory_path, "logs")
-        data_directory_path = os.path.join(output_directory_path, 'data')
+        log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
+        data_directory_path = os.path.join(output_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
         subdirectory_list = \
             GeneralUtils.get_output_subdirectories(self.cluster_packet.cluster_packet_id, directory_structure)
         data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
@@ -70,6 +72,7 @@ class SequencePipeline:
         sequence_pipeline = SequencePipeline(configuration, output_directory_path, directory_structure, cluster_packet)
         sequence_pipeline.validate()
         sequence_pipeline.execute()
+        Auditor.note_packet_completed(cluster_packet.cluster_packet_id, output_directory_path)
 
 
 class BeersSequenceValidationException(Exception):

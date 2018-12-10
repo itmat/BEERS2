@@ -4,10 +4,9 @@ import numpy as np
 import termcolor
 import os
 import sys
-import resource
 import traceback
-import pickle
 from datetime import datetime
+from beers.constants import CONSTANTS
 from beers.utilities.general_utils import GeneralUtils
 from beers.expression.expression_pipeline import ExpressionPipeline
 from beers.sample import Sample
@@ -16,6 +15,7 @@ from beers.flowcell import Flowcell
 from beers.molecule_packet import MoleculePacket
 from beers.dispatcher import Dispatcher
 from beers.fast_q import FastQ
+from beers.auditor import Auditor
 import glob
 
 
@@ -23,6 +23,17 @@ class Controller:
 
     def __init__(self):
         self.controller_name = 'controller'
+        self.controller_log_filename = 'controller.log'
+        # The following attributes are defined following instantiation
+        self.debug = False
+        self.run_id = None
+        self.dispatcher = None
+        self.configuration = None
+        self.controller_configuration = None
+        self.flowcell = None
+        self.seed = None
+        self.output_directory_path = None
+        self.input_samples = []
 
     def run_expression_pipeline(self, args):
         stage_name = "expression_pipeline"
@@ -38,13 +49,10 @@ class Controller:
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
         file_count = len(molecule_packet_file_paths)
-        data_directory = os.path.join(self.output_directory_path, stage_name, "data")
-        log_directory = os.path.join(self.output_directory_path, stage_name, "logs")
+        data_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
+        log_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
         directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory)
         self.create_step_log_directories(file_count, stage_name, log_directory)
-        #directory_structure = \
-        #    GeneralUtils.create_subdirectories(len(molecule_packet_file_paths),
-        #                                       os.path.join(self.output_directory_path, stage_name, "logs"))
         self.setup_dispatcher(args.dispatcher_mode,
                               stage_name,
                               input_directory_path,
@@ -57,7 +65,7 @@ class Controller:
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         intermediate_directory_path = os.path.join(self.output_directory_path, self.controller_name)
-        data_directory_path = os.path.join(intermediate_directory_path, 'data')
+        data_directory_path = os.path.join(intermediate_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
         cluster_packet_file_paths = []
         molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
         if not molecule_packet_file_paths:
@@ -66,32 +74,38 @@ class Controller:
         file_count = len(molecule_packet_file_paths)
         directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory_path)
         for molecule_packet_filename in molecule_packet_file_paths:
-            molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
+            molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path,
+                                                                            molecule_packet_filename)
             cluster_packet = self.setup_flowcell(molecule_packet)
             cluster_packet_filename = f"cluster_packet_start_pk{cluster_packet.cluster_packet_id}.gzip"
             subdirectory_list = \
                 GeneralUtils.get_output_subdirectories(cluster_packet.cluster_packet_id, directory_structure)
-            data_subdirectory_path = os.path.join(data_directory_path, *(subdirectory_list))
+            data_subdirectory_path = os.path.join(data_directory_path, *subdirectory_list)
             cluster_packet_file_path = os.path.join(data_subdirectory_path, cluster_packet_filename)
             cluster_packet.serialize(cluster_packet_file_path)
             cluster_packet_file_paths.append(cluster_packet_file_path)
         # Molecule packet no longer needed - trying to save RAM
         molecule_packet = None
         packet_file_count = len(cluster_packet_file_paths)
-        data_directory_path = os.path.join(self.output_directory_path, stage_name, "data")
-        log_directory_path = os.path.join(self.output_directory_path, stage_name, "log")
+        data_directory_path = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
+        log_directory_path = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
         directory_structure = GeneralUtils.create_subdirectories(packet_file_count, data_directory_path)
         self.create_step_log_directories(file_count, stage_name, log_directory_path)
+        auditor = Auditor(packet_file_count, os.path.join(self.output_directory_path, stage_name))
         self.setup_dispatcher(args.dispatcher_mode,
                               stage_name,
                               intermediate_directory_path,
                               os.path.join(self.output_directory_path, stage_name),
                               directory_structure)
         self.dispatcher.dispatch(cluster_packet_file_paths)
+        while not auditor.is_processing_complete():
+            time.sleep(1)
         for lane in self.flowcell.lanes_to_use:
             fast_q = FastQ(lane,
-                           os.path.join(self.output_directory_path, stage_name, "data"),
-                           os.path.join(self.output_directory_path, self.controller_name, "data"))
+                           os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                           os.path.join(self.output_directory_path,
+                                        self.controller_name,
+                                        CONSTANTS.DATA_DIRECTORY_NAME))
             fast_q.generate_report()
 
     def run_prep_and_sequence_pipeline(self, args):
@@ -99,6 +113,7 @@ class Controller:
 
     def perform_setup(self, args, stage_names):
         self.debug = args.debug
+
         def exception_handler(exception_type, exception, tb):
             if args.debug:
                 traceback.print_exception(exception_type, exception, tb)
@@ -117,7 +132,12 @@ class Controller:
                 raise ControllerValidationException('No dispatcher_mode given either on the command line'
                                                     ' or in the configuration file')
             dispatcher_mode = self.controller_configuration['dispatcher_mode']
-        self.dispatcher = Dispatcher(dispatcher_mode, stage_name, self.configuration, input_directory_path, output_directory_path, nested_depth)
+        self.dispatcher = Dispatcher(dispatcher_mode,
+                                     stage_name,
+                                     self.configuration,
+                                     input_directory_path,
+                                     output_directory_path,
+                                     nested_depth)
 
     def setup_flowcell(self, molecule_packet):
         self.flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
@@ -159,11 +179,16 @@ class Controller:
                 raise ControllerValidationException(f"The output directory path, {self.output_directory_path},"
                                                     f" must be empty.")
         for stage_name in stage_names:
-            os.makedirs(os.path.join(self.output_directory_path, stage_name, 'logs'), mode=0o0755, exist_ok=True)
-            os.makedirs(os.path.join(self.output_directory_path, stage_name, 'data'), mode=0o0755, exist_ok=True)
+            os.makedirs(os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME),
+                        mode=0o0755, exist_ok=True)
+            os.makedirs(os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                        mode=0o0755, exist_ok=True)
 
     def create_controller_log(self):
-        log_file_path = os.path.join(self.output_directory_path,'controller','logs','controller.log')
+        log_file_path = os.path.join(self.output_directory_path,
+                                     self.controller_name,
+                                     CONSTANTS.LOG_DIRECTORY_NAME,
+                                     self.controller_log_filename)
         with open(log_file_path, 'w') as controller_log_file:
             timestamp = time.time()
             current_datetime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
