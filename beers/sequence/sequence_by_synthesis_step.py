@@ -17,7 +17,8 @@ class SequenceBySynthesisStep:
 
     def execute(self, cluster_packet):
         for cluster in cluster_packet.clusters:
-            cluster.read(self.read_length, self.forward_is_5_prime, self.paired_ends, self.barcode_data)
+            cluster.set_forward_direction(self.forward_is_5_prime)
+            cluster.read(self.read_length, self.paired_ends, self.barcode_data, cluster_packet.sample.adapter_sequences)
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet
 

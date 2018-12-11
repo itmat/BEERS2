@@ -23,6 +23,9 @@
         "Adapter_trimmed.1022_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
       ]
     },
+    "resources": {
+      "adapter_kit": "TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa"
+    },
     "output_directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/pipeline_results",
 
     "flowcell": {

@@ -12,17 +12,12 @@ class AdapterLigationStep:
     def __init__(self, step_log_file_path, parameters):
         self.log_filename = step_log_file_path
         self.parameters = parameters
-        self.adapter_generator = AdapterGenerator("TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa")
         print(f"{self.name} instantiated")
 
     def execute(self, molecule_packet):
         print(f"{self.name} starting")
         sample = molecule_packet.sample
-        print(sample.adapter_labels)
-        adapter_5_prime = [adapter.sequence for adapter in self.adapter_generator.adapters
-                           if adapter.label == sample.adapter_labels[0]][0]
-        adapter_3_prime = [adapter.sequence for adapter in self.adapter_generator.adapters
-                           if adapter.label == sample.adapter_labels[1]][0]
+        adapter_5_prime, adapter_3_prime = sample.adapter_sequences[0], sample.adapter_sequences[1]
         with open(self.log_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
