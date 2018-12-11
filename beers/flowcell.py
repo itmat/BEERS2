@@ -10,25 +10,27 @@ import re
 import pysam
 import math
 import os
-import resource
 
 
 class Flowcell:
 
-    coords_match_pattern = "^.*:(\w+):(\d+)\:(\d+)\:(\d+)\:(\d+)$"
+    coords_match_pattern = re.compile(r'^.*:(\w+):(\d+):(\d+):(\d+):(\d+)$')
 
     def __init__(self, run_id, configuration, parameters):
         self.run_id = run_id
         self.configuration = configuration
         self.parameters = parameters
         self.flowcell_retention = self.parameters["flowcell_retention_percentage"] / 100
+        self.min_coords = {"lane": 10_000, "tile": 10_000, "x": 10_000, "y": 10_000}
+        self.max_coords = {"lane": 0, "tile": 0, "x": 0, "y": 0}
         self.set_flowcell_coordinate_ranges()
         self.available_lanes = list(range(self.min_coords['lane'], self.max_coords['lane'] + 1))
         self.lanes_to_use = self.parameters["lanes_to_use"] or self.available_lanes
         self.flowcell_lanes = []
+        self.coordinate_generators = {}
         for lane in self.lanes_to_use:
             self.flowcell_lanes.append(FlowcellLane(lane))
-        self.coordinate_generator = self.generate_coordinates()
+            self.coordinate_generators[lane] = self.generate_coordinates(lane)
 
     def validate(self):
         valid = True
@@ -51,9 +53,15 @@ class Flowcell:
         cluster_packet_id = ClusterPacket.next_cluster_packet_id
         ClusterPacket.next_cluster_packet_id += 1
         clusters = []
+        molecules_per_lane = len(molecule_packet.molecules)//len(self.lanes_to_use)
+        lane_index = 0
+        lane = self.lanes_to_use[lane_index]
         for counter, molecule in enumerate(molecule_packet.molecules):
             cluster_id = Cluster.next_cluster_id
-            clusters.append(Cluster(self.run_id, cluster_id, molecule, next(self.coordinate_generator)))
+            if (counter +1)%molecules_per_lane == 0 and lane_index + 1 < len(self.lanes_to_use):
+                lane_index += 1
+                lane = self.lanes_to_use[lane_index]
+            clusters.append(Cluster(self.run_id, cluster_id, molecule, lane, next(self.coordinate_generators[lane])))
             if (counter + 1) % 100 == 0:
                 print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
             Cluster.next_cluster_id += 1
@@ -68,15 +76,15 @@ class Flowcell:
         cluster_packet = self.convert_molecule_pkt_to_cluster_pkt(retained_molecule_packet)
         return cluster_packet
 
-    def generate_coordinates(self):
+    def generate_coordinates(self, lane):
         ctr = 0
         while True:
             ctr += 1
             x = np.random.choice(range(self.min_coords['x'], self.max_coords['x'] + 1))
             y = np.random.choice(range(self.min_coords['y'], self.max_coords['y'] + 1))
             tile = np.random.choice(range(self.min_coords['tile'], self.max_coords['tile'] + 1))
-            lane = np.random.choice(self.lanes_to_use)
-            coordinates = LaneCoordinates(lane, tile, x, y)
+            #lane = np.random.choice(self.lanes_to_use)
+            coordinates = LaneCoordinates(tile, x, y)
             consumed_coordinates = [flowcell_lane.consumed_coordinates
                                     for flowcell_lane in self.flowcell_lanes
                                     if flowcell_lane.lane == lane][0]
@@ -87,20 +95,21 @@ class Flowcell:
             if ctr >= 100:
                 raise BeersException("Unable to find unused flowcell coordinates after 100 attempts.")
 
-    def generate_coordinates_from_alignment_file(self):
-        '''
+    @staticmethod
+    def generate_coordinates_from_alignment_file(input_file_path):
+        """
         This generator depends on a sorted alignment file for coordinate retrieval and is not currently being
         used.
         :return: flowcell coordinates
-        '''
-        input_file = pysam.AlignmentFile(self.input_file_path, "rb")
+        """
+        input_file = pysam.AlignmentFile(input_file_path, "rb")
         for line in input_file.fetch():
             if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
                 continue
             coords_match = re.match(Flowcell.coords_match_pattern, line.qname)
             if coords_match:
                 (flowcell, lane, tile, x, y) = coords_match.groups()
-                coordinates = FlowcellLane.LaneCoordinates(tile, x, y)
+                coordinates = LaneCoordinates(tile, x, y)
                 yield coordinates
 
     def set_flowcell_coordinate_ranges(self):
@@ -110,21 +119,21 @@ class Flowcell:
             input_directory_path = self.configuration['controller']['input']['directory_path']
             for fastq_filename in self.configuration['controller']['input']['fastq_filenames']:
                 fastq_file_paths.append(os.path.join(input_directory_path, fastq_filename))
-            self.min_coords, self.max_coords = Flowcell.get_coordinate_ranges()
+            self.get_coordinate_ranges(fastq_file_paths)
         else:
             self.min_coords = {"lane": geometry['min_lane'], "tile": geometry['min_tile'],
-                          "x": geometry['min_x'], "y": geometry['min_y']}
+                               "x": geometry['min_x'], "y": geometry['min_y']}
             self.max_coords = {"lane": geometry['max_lane'], "tile": geometry['max_tile'],
-                          "x": geometry['max_x'], "y": geometry['max_y']}
+                               "x": geometry['max_x'], "y": geometry['max_y']}
 
     def get_coordinate_ranges(self, fastq_file_paths):
-        min_coords = {"lane": 10000, "tile": 10000, "x": 10000, "y": 10000}
-        max_coords = {"lane": 0, "tile": 0, "x": 0, "y": 0}
+        min_coords = self.min_coords
+        max_coords = self.max_coords
         for fastq_file_path in fastq_file_paths:
             with gzip.open(fastq_file_path, 'rb') as fastq_file:
                 for counter, (byte_header, content, toss, scores) in enumerate(
                         itertools.zip_longest(*[fastq_file] * 4)):
-                    if (counter + 1) % 1000000 == 0:
+                    if (counter + 1) % 1_000_000 == 0:
                         print(f"{counter + 1} reads")
                     header = byte_header.decode()
                     sequence_identifier = header.split(" ")[0]

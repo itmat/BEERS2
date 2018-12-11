@@ -17,8 +17,9 @@ class Cluster:
     MIN_ASCII = 33
     MAX_QUALITY = 41
 
-    def __init__(self, run_id, cluster_id, molecule, coordinates, molecule_count=1, diameter=0,
+    def __init__(self, run_id, cluster_id, molecule, lane, coordinates, molecule_count=1, diameter=0,
                  called_sequences=None, quality_scores=None, base_counts=None):
+        self.lane = lane
         self.coordinates = coordinates
         self.cluster_id = cluster_id
         self.run_id = run_id
@@ -42,7 +43,7 @@ class Cluster:
 
     def encode_sequence_identifier(self):
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
-        return f"@BEERS:{self.run_id}:1:{self.coordinates.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
+        return f"@BEERS:{self.run_id}:1:{self.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
 
     def read(self, read_length, forward_is_5_prime, paired_ends, barcode_data):
         self.forward_is_5_prime = forward_is_5_prime
@@ -99,7 +100,7 @@ class Cluster:
 
     def __str__(self):
         header = f"run id: {self.run_id}, cluster_id: {self.cluster_id}, molecule_id: {self.molecule.molecule_id}, " \
-                 f"molecule_count: {self.molecule_count}, coordinates: {self.coordinates}\n"
+                 f"molecule_count: {self.molecule_count}, lane: {self.lane}, coordinates: {self.coordinates}\n"
         for index in range(len(self.called_sequences)):
             header += f"called sequence: {self.called_sequences[index]}\n"
             header += f"quality score: {self.quality_scores[index]}\n"
@@ -112,7 +113,7 @@ class Cluster:
             return header + output.getvalue()
 
     def serialize(self):
-        output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\n"
+        output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\t{self.lane}\n"
         output += f"#{self.coordinates.serialize()}\n#{self.molecule.serialize()}\n"
         for index in range(len(self.called_sequences)):
             output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\n"
@@ -139,7 +140,7 @@ class Cluster:
                 quality_scores.append(quality_score)
             elif line.startswith("#"):
                 if line_number == 0:
-                    cluster_id, run_id, molecule_count, diameter = line[1:].rstrip().split("\t")
+                    cluster_id, run_id, molecule_count, diameter, lane = line[1:].rstrip().split("\t")
                 if line_number == 1:
                     coordinates = LaneCoordinates.deserialize(line[1:].rstrip())
                 if line_number == 2:
@@ -151,5 +152,5 @@ class Cluster:
                 T_counts.append(int(T_count))
                 C_counts.append(int(C_count))
         base_counts = BaseCounts(G_counts, A_counts, T_counts, C_counts)
-        return Cluster(int(run_id), cluster_id, molecule, coordinates, int(molecule_count), int(diameter),
+        return Cluster(int(run_id), cluster_id, molecule, int(lane), coordinates, int(molecule_count), int(diameter),
                        called_sequences, quality_scores, base_counts)

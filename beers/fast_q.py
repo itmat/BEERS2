@@ -1,5 +1,5 @@
 import os
-import pickle
+import glob
 from collections import namedtuple
 from beers.cluster_packet import ClusterPacket
 
@@ -13,16 +13,13 @@ class FastQ:
 
     def generate_report(self):
         lane_clusters = []
-        cluster_packet_filenames = [cluster_packet_filename for cluster_packet_filename in os.listdir(self.cluster_packet_directory)
-                     if os.path.isfile(os.path.join(self.cluster_packet_directory, cluster_packet_filename))]
-        for cluster_packet_filename in cluster_packet_filenames:
-            cluster_packet_file_path = os.path.join(self.cluster_packet_directory, cluster_packet_filename)
+        cluster_packet_file_paths = glob.glob(f'{self.cluster_packet_directory}{os.sep}**{os.sep}*.gzip', recursive=True)
+        for cluster_packet_file_path in cluster_packet_file_paths:
             cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
             sample_name = cluster_packet.sample.sample_name
-            lane_clusters.extend([cluster for cluster in cluster_packet.clusters
-                                  if cluster.coordinates.lane == self.lane])
+            lane_clusters += [cluster for cluster in cluster_packet.clusters if cluster.lane == self.lane]
             [cluster.generate_fasta_header(sample_name) for cluster in lane_clusters]
-        sorted_clusters = sorted(lane_clusters, key=lambda lane_cluster: lane_cluster.coordinates.lane)
+        sorted_clusters = sorted(lane_clusters, key=lambda lane_cluster: lane_cluster.lane)
 
         fastq_output_file_path = os.path.join(self.fastq_output_directory, f"lane{self.lane}.fasta")
         with open(fastq_output_file_path, "w") as fastq_output_file:
