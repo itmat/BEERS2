@@ -9,7 +9,6 @@ Adapter = namedtuple('Adapter', ['label', 'end', 'sequence'])
 
 class AdapterGenerator:
 
-    next_adapter_labels_index = 0
     available_adapters = {}
 
     @staticmethod
@@ -35,13 +34,13 @@ class AdapterGenerator:
             AdapterGenerator.available_adapters = {'adapters': adapters, 'labels': labels, 'current_index': 0}
 
     @staticmethod
-    def get_unique_adapter_labels():
+    def get_unique_adapter_sequences():
         adapter_data = AdapterGenerator.available_adapters
         adapter_labels = adapter_data['labels'][adapter_data['current_index']]
         adapter_data['current_index'] += 1
         if adapter_data['current_index'] >= len(adapter_data['labels']):
             raise BeersException("Too few adapter sequences available for the number of samples provided.")
-        return adapter_labels
+        return [adapter.sequence for adapter in adapter_data['adapters'] if adapter.label in adapter_labels]
 
     @staticmethod
     def get_adapter_sequences_from_labels(adapter_labels):
