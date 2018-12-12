@@ -5,6 +5,7 @@ Constants = namedtuple('Constants', ["AUDIT_FILENAME",
                                      'DATA_DIRECTORY_NAME',
                                      'LOG_DIRECTORY_NAME',
                                      'STDOUT_SUBDIRECTORY_NAME',
-                                     'STDERR_SUBDIRECTORY_NAME'])
+                                     'STDERR_SUBDIRECTORY_NAME',
+                                     'DIRECTION_CONVENTION'])
 
-CONSTANTS = Constants("audit.txt", 100, 'data', 'logs', 'stdout', 'stderr')
+CONSTANTS = Constants("audit.txt", 100, 'data', 'logs', 'stdout', 'stderr', [1, 2])

@@ -7,7 +7,7 @@ from contextlib import closing
 from beers.utilities.general_utils import GeneralUtils
 from beers.flowcell_lane import LaneCoordinates
 from beers.molecule import Molecule
-from beers.utilities.adapter_generator import AdapterGenerator, Adapter
+from beers.constants import CONSTANTS
 
 
 BaseCounts = namedtuple('BaseCounts', ["G", "A", "T", "C"])
@@ -20,7 +20,7 @@ class Cluster:
     MAX_QUALITY = 41
 
     def __init__(self, run_id, cluster_id, molecule, lane, coordinates, molecule_count=1, diameter=0,
-                 called_sequences=None, called_indices=None, quality_scores=None, base_counts=None,
+                 called_sequences=None, called_barcode=None, quality_scores=None, base_counts=None,
                  forward_is_5_prime=True):
         self.lane = lane
         self.coordinates = coordinates
@@ -32,7 +32,7 @@ class Cluster:
         self.forward_is_5_prime = forward_is_5_prime
         self.quality_scores = quality_scores or []
         self.called_sequences = called_sequences or []
-        self.called_indices = called_indices or []
+        self.called_barcode = called_barcode
         encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
         counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"}
         if base_counts:
@@ -45,8 +45,10 @@ class Cluster:
         self.coordinates = coordinates
 
     def generate_fasta_header(self, direction):
-        if self.forward_is_5_prime and direction == 'f':
-            self.header = f"{self.encode_sequence_identifier()}\t{self.called_indices[0]}"
+        if self.forward_is_5_prime and direction == CONSTANTS.DIRECTION_CONVENTION[0]:
+            self.header = f"{self.encode_sequence_identifier()}\t1:N:0:{self.called_barcode}"
+        else:
+            self.header = f"{self.encode_sequence_identifier()}\t2:N:0:{self.called_barcode}"
 
     def encode_sequence_identifier(self):
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
@@ -56,14 +58,15 @@ class Cluster:
         self.forward_is_5_prime = forward_is_5_prime
 
     def read(self, read_length, paired_ends, barcode_data, adapter_sequences):
+        self.read_barcode(barcode_data)
         if self.forward_is_5_prime:
-            self.read_in_5_prime_direction(read_length, barcode_data, adapter_sequences[0])
+            self.read_in_5_prime_direction(read_length, adapter_sequences[0])
             if paired_ends:
-                self.read_in_3_prime_direction(read_length, barcode_data, adapter_sequences[1])
+                self.read_in_3_prime_direction(read_length, adapter_sequences[1])
         else:
-            self.read_in_3_prime_direction(read_length, barcode_data,  adapter_sequences[1])
+            self.read_in_3_prime_direction(read_length, adapter_sequences[1])
             if paired_ends:
-                self.read_in_5_prime_direction(read_length, barcode_data, adapter_sequences[0])
+                self.read_in_5_prime_direction(read_length, adapter_sequences[0])
 
     def read_over_range(self, range_start, range_end):
         with closing(StringIO()) as called_bases:
@@ -85,29 +88,30 @@ class Cluster:
                         quality_scores.write(str(chr(quality_value + Cluster.MIN_ASCII)))
                 return called_bases.getvalue(), quality_scores.getvalue()
 
-    def read_in_5_prime_direction(self, read_length, barcode_data, adapter_sequence):
+    def read_barcode(self, barcode_data):
         range_start = barcode_data[0]
         range_end = barcode_data[0] + barcode_data[1]
-        called_index, _ = self.read_over_range(range_start, range_end)
+        barcode_5, _ = self.read_over_range(range_start, range_end)
+        range_end = len(self.molecule.sequence) - barcode_data[2]
+        range_start = range_end - barcode_data[3]
+        barcode_3,  _ = self.read_over_range(range_start, range_end)
+        self.called_barcode = barcode_5 + GeneralUtils.create_complement_strand(barcode_3)
+
+    def read_in_5_prime_direction(self, read_length, adapter_sequence):
         range_start = len(adapter_sequence)
         range_end = range_start + read_length
         called_bases, quality_scores = self.read_over_range(range_start, range_end)
         self.quality_scores.append(quality_scores)
         self.called_sequences.append(called_bases)
-        self.called_indices.append(called_index)
 
-    def read_in_3_prime_direction(self, read_length, barcode_data, adapter_sequence):
-        range_end = len(self.molecule.sequence) - barcode_data[2]
-        range_start = range_end - barcode_data[3]
-        called_index, _ = self.read_over_range(range_start, range_end)
+    def read_in_3_prime_direction(self, read_length, adapter_sequence):
         range_end = len(self.molecule.sequence) - len(adapter_sequence)
         range_start = range_end - read_length
         called_bases, quality_scores = self.read_over_range(range_start, range_end)
-        quality_scores.reverse()
+        quality_scores = quality_scores[::-1]
         called_bases = GeneralUtils.create_complement_strand(called_bases)
-        self.quality_scores.append(quality_scores.getvalue())
-        self.called_sequences.append(called_bases.getvalue())
-        self.called_indices.append(called_index)
+        self.quality_scores.append(quality_scores)
+        self.called_sequences.append(called_bases)
 
     def get_base_counts_by_position(self, index):
         return  (self.base_counts.G[index],
@@ -131,10 +135,10 @@ class Cluster:
 
     def serialize(self):
         output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\t{self.lane}\t" \
-                 f"{self.forward_is_5_prime}\n"
+                 f"{self.forward_is_5_prime}\t{self.called_barcode}\n"
         output += f"#{self.coordinates.serialize()}\n#{self.molecule.serialize()}\n"
         for index in range(len(self.called_sequences)):
-            output += f"##{self.called_sequences[index]}\t{self.called_indices[index]}\t{self.quality_scores[index]}\n"
+            output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\n"
         with closing(StringIO()) as counts:
             for index in range(len(self.molecule.sequence)):
                 [counts.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
@@ -146,7 +150,6 @@ class Cluster:
     def deserialize(data):
         data = data.rstrip()
         called_sequences = []
-        called_indices = []
         quality_scores = []
         G_counts = []
         A_counts = []
@@ -154,13 +157,12 @@ class Cluster:
         C_counts = []
         for line_number, line in enumerate(data.split("\n")):
             if line.startswith("##"):
-                called_sequence, called_index, quality_score = line[2:].rstrip().split("\t")
+                called_sequence, quality_score = line[2:].rstrip().split("\t")
                 called_sequences.append(called_sequence)
-                called_indices.append(called_index)
                 quality_scores.append(quality_score)
             elif line.startswith("#"):
                 if line_number == 0:
-                    cluster_id, run_id, molecule_count, diameter, lane, forward_is_5_prime \
+                    cluster_id, run_id, molecule_count, diameter, lane, forward_is_5_prime, called_barcode \
                         = line[1:].rstrip().split("\t")
                 if line_number == 1:
                     coordinates = LaneCoordinates.deserialize(line[1:].rstrip())
@@ -174,4 +176,4 @@ class Cluster:
                 C_counts.append(int(C_count))
         base_counts = BaseCounts(G_counts, A_counts, T_counts, C_counts)
         return Cluster(int(run_id), cluster_id, molecule, int(lane), coordinates, int(molecule_count), int(diameter),
-                       called_sequences, called_indices, quality_scores, base_counts, forward_is_5_prime)
+                       called_sequences, called_barcode, quality_scores, base_counts, forward_is_5_prime)
