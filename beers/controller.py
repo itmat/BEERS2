@@ -213,8 +213,8 @@ class Controller:
                 Sample(Sample.next_sample_id,
                        sample_name,
                        input_sample_file_path,
-                       input_sample.get("gender", None),
-                       adapter_generator.get_unique_adapter_labels()))
+                       adapter_generator.get_unique_adapter_sequences(),
+                       input_sample.get("gender", None)))
             Sample.next_sample_id += 1
 
     def create_step_log_directories(self, file_count, stage_name, log_directory_path):

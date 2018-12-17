@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import argparse
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
-import sys
 
 parser = argparse.ArgumentParser(description='Library Prep Pipeline')
 parser.add_argument('-s', '--seed', required=True, help="Seed")

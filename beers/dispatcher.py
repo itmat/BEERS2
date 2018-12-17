@@ -70,6 +70,11 @@ class Dispatcher:
             self.dispatch_serial(packet_file_paths)
 
     def dispatch_serial(self, packet_file_paths):
+        """
+        This method dispatches synchronously so that the processing is done serially.
+        :param packet_file_paths:
+        :return: The absolute file paths to the input packets
+        """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"./run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
@@ -80,6 +85,12 @@ class Dispatcher:
             subprocess.call(command, shell=True)
 
     def dispatch_multicore(self, packet_file_paths):
+        """
+        This method dispatches to multiple cores.  The process pool points to the main static method of either the
+        LibraryPrepPipeline or the SequencePipeline depending upon the stage name provided at the time of
+        instantiation.
+        :param packet_file_paths:  The absolute file paths to the input packets
+        """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         data = [(self.seed, stage_configuration, self.input_directory_path, self.output_directory_path,
                  self.directory_structure, packet_file_path)
@@ -92,7 +103,7 @@ class Dispatcher:
 
     def dispatch_lsf(self, packet_file_paths):
         """
-        The method dispatches to various nodes, one job for each packet as indicated by the packet file path list.  The
+        This method dispatches to various nodes, one job for each packet as indicated by the packet file path list.  The
         job name is a combination of the run id, the stage name and the packet id, which should hopefully insure
         uniqueness.
         :param packet_file_paths:  The absolute file paths to the input packets

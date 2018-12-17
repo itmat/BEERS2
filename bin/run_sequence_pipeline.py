@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import argparse
 from beers.sequence.sequence_pipeline import SequencePipeline
-import sys
 
 parser = argparse.ArgumentParser(description='Sequence Pipeline')
 parser.add_argument('-s', '--seed', required=True, help="Seed")
