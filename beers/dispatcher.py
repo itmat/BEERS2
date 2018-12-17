@@ -16,6 +16,7 @@ class Dispatcher:
     def __init__(self,
                  run_id,
                  dispatcher_mode,
+                 seed,
                  stage_name,
                  configuration,
                  input_directory_path,
@@ -23,6 +24,7 @@ class Dispatcher:
                  directory_structure):
         self.run_id = run_id
         self.dispatcher_mode = dispatcher_mode
+        self.seed = seed
         self.stage_name = stage_name
         self.configuration = configuration
         self.input_directory_path = input_directory_path
@@ -43,13 +45,14 @@ class Dispatcher:
         stage_process = f"./run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
             command = f"{stage_process} " \
+                      f"-s {self.seed} " \
                       f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure}"
             subprocess.call(command, shell=True)
 
     def dispatch_multicore(self, packet_file_paths):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        data = [(stage_configuration, self.output_directory_path, packet_file_path, self.directory_structure)
+        data = [(self.seed, stage_configuration, self.output_directory_path, packet_file_path, self.directory_structure)
                 for packet_file_path in packet_file_paths]
         pool = Pool(processes=2)
         if self.stage_name == 'library_prep_pipeline':
@@ -65,6 +68,7 @@ class Dispatcher:
             command = f"bsub -o {stdout_file_path} -e {stderr_file_path} " \
                       f"-J run{self.run_id}_{self.stage_name}_pkt{packet_id} " \
                       f"{stage_process} " \
+                      f"-s {self.seed}" \
                       f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure}"
             subprocess.call(command, shell=True)

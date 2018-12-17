@@ -105,7 +105,9 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(configuration, input_directory_path, output_directory_path, directory_structure, molecule_packet_filename):
+    def main(seed, configuration, input_directory_path, output_directory_path,
+             directory_structure, molecule_packet_filename):
+        np.random.seed(int(seed))
         configuration = json.loads(configuration)
         molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, directory_structure, molecule_packet)

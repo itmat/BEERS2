@@ -135,6 +135,7 @@ class Controller:
             dispatcher_mode = self.controller_configuration['dispatcher_mode']
         self.dispatcher = Dispatcher(self.run_id,
                                      dispatcher_mode,
+                                     self.seed,
                                      stage_name,
                                      self.configuration,
                                      input_directory_path,

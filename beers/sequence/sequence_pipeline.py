@@ -66,8 +66,10 @@ class SequencePipeline:
         print(f"Output final sample to {self.results_file_path}")
 
     @staticmethod
-    def main(configuration, input_directory_path, output_directory_path, directory_structure, cluster_packet_filename):
+    def main(seed, configuration, input_directory_path, output_directory_path,
+             directory_structure, cluster_packet_filename):
         try:
+            np.random.seed(int(seed))
             configuration = json.loads(configuration)
             cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_directory_path, cluster_packet_filename)
             sequence_pipeline = SequencePipeline(configuration, output_directory_path, directory_structure, cluster_packet)
