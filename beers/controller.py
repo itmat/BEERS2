@@ -21,8 +21,16 @@ import glob
 
 
 class Controller:
+    """
+    The object essentially controls the flow of the pipeline.  The run_beers.py command instantiates a controller and
+    calls one of the controller methods depending upon the pipeline-stage requested.  The other methods in the class
+    are helper methods.
+    """
 
     def __init__(self):
+        """
+        These attributes have no value at the time of instantiation.  They are populated by the helper methods.
+        """
         self.controller_name = 'controller'
         self.controller_log_filename = 'controller.log'
         # The following attributes are defined following instantiation
@@ -37,6 +45,11 @@ class Controller:
         self.input_samples = []
 
     def run_expression_pipeline(self, args):
+        """
+        This is how run_beers.py calls the expression pipeline by itself.  Little is in place here because the
+        expression pipeline is in a state of 'undress'.
+        :param args: command line arguments
+        """
         stage_name = "expression_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         self.assemble_input_samples()
@@ -45,6 +58,17 @@ class Controller:
                                 self.input_samples)
 
     def run_library_prep_pipeline(self, args):
+        """
+        This is how run_beers.py calls the library prep pipeline by itself.  This pipeline is complete and functional.
+        Controller attributes are set up.  All molecule packet files are located.  The data and log output directories
+        are identified and the data directory and number of packets to be processed are used to fully develop the
+        output folder structure, which may have nested sub-directories in the case of a very large number of input
+        molecule packets.  The step log directories are created.  The dispatcher is instantiated and finally, the
+        dispatcher is run with the molecule_packet_file_paths provided.  Note that this pipeline stage assumes all
+        molecule packets are immediately available.  That will likely not be the case when the expression and library
+        prep pipelines are run together.  That will be a different run_beers.py call.
+        :param args: command line arguements
+        """
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
@@ -62,6 +86,38 @@ class Controller:
         self.dispatcher.dispatch(molecule_packet_file_paths)
 
     def run_sequence_pipeline(self, args):
+        """
+        This is how run_beers.py calls the sequence pipeline by itself.  This pipeline is complete and functional.
+        Controller attributes are set up.  All molecule packet file are located - note that these molecule packet files
+        are really the outputs of the various library prep processes as such one can point the input directory for the
+        sequence pipeline to the location of the files created by an earlier call to the library pipeline via the
+        configuration file.  In that way, the library prep pipeline and the sequence pipeline can be run one after the
+        other.  However, here again, the sequence pipeline assumes all molecule packets needed for processing are
+        already in place.  That will not necessarily be the case when the library_prep_and_sequence pipeline is called
+        as the molecule packets and subsequent cluster packets may be handled individually.
+
+        This pipeline stage is more elaborate than that of the library prep pipeline because it handles flowcell
+        loading and FASTQ reporting.  Both of these processes are handled by the controller since a knowledge of all
+        packets is necessary to perform those functions.
+
+        Here too, the data directory path and the number of packets to be processed are used to fully develop the
+        output folder structure, which again may have nested sub-directories in the case of a very large number of
+        input molecule packets.  Then each molecule packet is loaded in turn onto the flowcell.  Those molecules that
+        are retained by the flowcell are located by flowcell coordinates and returned as clusters bundled into a
+        cluster packet.  Those cluster packets are then serialized into a gzip file located inside the controller
+        data folder in the output directory.  Note that this is really intermediate data that will be fed into the
+        sequence pipeline stage proper.
+
+        Finally as with the library prep pipeline, the data and log output directories are identified and the data
+        directory and number of packets to be processed are used to fully develop the output folder structure, which
+        may have nested sub-directories in the case of a very large number of input cluster packets.  Again, the step
+        log directories are created. An auditor is created with a path to an audit file and a list of the number of
+        packet processes to expect.  The dispatcher is instantiated and finally, the dispatcher is run with the
+        cluster_packet_file_paths provided.  The auditor loops waiting under all sequence pipeline processes are
+        complete.  Once that happens the collected reads are formatted into 1 or 2 FASTQ files for each lane of the
+        flowcell used.
+        :param args: The command line arguments
+        """
         stage_name = "sequence_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
@@ -74,10 +130,11 @@ class Controller:
                                                 f"{input_directory_path}, or any of its subdirectories")
         file_count = len(molecule_packet_file_paths)
         directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory_path)
+        self.setup_flowcell()
         for molecule_packet_filename in molecule_packet_file_paths:
             molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path,
                                                                             molecule_packet_filename)
-            cluster_packet = self.setup_flowcell(molecule_packet)
+            cluster_packet = self.flowcell.load_flowcell(molecule_packet)
             cluster_packet_filename = f"cluster_packet_start_pkt{cluster_packet.cluster_packet_id}.gzip"
             subdirectory_list = \
                 GeneralUtils.get_output_subdirectories(cluster_packet.cluster_packet_id, directory_structure)
@@ -113,6 +170,15 @@ class Controller:
         pass
 
     def perform_setup(self, args, stage_names):
+        """
+        This helper method sets up a number of attributes and behaviors in the controller.  Stacktraces are suppressed
+        and only user friendly errors are shown when the debugger is off (just a command line arg right now).  The full
+        configuration file data and run id are salted away and the random seed is set.  The initial output folder
+        structure (excluding the subdirectory structure needed to accommodate large numbers of file) is created.  The
+        output folder structure depends on the stage names.  Also, the controller log is started.
+        :param args: The command line arguments
+        :param stage_names: The stage names
+        """
         self.debug = args.debug
 
         def exception_handler(exception_type, exception, tb):
@@ -128,6 +194,16 @@ class Controller:
         self.create_controller_log()
 
     def setup_dispatcher(self, dispatcher_mode, stage_name, input_directory_path, output_directory_path, nested_depth):
+        """
+        The dispatcher is now instantiated and prepared.  If no dispatcher mode (lsf, serial, multicore) is set, it is
+        read from the configuration file.  If the mode is not present there, an exception is raised.  The dispatcher
+        is then instantiated and and attached to the controller as an attribute.
+        :param dispatcher_mode: The type of dispatch to perform (serial, lsf, multicore)
+        :param stage_name: The name of the pipeline stage (library_prep_pipeline or sequence_pipeline)
+        :param input_directory_path: The top level directory where the input packets are found
+        :param output_directory_path: The top level ouptut directory path
+        :param nested_depth: nesting data the pipelines need to write data and log files to their proper locations.
+        """
         if not dispatcher_mode:
             if not self.controller_configuration.get('dispatcher_mode', None):
                 raise ControllerValidationException('No dispatcher_mode given either on the command line'
@@ -142,12 +218,14 @@ class Controller:
                                      output_directory_path,
                                      nested_depth)
 
-    def setup_flowcell(self, molecule_packet):
+    def setup_flowcell(self):
+        """
+        Instantiates the flowcell, valudates the flowcell parameters and attaches it to the controller.
+        """
         self.flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
         valid, msg = self.flowcell.validate()
         if not valid:
             raise (ControllerValidationException(msg))
-        return self.flowcell.load_flowcell(molecule_packet)
 
     def retrieve_configuration(self, configuration_file_path):
         with open(configuration_file_path, "r+") as configuration_file:

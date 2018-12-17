@@ -50,7 +50,7 @@ class ClusterPacket:
         :param file_path: location of the file into which the serialized, compressed data is to go.
         """
         with gzip.open(file_path, 'wb') as obj_file:
-            obj_file.write(f"#{self.cluster_packet_id}\n#{self.sample.serialize()}\n").encode()
+            obj_file.write(f"#{self.cluster_packet_id}\n#{self.sample.serialize()}\n".encode())
             for cluster in self.clusters:
                 obj_file.write(cluster.serialize().encode())
                 # Clusters take up a variable number of lines, so we need a separator
