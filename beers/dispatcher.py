@@ -81,7 +81,8 @@ class Dispatcher:
 
     def dispatch_multicore(self, packet_file_paths):
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        data = [(self.seed, stage_configuration, self.output_directory_path, packet_file_path, self.directory_structure)
+        data = [(self.seed, stage_configuration, self.input_directory_path, self.output_directory_path,
+                 self.directory_structure, packet_file_path)
                 for packet_file_path in packet_file_paths]
         pool = Pool(processes=2)
         if self.stage_name == 'library_prep_pipeline':
