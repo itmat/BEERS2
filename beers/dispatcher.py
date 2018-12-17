@@ -68,7 +68,7 @@ class Dispatcher:
             command = f"bsub -o {stdout_file_path} -e {stderr_file_path} " \
                       f"-J run{self.run_id}_{self.stage_name}_pkt{packet_id} " \
                       f"{stage_process} " \
-                      f"-s {self.seed}" \
+                      f"-s {self.seed} " \
                       f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure}"
             subprocess.call(command, shell=True)
