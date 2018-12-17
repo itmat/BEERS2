@@ -118,6 +118,7 @@ class Dispatcher:
                       f"-s {self.seed} " \
                       f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure}"
+            print(command)
             subprocess.call(command, shell=True)
 
     @staticmethod
