@@ -142,8 +142,6 @@ class Controller:
             cluster_packet_file_path = os.path.join(data_subdirectory_path, cluster_packet_filename)
             cluster_packet.serialize(cluster_packet_file_path)
             cluster_packet_file_paths.append(cluster_packet_file_path)
-        # Molecule packet no longer needed - trying to save RAM
-        molecule_packet = None
         packet_file_count = len(cluster_packet_file_paths)
         data_directory_path = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
         log_directory_path = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -228,11 +226,23 @@ class Controller:
             raise (ControllerValidationException(msg))
 
     def retrieve_configuration(self, configuration_file_path):
+        """
+        Helper method to parse the configuration file given by the path info a dictionary attached to the controller
+        object.  For convenience, the portion of the configuration file that contains parametric data specific to the
+        controller is set to a separate dictionary also attached to the controller.
+        :param configuration_file_path: The absolute file path of the configuration file
+        """
         with open(configuration_file_path, "r+") as configuration_file:
             self.configuration = json.load(configuration_file)
         self.controller_configuration = self.configuration[self.controller_name]
 
     def set_run_id(self, run_id):
+        """
+        Helper method to add the run id to the controller for later use.  The run id, if any, on the command line
+        takes precedence.  If no run id is present on the command line, the controller configuration data is searched
+        for it.  If no run id is found in either place, an error is raised.
+        :param run_id: The run id found on the command line, if any.
+        """
         if not run_id:
             if not self.controller_configuration['run_id']:
                 raise ControllerValidationException('No run id given either on the command line'
@@ -242,10 +252,26 @@ class Controller:
             self.run_id = run_id
 
     def plant_seed(self):
+        """
+        Helper method to obtain the seed from the controller configuration data or to generate a seed if
+        no seed is provided by the user and then set it.  The seed will be added to the controller log file created for
+        this run so that the user may re-create the run exactly at a later date, assuming all else remains the same.
+        """
         self.seed = self.controller_configuration.get('seed', GeneralUtils.generate_seed())
         np.random.seed(self.seed)
 
     def create_output_folder_structure(self, stage_names):
+        """
+        Use the provided stage names, the run id and the top level output directory path from the configuration data
+        to create the top level directory of a preliminary directory structure.  The attempt fails if either the top
+        level output directory exists but either is not a directory or is a non-empty directory or if the user has
+        insufficient permissions to create the directory. Created in the level directly below the top level output
+        directory, are folders named after the stage names provided (i.e., controller, library_prep_pipeline,
+        sequence_pipeline) and beneath each of these are data and log folders.  Additional subdirectories are created
+        later to organize the numerous files exprected and avoid congestion.
+        :param stage_names: names of folders directly below the top level output directory (e.g., controller,
+         library_prep)
+        """
         self.output_directory_path = f"{self.controller_configuration['output_directory_path']}_run{self.run_id}"
         if not os.path.exists(self.output_directory_path):
             try:
@@ -266,6 +292,10 @@ class Controller:
                         mode=0o0755, exist_ok=True)
 
     def create_controller_log(self):
+        """
+        Generates a controller log containing the timestamp, seed, run id and current configuration data so that the
+        user can replicate this run at a later date.
+        """
         log_file_path = os.path.join(self.output_directory_path,
                                      self.controller_name,
                                      CONSTANTS.LOG_DIRECTORY_NAME,
@@ -280,10 +310,18 @@ class Controller:
             json.dump(self.configuration, controller_log_file, indent=2)
 
     def assemble_input_samples(self):
-        # TODO remove hardcoded file - probably a filename lookup based on prep kit used as provided by user
-        adapter_generator = AdapterGenerator("TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa")
+        """
+        Creates a list of sample objects, attached to the controller, that represent those samples that are to be
+        run in the expression pipeline.  If not running from the expression pipeline, this method is not used since
+        the sample data is already contained in each packet.  For each sample, a unique combination of adapter sequences
+        are provided.  The sample name is assumed to be that of the input filename without the extension.  Gender may
+        or may not be provided in the configuration data.  If not set, the gender will be inferred by the expression
+        pipeline.
+        """
+        # TODO remove hardcoded adapter kit name- probably a config lookup based on prep kit used as provided by user
         input_directory_path = self.controller_configuration["input"]["directory_path"]
         self.input_samples = []
+        AdapterGenerator.generate_adapters("TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa")
         for input_sample in self.controller_configuration["input"]["data"]:
             sample_name = os.path.splitext(input_sample["filename"])[0]
             input_sample_file_path = os.path.join(input_directory_path, input_sample["filename"])
@@ -291,11 +329,22 @@ class Controller:
                 Sample(Sample.next_sample_id,
                        sample_name,
                        input_sample_file_path,
-                       adapter_generator.get_unique_adapter_sequences(),
+                       AdapterGenerator.get_unique_adapter_sequences(),
                        input_sample.get("gender", None)))
             Sample.next_sample_id += 1
 
     def create_step_log_directories(self, file_count, stage_name, log_directory_path):
+        """
+        The number and type of steps in either the library_prep pipeline or the sequence pipeline will depend upon the
+        user.  That information is provided in the configuration data.  Since there will be as many step logs as there
+        are packets to process, they too must be organized into subdirectories.  We also need the same subdirectory
+        organization for the standard out, stadard error and pipeline log file.  So that is created here along with
+        the subdirectory structure for each step discovered in the configuration data for the given stage.
+        :param file_count: number of files to house in the subdirectory structure (i.e., number of pipeline processes
+        to run)
+        :param stage_name: the stage name of the pipeline process (e.g., library_prep_pipeline, sequence_pipeline)
+        :param log_directory_path: The top level log directory to house this sub-structure.
+        """
         for subdirectory_name in [LibraryPrepPipeline.pipeline_log_subdirectory_name,
                                   CONSTANTS.STDERR_SUBDIRECTORY_NAME,
                                   CONSTANTS.STDOUT_SUBDIRECTORY_NAME]:

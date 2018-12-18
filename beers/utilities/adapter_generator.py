@@ -51,9 +51,3 @@ class AdapterGenerator:
                            if adapter.label == adapter_labels[1]][0]
         return adapter_5_prime, adapter_3_prime
 
-
-if __name__ == '__main__':
-    adapter_generator = AdapterGenerator("TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa")
-
-
-
