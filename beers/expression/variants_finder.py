@@ -1,16 +1,10 @@
-import sys
 import os
-import argparse
 import pysam
 import re
-from timeit import default_timer as timer
 from collections import namedtuple
 from operator import attrgetter, itemgetter
 import math
 from io import StringIO
-from beers.utilities.expression_utils import ExpressionUtils
-from beers.sample import Sample
-
 
 
 Read = namedtuple('Read', ['position', 'description'])
@@ -54,10 +48,10 @@ class VariantsFinderStep:
         self.entropy_sort = parameters["sort_by_entropy"]
         self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinderStep.DEFAULT_DEPTH_CUTOFF
         self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinderStep.DEFAULT_MIN_THRESHOLD
-        self.clip_at_start_pattern = re.compile("(^\d+)[SH]")
-        self.clip_at_end_pattern = re.compile("\d+[SH]$")
-        self.variant_pattern = re.compile("(\d+)([NMID])")
-        self.indel_pattern = re.compile("\|([^|]+)")
+        self.clip_at_start_pattern = re.compile(r"(^\d+)[SH]")
+        self.clip_at_end_pattern = re.compile(r"\d+[SH]$")
+        self.variant_pattern = re.compile(r"(\d+)([NMID])")
+        self.indel_pattern = re.compile(r"\|([^|]+)")
 
     def validate(self):
         return True
@@ -278,62 +272,6 @@ class VariantsFinderStep:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
-    @staticmethod
-    def main():
-        """
-        CLI Entry point into the variants_finder program.  Parses the use input, creates the VariantsFinder object,
-        passing in the arguments and runs the process to find the variants inside a timer.
-        """
-        parser = argparse.ArgumentParser(description='Find Variants')
-        parser.add_argument('-m', '--chromosome', default=None,
-                            help='Optional override for one chromosome')
-        parser.add_argument('-o', '--output_directory',
-                            help='Path to output directory.')
-        parser.add_argument('-a', '--alignment_file_path',
-                            help="Path to alignment BAM file.")
-        parser.add_argument('-g', '--reference_genome_filename',
-                            help="Path to the related reference genome fasta file.  Used to eliminate read positions "
-                                 "that contain no variants.")
-        parser.add_argument('-s', '--sort_by_entropy', action='store_true',
-                            help="Optional request to sort line in order of descreasing entropy.")
-        parser.add_argument('-c', '--cutoff_depth', type=int,
-                            help="Integer to indicate minimum read depth a position must have for inclusion."
-                                 " If the option is not selected, a default of 10 will be applied as the minimum"
-                                 " read depth.  Note that this option is used only if the sort_by_entropy option is"
-                                 " invoked.")
-        parser.add_argument('-t', '--min_threshold', type=float,
-                            help="For any position, if the percent abundance of the second most abundant variant"
-                                 "relative to the two most abundant variants falls below this threshold, the seond"
-                                 "most abundant variant will be discarded.  Defaults to 0.03 (3 percent)")
-        parser.add_argument('-n', '--x_chromosome_name',
-                            help="Enter the chromosome names for chromosome X.")
-        args = parser.parse_args()
-        print(args)
-
-        sample = Sample(1, "Unit_test", args.alignment_file_path, None, None)
-
-        parameters = {
-            'x_chromosome_name': args.x_chromosome_name,
-            'sort_by_entropy': args.sort_by_entropy,
-            'cutoff_depth': args.cutoff_depth,
-            "min_threshold": args.min_threshold
-        }
-
-        try:
-            os.mkdir(args.output_directory)
-        except FileExistsError:
-            pass
-
-        variants_finder = VariantsFinderStep(
-                                         args.chromosome,
-                                         args.alignment_file_path,
-                                         ExpressionUtils.create_reference_genome(args.reference_genome_filename),
-                                         parameters, args.output_directory)
-        start = timer()
-        variants_finder.execute()
-        end = timer()
-        sys.stderr.write(f"Variants Finder: {end - start} sec\n")
-
 
 class PositionInfo:
     """
@@ -460,25 +398,3 @@ class PositionInfo:
         s.write(f"\t{','.join(abundances)}")
         s.write(f"\tE={self.calculate_entropy()}\n")
         return s.getvalue()
-
-
-if __name__ == "__main__":
-    sys.exit(VariantsFinderStep.main())
-
-'''Example calls
-python variants_finder.py \
- -m X \
- -n X \
- -o ../../data/expression/GRCh38/output \
- -a ../../data/expression/GRCh38/Test_data.1002_baseline.sorted.bam \
- -g ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa
- 
-python variants_finder.py \
- -m chrX \
- -n chrX \
- -o ../../data/expression/mm9/test \
- -a ../../data/expression/mm9/V4.ILB_9579.sorted.chrX_only.aligned.w.gsnap.v2018.bam \
- -g ../../data/expression/mm9/mm9_genome_one-line-seqs.fa
-
-
-'''

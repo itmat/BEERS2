@@ -67,6 +67,14 @@
         "parameters": {
           "command": "java -classpath /home/crislawrence/eclipse-workspace/Stubs/bin org.crislawrence.stubs.MockProcess 5"
         }
+      },
+      {
+        "step_name": "genome_builder.GenomeBuilderStep",
+        "parameters": {
+          "ignore_indels": false,
+          "ignore_snps": false,
+          "gender_chr_names": ["X","Y","MT"]
+        }
       }
     ]
   },

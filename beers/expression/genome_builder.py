@@ -1,11 +1,7 @@
 from io import StringIO
-import sys
 import re
 import os
-import argparse
 from collections import namedtuple
-from timeit import default_timer as timer
-from beers.utilities.expression_utils import ExpressionUtils
 from beers.expression.expression_pipeline import ExpressionPipelineException
 import itertools
 
@@ -16,53 +12,23 @@ SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'posi
 class GenomeBuilderStep:
 
     def __init__(self, logfile, data_directory_path, parameters):
-
-        self.beagle_file_path =
-        self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
-        self.variants_file_path = variants_file_path
-        self.target_sample_name = target_sample_name
+        self.data_directory_path = data_directory_path
+        self.variant_line_pattern = re.compile(r'^([^|]+):(\d+) \| (.*)\tTOT')
         self.gender = parameters['gender']
         self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters['gender_chr_names'])}
         self.unpaired_chr_list = self.get_unpaired_chr_list()
         self.unpaired_chr_variants = self.get_unpaired_chr_variant_data()
         self.ignore_indels = parameters['ignore_indels']
         self.ignore_snps = parameters['ignore_snps']
-        self.reference_genome = reference_genome
         self.genome_names = ['maternal', 'paternal']
-        self.log_file_path = os.path.join(output_directory_path, "genome_builder.log")
-        self.chromosome_list = [chromosome] or reference_genome.keys()
+        self.target_sample_name = None
+        self.reference_genome = None
+        self.variants_file_path = None
+        self.beagle_file_path = None
+        self.log_file_path = logfile
 
-        variants_filename = os.path.basename(variants_file_path)
-        self.genome_output_file_stem = \
-            os.path.join(output_directory_path, variants_filename[:variants_filename.find('_variants')])
-
-    def __init__(self,
-                 chromosome,
-                 beagle_file_path,
-                 variants_file_path,
-                 target_sample_name,
-                 reference_genome,
-                 parameters,
-                 output_directory_path):
-
-        self.beagle_file_path = beagle_file_path
-        self.variant_line_pattern = re.compile('^([^|]+):(\d+) \| (.*)\tTOT')
-        self.variants_file_path = variants_file_path
-        self.target_sample_name = target_sample_name
-        self.gender = parameters['gender']
-        self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters['gender_chr_names'])}
-        self.unpaired_chr_list = self.get_unpaired_chr_list()
-        self.unpaired_chr_variants = self.get_unpaired_chr_variant_data()
-        self.ignore_indels = parameters['ignore_indels']
-        self.ignore_snps = parameters['ignore_snps']
-        self.reference_genome = reference_genome
-        self.genome_names = ['maternal', 'paternal']
-        self.log_file_path = os.path.join(output_directory_path, "genome_builder.log")
-        self.chromosome_list = [chromosome] or reference_genome.keys()
-
-        variants_filename = os.path.basename(variants_file_path)
-        self.genome_output_file_stem =\
-            os.path.join(output_directory_path, variants_filename[:variants_filename.find('_variants')])
+    def validate(self):
+        return True
 
     def get_unpaired_chr_list(self):
         unpaired_chr_list = [self.gender_chr_names['M']]
@@ -147,7 +113,18 @@ class GenomeBuilderStep:
                     raise ExpressionPipelineException(f"No sample data found.")
         return sample_index
 
-    def execute(self):
+    def execute(self, sample, reference_genome, chromosome=None):
+        self.reference_genome = reference_genome
+        self.chromosome_list = [chromosome] or reference_genome.keys()
+        alignment_file_path = sample.input_file_path
+        self.target_sample_name = sample.sample_name
+        variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
+        self.variants_file_path = os.path.join(self.data_directory_path, variants_filename)
+        variants_filename = os.path.basename(self.variants_file_path)
+        self.genome_output_file_stem = \
+            os.path.join(self.data_directory_path, variants_filename[:variants_filename.find('_variants')])
+        self.beagle_file_path = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_beagle.vcf"
+        self.gender = sample.gender
         sample_index = self.locate_sample()
         paired_chr_list = self.get_paired_chr_list()
         for chromosome in self.chromosome_list:
@@ -175,8 +152,6 @@ class GenomeBuilderStep:
         reference_sequence = self.reference_genome[chromosome]
         with open(self.log_file_path, 'a') as log_file:
             genome = None
-
-
             variants = filter(lambda x: x.chromosome == chromosome, self.unpaired_chr_variants)
             for index, variant in enumerate(variants):
                 if index == 0:
@@ -192,8 +167,6 @@ class GenomeBuilderStep:
                     if chromosome == self.gender_chr_names['Y'] and self.gender == 'male':
                         genome = Genome(self.genome_names[1], chromosome, start_sequence, variant.position,
                                         self.genome_output_file_stem)
-
-
                 # If the nascent genome seq position translated to reference is downstream of the variant
                 # ignore the variant for this genome.
                 if genome.position + genome.offset > variant.position:
@@ -288,65 +261,6 @@ class GenomeBuilderStep:
                     log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
                     genome.save_to_file()
 
-    @staticmethod
-    def main():
-        """
-        Entry point for the genome maker.  Three input file paths/names are required.  One is the variant file, created
-        by the variants maker in this package.  The second is a fasta file of the reference genome containing at least
-        those chromosomes found in the variants file.  Each of the chromosome sequences in the fasta file must be
-        resident on one line.  THe third is a log file.  One output file path/name is required, to which the hardcoded
-        custom genome names will be suffixed to form fasta files of the custom genome sequences created.  Two optional
-        arguments are the seed and the threshold.
-
-        It should be noted that both the variants file and the genome reference fasta file should list the chromosomes
-        in the same order.  Additionally, the variants file should list the variants in ascending order of position
-        within each chromosome.
-        """
-        parser = argparse.ArgumentParser(description='Build Genome Files')
-        parser.add_argument('-m', '--chromosome', default=None,
-                            help='Optional override for one chromosome')
-        parser.add_argument('-w', '--sample_name',
-                            help="Name of sample to process - should be stem of original FASTQ filenames")
-        parser.add_argument('-o', '--output_directory',
-                            help='Path to output directory.')
-        parser.add_argument('-b', '--beagle_file_path',
-                            help="VCF file providing variants as provided by the ouput of BEAGLE.")
-        parser.add_argument("-v", "--variants_file_path",
-                            help="Variants file providing variants for chromsomes occurring singly.")
-        parser.add_argument('-r', '--reference_genome_filename',
-                            help="Fasta file containing the reference genome")
-        parser.add_argument('-l', '--log_filename', help="Log file.")
-        parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'],
-                            help="Gender of input sample (male or female).")
-        # TODO should be required - this will do under we have a pipeline
-        parser.add_argument('-n', '--gender_chr_names', type=lambda names: [name for name in names.split(',')],
-                            help="Enter the gender specific chromosome names in X, Y, M order.")
-        parser.add_argument('-i', '--ignore_indels', action='store_true',
-                            help="Use the reference genome base in place of an indel.  Defaults to false.")
-        parser.add_argument('-j', '--ignore_snps', action='store_true',
-                            help="Use the reference genome base in place of a snp.  Defaults to False.")
-        args = parser.parse_args()
-        print(args)
-
-        parameters = {
-            'gender': args.gender,
-            'gender_chr_names': args.gender_chr_names,
-            'ignore_indels': args.ignore_indels,
-            "ignore_snps": args.ignore_snps
-        }
-
-        genome_builder = GenomeBuilderStep(chromosome = args.chromosome,
-                                     beagle_file_path = args.beagle_file_path,
-                                     variants_file_path = args.variants_file_path,
-                                     target_sample_name = args.sample_name,
-                                     reference_genome = ExpressionUtils.create_reference_genome(args.reference_genome_filename),
-                                     parameters = parameters,
-                                     output_directory_path = args.output_directory)
-        start = timer()
-        genome_builder.execute()
-        end = timer()
-        sys.stderr.write(f"Genome Builder: {end - start} sec\n")
-
 
 class Genome:
     """
@@ -426,22 +340,3 @@ class Genome:
         :return: string representation of the Genome object
         """
         return f"name: {self.name}, chromosome: {self.chromosome}, position: {self.position}, offset: {self.offset}"
-
-
-if __name__ == "__main__":
-    sys.exit(GenomeBuilderStep.main())
-
-
-'''
-Example Call:
-
-python genome_builder.py \
--m  MT \
--v  ../../data/expression/GRCh38/output/Test_data.1002_baseline.sorted_variants.txt \
--w Test_data.1002_baseline.sorted \
--o ../../data/expression/GRCh38/output \
--b  ../../data/expression/GRCh38/output/beagle.vcf \
--r ../../data/expression/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa \
--l ../../data/expression/GRCh38/genome_maker.log -n "X,Y,MT"  -x female
-
-'''

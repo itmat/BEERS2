@@ -39,7 +39,7 @@ class FastQ:
         the FASTQ file - header, called sequence, + quality score.
         """
         cluster_packet_file_paths = glob.glob(f'{self.cluster_packet_directory}{os.sep}**{os.sep}*.gzip',
-                                                 recursive=True)
+                                              recursive=True)
         for direction in CONSTANTS.DIRECTION_CONVENTION:
             lane_clusters = []
             abort = False
@@ -68,8 +68,3 @@ if __name__ == '__main__':
     fastq = FastQ(1, "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output/packets",
                   "/home/crislawrence/Documents/beers_project/BEERS2.0/data/sequence/output")
     fastq.generate_report()
-
-
-
-
-

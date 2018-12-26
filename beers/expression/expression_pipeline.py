@@ -54,9 +54,9 @@ class ExpressionPipeline:
                 sys.stderr.write("Beagle process failed.\n")
                 sys.exit(1)
 
-            #genome_maker = GenomeMaker(chromosome, variants, reference_sequence, self.parameters["GenomeMaker"])
-            #genomes = genome_maker.make_genomes()
-            #variants = None  # Should we dereference objects no longer needed to save memory?
+            genome_builder = self.steps['GenomeBuilderStep']
+            genome_builder.execute(sample, self.reference_genome)
+
             #annotation_updates = []
             #transcript_distributions = []
             molecules = []
