@@ -54,8 +54,8 @@ class ExpressionPipeline:
                 sys.stderr.write("Beagle process failed.\n")
                 sys.exit(1)
 
-            genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.reference_genome)
+            #genome_builder = self.steps['GenomeBuilderStep']
+            #genome_builder.execute(sample, self.reference_genome)
 
             #annotation_updates = []
             #transcript_distributions = []
