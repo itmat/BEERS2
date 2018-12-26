@@ -1,4 +1,5 @@
 from collections import namedtuple
+import functools
 
 
 class FlowcellLane:
@@ -15,7 +16,7 @@ class FlowcellLane:
         self.consumed_coordinates = []
         self.lane = lane
 
-
+@functools.total_ordering
 class LaneCoordinates:
     """
     This object holds a set of tile, x, and y coordinates and is primarily used to allow for coordinate comparisons
@@ -36,9 +37,6 @@ class LaneCoordinates:
         """
         return self.tile == other.tile and self.x == other.x and self.y == other.y
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
     def __gt__(self, other):
         """
         Familiar method for establishing which object is greater, assuming tiles are most significant than
@@ -53,15 +51,6 @@ class LaneCoordinates:
         if self.x != other.x:
             return self.x > other.x
         return self.y > other.y
-
-    def __ge__(self, other):
-        return self.__gt__(other) or self.__eq__(other)
-
-    def __lt__(self, other):
-        return not self.__gt__(other) and self.__ne__(other)
-
-    def __le__(self, other):
-        return not self.__gt__(other)
 
     def __str__(self):
         return f"tile: {self.tile}, x: {self.x}, y: {self.y}"
