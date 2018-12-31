@@ -3,6 +3,7 @@ import os
 import re
 import argparse
 import roman
+import functools
 
 
 class ChromosomeSort:
@@ -109,25 +110,25 @@ class ChromosomeSort:
         with open(input_filename, 'r') as input_file, \
                 open(sorted_filename, 'w') as sorted_file:
 
-            #List of ChromosomeCoordinate objects. Once all coordinates from
-            #input file loaded, this list will be used to sort everything in
-            #order by chromosome coordinate.
+            # List of ChromosomeCoordinate objects. Once all coordinates from
+            # input file loaded, this list will be used to sort everything in
+            # order by chromosome coordinate.
             unsorted_chrom_coordinates = []
 
-            #Maps a string of chromosome coordinates to corresponding entries
-            #from the input file.
+            # Maps a string of chromosome coordinates to corresponding entries
+            # from the input file.
             # Key = String representation of ChromosomeCoordinate
             #       ("{chr}\t{start}\t{end}")
             # Value = newline-delimited string of all lines from the input file
             #        mapping to corresponding coordinates.
             coordinates_to_entries = {}
 
-            #Copy header from input file
+            # Copy header from input file
             if header is True:
                 line = input_file.readline()
                 sorted_file.write(line)
 
-            #Load all entries from input file into memory, in preparation for sort.
+            # Load all entries from input file into memory, in preparation for sort.
             for line in input_file:
                 line_data = line.split('\t')
                 chrom_name = line_data[chrom_column]
@@ -173,6 +174,7 @@ class ChromosomeSort:
         chromosome_sort.sort_chromosome_names()
 
 
+@functools.total_ordering
 class ChromosomeName:
     """
     Class holds the chromosome name and provides methods for making comparisons.  Case is disregarded.
@@ -194,14 +196,6 @@ class ChromosomeName:
         :return: True if equivalent and false otherwise.
         """
         return isinstance(other, ChromosomeName) and self.content == other.content
-
-    def __ne__(self, other):
-        """
-        Test non-equivalence.  Just the negation of __eq__()
-        :param other: other ChromosomeName object for comparison
-        :return: True if not equivalent and false otherwise.
-        """
-        return not self.__eq__(other)
 
     def __gt__(self, other):
         """
@@ -346,32 +340,6 @@ class ChromosomeName:
         # Theoretically, we shouldn't get here
         return True
 
-    def __ge__(self, other):
-        """
-        Obtained by determining whether the ChromosomeName is greater or equal.
-        :param other: other ChromosomeName object for comparison
-        :return: True if this ChromosomeName is greater or equal and false otherwise.
-
-        """
-        return self.__gt__(other) or self.__eq__(other)
-
-    def __lt__(self, other):
-        """
-        Obtained by determining whether the ChromosomeName is greater or equal and negating that finding.
-        :param other: other ChromosomeName object for comparison
-        :return: True if this ChromosomeName is less and false otherwise.
-        """
-        return not self.__gt__(other) and self.__ne__(other)
-
-    def __le__(self, other):
-        """
-        Obtained by determining whether this ChromosomeCoordinate is greater and
-        negating that finding.
-        :param other: other ChromosomeName object for comparison
-        :return: True if this ChromosomeName is less or equal and false otherwise.
-
-        """
-        return not self.__gt__(other)
 
 
 class ChromosomeCoordinate(ChromosomeName):
