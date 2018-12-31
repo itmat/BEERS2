@@ -5,17 +5,28 @@ import numpy as np
 from beers.molecule import Molecule
 
 class PolyAStep:
+    """
+    This step simulates the polyA selection step intended to separate mRNA from all other RNA.  It includes biases but
+    idealized behavior is available by not specifying parameter values and the default values provide idealized
+    behavior.  Any parameter not specified via the configuration file will default to its idealized setting.
+    """
 
     name = "PolyA Selection Step"
 
     def __init__(self, step_log_file_path, parameters):
+        """
+        Initializes the step with a file path to the step log and a dictionary of parameters.  Idenalized defaults
+        substitute for missing parameters.
+        :param step_log_file_path: location of step logfile
+        :param parameters: dictionary of parameters, all of which are optional.
+        """
         self.log_filename = step_log_file_path
-        self.min_polya_tail_length = parameters.get("min_polya_tail_length", 5)
+        self.min_polya_tail_length = parameters.get("min_polya_tail_length", 40)
         self.min_retention_prob = parameters.get("min_retention_prob", 0.0)
         self.max_retention_prob = parameters.get("max_retention_prob", 1.0)
-        self.length_retention_prob = parameters.get("length_retention_prob", 0.2)
+        self.length_retention_prob = parameters.get("length_retention_prob", 1.0)
         self.min_breakage_prob = parameters.get("min_breakage_prob", 0.0)
-        self.max_breakage_prob = parameters.get("max_breakage_prob", 0.0)
+        self.max_breakage_prob = parameters.get("max_breakage_prob", 1.0)
         self.breakpoint_prob = parameters.get("breakpoint_prob", 0.0)
         print("Poly A selection step instantiated")
 
@@ -75,6 +86,10 @@ class PolyAStep:
         return note
 
     def validate(self):
+        """
+        Insures that the parameters provided are valid.  Error messages are sent to stderr.
+        :return: True if the step's parameters are all valid and false otherwise.
+        """
         print(f"Poly A step validating parameters")
         if self.min_retention_prob < 0 or self.min_retention_prob > 1:
             print("The minimum retention probability parameter must be between 0 and 1", file=sys.stderr)
@@ -90,6 +105,8 @@ class PolyAStep:
 
 
 if __name__ == "__main__":
+    # This is useful for single step testing, but out of date.
+    # TODO fix to allow single step testing.
     np.random.seed(100)
     with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
         molecule_packet = pickle.load(molecule_packet_file)
