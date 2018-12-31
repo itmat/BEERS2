@@ -11,10 +11,21 @@ from beers.molecule import Molecule
 
 
 class SizingStep:
+    """
+    This step simulates filtering molecules by size.  The idealized filter has sharp cutoffs.  The non-idealized
+    filter passes molecules via a Gaussian distribution.  If the Gaussian distribution parameters are not provided,
+    the assumption is made that sharp cutoffs are provided.
+    """
 
     name = "Sizing Step"
 
     def __init__(self, step_log_file_path, parameters):
+        """
+        Initializes the step with a file path to the step log and a dictionary of parameters.
+        :param step_log_file_path: location of step logfile
+        :param parameters: dictionary of parameters, all of which are optional.  However either sharp cutoff parameters
+        or mean/std dev parameters are required.
+        """
         self.idealized = False
         self.log_filename = step_log_file_path
         self.mean_length = parameters.get("mean_length")
@@ -32,6 +43,12 @@ class SizingStep:
         print("Sizing step instantiated")
 
     def execute(self, molecule_packet):
+        """
+        Remove those molecules that are outside the filter range.  Parameters dictate whether cutoffs are sharp or
+        dictated by a distribution function
+        :param molecule_packet: rna molecules subject to sizing
+        :return: rna molecules retained following filtration
+        """
         print("Sizing step starting")
         retained_molecules = []
         with open(self.log_filename, "w+") as log_file:
@@ -61,17 +78,36 @@ class SizingStep:
         return y
 
     def display_dist_function(self):
+        """
+        Tool for displaying the distribution function
+        :return:
+        """
         x_values = np.linspace(0, self.mean_length + 6*self.sd_length, self.mean_length + 6*self.sd_length)
         y_values = [self.dist_function(x) for x in x_values]
         pl.plot(x_values, y_values)
         pl.show()
 
-
     def validate(self):
+        """
+        Insures that the parameters provided are valid.  Error messages are sent to stderr.
+        :return: True if the step's parameters are all valid and false otherwise.
+        """
         print(f"Sizing step validating parameters")
+        if self.idealized:
+            if not self.min_length or not self.max_length:
+                print("The minimum and maximum cutoff lengths must be specified.", file=sys.stderr)
+                return False
+            if self.min_length < 0 or self.min_length > self.max_length:
+                print("The minimum cutoff length {self.min_length} must be non-zero and less than the"
+                      "maximum cutoff length, {self.max_length}.", file=sys.stderr)
+                return False
+        else:
+            pass
         return True
 
 if __name__ == "__main__":
+    # This is useful for single step testing, but out of date.
+    # TODO fix to allow single step testing.
     np.random.seed(100)
 
     # Getting original molecule packet (to preserve original sample metadata in case it is needed)

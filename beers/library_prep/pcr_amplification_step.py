@@ -129,7 +129,8 @@ class PCRAmplificationStep:
 
 
 if __name__ == "__main__":
-    # Single step test - using a seed to allow reproducible runs.
+    # Single step test - using a seed to allow reproducible runs but now out of date
+    # TODO fix to allow single step testing.
     np.random.seed(100)
 
     # Getting original molecule packet (to preserve original sample metadata in case it is needed)
