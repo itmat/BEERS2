@@ -41,10 +41,10 @@ class ExpressionPipeline:
         for sample in self.samples:
 
             variants_finder = self.steps['VariantsFinderStep']
-            inferred_gender = variants_finder.execute(sample, self.reference_genome, 'X')
+            inferred_gender = variants_finder.execute(sample, self.reference_genome)
             sample.gender = sample.gender or inferred_gender
 
-            # Variants to VCF conversion goes here.
+        # Variants to VCF conversion goes here.
 
         for sample in self.samples:
 
