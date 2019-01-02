@@ -133,4 +133,13 @@ of alignment files presently (bam and bai) and really only runs the variants fin
 the pipeline.  I threw in a BeagleStep that will eventually call the Beagle process.  For now, I
 put my own Java program as a parameter to that step so I'd have something to run.  You can
 add your own external process as a placemarker for now, if you like.
- 
+
+## Requirements for Users
+
+If the user chooses to supply his/her own reference genome, it should be edited so that a
+sequence contains no line breaks.
+
+If the user declines to provide gender for each sample, the sample will not have X,Y, MT
+data.  If the user neglects to provide gender for just some of the samples, X,Y,MT data
+will be generated for those samples that have gender and a warning will be issued to
+the user.
