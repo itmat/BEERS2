@@ -32,12 +32,14 @@ class Controller:
         These attributes have no value at the time of instantiation.  They are populated by the helper methods.
         """
         self.controller_name = 'controller'
+        self.resources_name = 'resources'
         self.controller_log_filename = 'controller.log'
         # The following attributes are defined following instantiation
         self.debug = False
         self.run_id = None
         self.dispatcher = None
         self.configuration = None
+        self.resources = None
         self.controller_configuration = None
         self.flowcell = None
         self.seed = None
@@ -52,8 +54,9 @@ class Controller:
         """
         stage_name = "expression_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
+        self.set_species_model(args.species_model)
         self.assemble_input_samples()
-        ExpressionPipeline.main(self.configuration['expression_pipeline'],
+        ExpressionPipeline.main(self.configuration['expression_pipeline'], self.resources,
                                 os.path.join(self.output_directory_path, stage_name),
                                 self.input_samples)
 
@@ -235,6 +238,8 @@ class Controller:
         with open(configuration_file_path, "r+") as configuration_file:
             self.configuration = json.load(configuration_file)
         self.controller_configuration = self.configuration[self.controller_name]
+        self.resources = self.configuration[self.resources_name]
+        self.resources['resources_folder'] = os.path.join(CONSTANTS.ROOT_DIR, "resources")
 
     def set_run_id(self, run_id):
         """
@@ -250,6 +255,20 @@ class Controller:
             self.run_id = self.controller_configuration['run_id']
         else:
             self.run_id = run_id
+
+    def set_species_model(self, species_model):
+        """
+        Helper method to add the species model from the command line arguments, if present, to the resources dictionary.
+        Otherwise, the resources dictionary is checked for its presence and if not there, an exception is thrown.
+        :param species_model: genome model for the species under study (e.g., mm9, hg18)
+        """
+        if not species_model:
+            if not self.resources['species_model']:
+                raise ControllerValidationException('A species model either on the command line or'
+                                                    'in the configuration file is required when the expression'
+                                                    'stage of the pipeline is employed.')
+        else:
+            self.resources['species_model'] = species_model
 
     def plant_seed(self):
         """

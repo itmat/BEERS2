@@ -1,6 +1,8 @@
 from collections import namedtuple
+import os
 
-Constants = namedtuple('Constants', ["AUDIT_FILENAME",
+Constants = namedtuple('Constants', ['ROOT_DIR',
+                                     'AUDIT_FILENAME',
                                      'FILES_PER_DIRECTORY_LIMIT',
                                      'DATA_DIRECTORY_NAME',
                                      'LOG_DIRECTORY_NAME',
@@ -12,4 +14,5 @@ Provides a list of constants for the BEERS ecosystem.  Constants for steps are n
 subject to change by the user.
 """
 
-CONSTANTS = Constants("audit.txt", 100, 'data', 'logs', 'stdout', 'stderr', [1, 2])
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONSTANTS = Constants(ROOT_DIR, "audit.txt", 100, 'data', 'logs', 'stdout', 'stderr', [1, 2])

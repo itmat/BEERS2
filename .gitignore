@@ -4,7 +4,8 @@ data
 __pycache__
 *.pyc
 *.html
-beers/personal
+beers/personal/
+resources/index_files/
 venv*
 beers.egg-info
 config/*_config.json

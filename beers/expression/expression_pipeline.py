@@ -7,8 +7,9 @@ from beers.utilities.expression_utils import ExpressionUtils
 from beers.sample import Sample
 
 class ExpressionPipeline:
-    def __init__(self, configuration, output_directory_path, input_samples):
+    def __init__(self, configuration, resources, output_directory_path, input_samples):
         self.samples = input_samples
+        self.resources = resources
         self.output_directory_path = output_directory_path
         log_directory_path = os.path.join(output_directory_path, "logs")
         data_directory_path = os.path.join(output_directory_path, 'data')
@@ -25,7 +26,8 @@ class ExpressionPipeline:
         input_directory_path = configuration["input"]["directory_path"]
         self.reference_genome = dict()
         self.reference_genome_file_path = \
-            os.path.join(input_directory_path, configuration["input"]["model_files"]["reference_genome"])
+            os.path.join(resources['resources_folder'], "index_files", f"{resources['species_model']}",
+                         f"{resources['reference_genome_filename']}")
 
     def validate(self):
         if not all([step.validate() for step in self.steps.values()]):
@@ -41,7 +43,7 @@ class ExpressionPipeline:
         for sample in self.samples:
 
             variants_finder = self.steps['VariantsFinderStep']
-            inferred_gender = variants_finder.execute(sample, self.reference_genome)
+            inferred_gender = variants_finder.execute(sample, self.reference_genome, '19')
             sample.gender = sample.gender or inferred_gender
 
         # Variants to VCF conversion goes here.
@@ -77,8 +79,8 @@ class ExpressionPipeline:
         #return molecules
 
     @staticmethod
-    def main(configuration, output_directory_path, input_samples):
-        pipeline = ExpressionPipeline(configuration, output_directory_path, input_samples)
+    def main(configuration, resources, output_directory_path, input_samples):
+        pipeline = ExpressionPipeline(configuration, resources, output_directory_path, input_samples)
         pipeline.validate()
         pipeline.execute()
 

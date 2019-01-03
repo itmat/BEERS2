@@ -13,6 +13,9 @@ optional_named.add_argument('-d', '--debug', action='store_true',
                             help='Indicates whether additional diagnostics are printed.')
 optional_named.add_argument('-m', '--dispatcher_mode', choices=['serial', 'multicore', 'lsf'],
                             help='Indicates whether to dispatch jobs serially, using multicore, or using lsf')
+optional_named.add_argument('-s', '--species_model', help="Species genome model to use (e.g., mm9, hg18, etc.)."
+                                                          "Must be on the command line or in the configuration file"
+                                                          "if the pipeline includes the expression stage.")
 subparsers = parser.add_subparsers(help='pipeline subcommand', dest="subcommand")
 subparsers.required = True
 
