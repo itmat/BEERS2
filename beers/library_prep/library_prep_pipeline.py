@@ -56,7 +56,7 @@ class LibraryPrepPipeline:
             step_class = getattr(module, step_name)
             self.steps.append(step_class(step_log_file_path, parameters))
         results_filename = f"{LibraryPrepPipeline.stage_name}_" \
-                           f"result_molecule_pkt{self.molecule_packet.molecule_packet_id}.gzip"
+                           f"result_molecule_pkt{self.molecule_packet.molecule_packet_id}.txt"
         self.results_file_path = os.path.join(data_subdirectory_path, results_filename)
 
     def validate(self):

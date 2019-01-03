@@ -12,11 +12,11 @@ class AdapterGenerator:
     available_adapters = {}
 
     @staticmethod
-    def generate_adapters(adapter_kit):
+    def generate_adapters(adapter_kit_file_path):
         if not AdapterGenerator.available_adapters:
             adapters = []
             current_file_path = os.path.abspath(os.path.dirname(__file__))
-            adapter_file_path = os.path.join(current_file_path, f"../../resources/{adapter_kit}")
+            adapter_file_path = os.path.join(adapter_kit_file_path)
             if not os.path.exists(adapter_file_path):
                 raise BeersException(f"No adapter kit resource is found at {adapter_file_path}.")
             with open(adapter_file_path) as adapter_file:

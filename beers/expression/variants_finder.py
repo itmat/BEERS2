@@ -36,7 +36,6 @@ class VariantsFinderStep:
     reads that match the corresponding base in the reference genome are not variants and as such are not kept.
     """
 
-    DEFAULT_X_CHROMOSOME_NAME = 'chrX'
     DEFAULT_DEPTH_CUTOFF = 10
     DEFAULT_MIN_THRESHOLD = 0.03
 
@@ -44,7 +43,6 @@ class VariantsFinderStep:
 
     def __init__(self, logfile, data_directory_path, parameters):
         self.data_directory_path = data_directory_path
-        self.x_chomosome_name = parameters['x_chromosome_name'] or VariantsFinderStep.DEFAULT_X_CHROMOSOME_NAME
         self.entropy_sort = parameters["sort_by_entropy"]
         self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinderStep.DEFAULT_DEPTH_CUTOFF
         self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinderStep.DEFAULT_MIN_THRESHOLD
@@ -52,6 +50,7 @@ class VariantsFinderStep:
         self.clip_at_end_pattern = re.compile(r"\d+[SH]$")
         self.variant_pattern = re.compile(r"(\d+)([NMID])")
         self.indel_pattern = re.compile(r"\|([^|]+)")
+        self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters.get('gender_chr_names'))}
 
     def validate(self):
         return True
@@ -240,27 +239,34 @@ class VariantsFinderStep:
         print(f"Gender is {gender}")
         return gender
 
-    def execute(self, sample, reference_genome, chromosome = None):
+    def execute(self, sample, reference_genome, chromosomes = None):
         """
         Entry point into variants_finder when accessed via imports.  Iterates over the chromosomes in the list
-        provided by the alignment file header and logs those variants found.  In the case of the X chromosome,
-        gender (M or F) is determined by the number of variants found for the X chromosome.
-        :return: gender information
+        provided by the alignment file header and logs those variants found.  If the sample's gender is not provided,
+        variants are not found for the gender chromosomes.  If the sample's gender is female, variants are not found
+        for the Y chromosome.
+        :param sample: The sample for which the variants for to be found
+        :param reference_genome: A dictionary representation of the reference genome
+        :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
+        debugging purposes.
         """
         alignment_file_path = sample.input_file_path
         variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
         variants_file_path = os.path.join(self.data_directory_path, variants_filename)
         self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
-        self.chromosomes = [chromosome] if chromosome else self.get_chromosome_list()
+        self.chromosomes = chromosomes if chromosomes else self.get_chromosome_list()
         self.reference_genome = reference_genome
-        gender = ''
+        gender = sample.gender
         for chromosome in self.chromosomes:
+            if not gender and chromosome in self.gender_chr_names.values():
+                print(f"Skipping gender chromosome {chromosome} because no gender was provided.")
+                continue
+            if gender and gender.lower() == 'female' and chromosome == self.gender_chr_names['Y']:
+                print(f"Skipping Y chromosome, {chromosome}, because the provided gender is female.")
+                continue
             print(f"Finding variants for chromosome {chromosome}")
             variants = self.call_variants(chromosome, self.collect_reads(chromosome))
             self.log_variants(variants, variants_file_path)
-            if chromosome == self.x_chomosome_name:
-                gender = self.establish_gender(variants)
-        return gender
 
     def log_variants(self, variants, variants_file_path):
         """

@@ -56,7 +56,8 @@
           "cutoff_depth": 10,
           "sort_by_entropy": false,
           "min_threshold": 0.03,
-          "min_read_total_count": 10
+          "min_read_total_count": 10,
+          "gender_chr_names": ["X","Y","MT"]
         }
       },
       {

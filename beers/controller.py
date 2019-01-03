@@ -54,7 +54,6 @@ class Controller:
         """
         stage_name = "expression_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
-        self.set_species_model(args.species_model)
         self.assemble_input_samples()
         ExpressionPipeline.main(self.configuration['expression_pipeline'], self.resources,
                                 os.path.join(self.output_directory_path, stage_name),
@@ -75,7 +74,7 @@ class Controller:
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
-        molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
+        molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.txt', recursive=True)
         file_count = len(molecule_packet_file_paths)
         data_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
         log_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -127,7 +126,7 @@ class Controller:
         intermediate_directory_path = os.path.join(self.output_directory_path, self.controller_name)
         data_directory_path = os.path.join(intermediate_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
         cluster_packet_file_paths = []
-        molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.gzip', recursive=True)
+        molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.txt', recursive=True)
         if not molecule_packet_file_paths:
             raise ControllerValidationException(f"No molecule packet files were found in the given input directory, "
                                                 f"{input_directory_path}, or any of its subdirectories")
@@ -256,20 +255,6 @@ class Controller:
         else:
             self.run_id = run_id
 
-    def set_species_model(self, species_model):
-        """
-        Helper method to add the species model from the command line arguments, if present, to the resources dictionary.
-        Otherwise, the resources dictionary is checked for its presence and if not there, an exception is thrown.
-        :param species_model: genome model for the species under study (e.g., mm9, hg18)
-        """
-        if not species_model:
-            if not self.resources['species_model']:
-                raise ControllerValidationException('A species model either on the command line or'
-                                                    'in the configuration file is required when the expression'
-                                                    'stage of the pipeline is employed.')
-        else:
-            self.resources['species_model'] = species_model
-
     def plant_seed(self):
         """
         Helper method to obtain the seed from the controller configuration data or to generate a seed if
@@ -337,10 +322,14 @@ class Controller:
         or may not be provided in the configuration data.  If not set, the gender will be inferred by the expression
         pipeline.
         """
-        # TODO remove hardcoded adapter kit name- probably a config lookup based on prep kit used as provided by user
         input_directory_path = self.controller_configuration["input"]["directory_path"]
         self.input_samples = []
-        AdapterGenerator.generate_adapters("TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa")
+        # TODO handle the situation where the adapter kit is not specified or not found
+        # The kit is really only needed for library prep.  So if the expression pipeline does not generate
+        # molecule packets, we could postpone this step until when that assembly occurs.  But we don't want to
+        # make the addition to thousands of molecule packets after the fact.
+        adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
+        AdapterGenerator.generate_adapters(adapter_kit_file_path)
         for input_sample in self.controller_configuration["input"]["data"]:
             sample_name = os.path.splitext(input_sample["filename"])[0]
             input_sample_file_path = os.path.join(input_directory_path, input_sample["filename"])
