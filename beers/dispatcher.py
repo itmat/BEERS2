@@ -15,7 +15,7 @@ class Dispatcher:
     commands needed to spawn the library_prep and sequence pipeline processes for each packet (molecule or cluster).
     """
 
-    packet_pattern = re.compile(r'^.*_pkt(\d+).gzip$')
+    packet_pattern = re.compile(r'^.*_pkt(\d+).*$')
 
     def __init__(self,
                  run_id,

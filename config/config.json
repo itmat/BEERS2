@@ -52,7 +52,6 @@
       {
         "step_name": "variants_finder.VariantsFinderStep",
         "parameters": {
-          "x_chromosome_name": "X",
           "cutoff_depth": 10,
           "sort_by_entropy": false,
           "min_threshold": 0.03,
