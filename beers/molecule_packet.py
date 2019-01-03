@@ -14,9 +14,9 @@ class MoleculePacket:
 
     def serialize(self, file_path):
         with open(file_path, 'wb') as obj_file:
-            obj_file.write((f"#{self.molecule_packet_id}\n#{self.sample.serialize()}\n").encode())
+            obj_file.write((f"#{self.molecule_packet_id}\n#{self.sample.serialize()}\n").encode(encoding="ascii"))
             for molecule in self.molecules:
-                obj_file.write((molecule.serialize() + "\n").encode())
+                obj_file.write((molecule.serialize() + "\n").encode(encoding="ascii"))
 
     @staticmethod
     def deserialize(file_path):
@@ -25,11 +25,11 @@ class MoleculePacket:
             for line_number, line in enumerate(obj_file):
                 line = line.rstrip()
                 if line_number == 0:
-                    molecule_packet_id = int(line[1:].decode())
+                    molecule_packet_id = int(line[1:].decode(encoding="ascii"))
                 elif line_number == 1:
-                    sample = Sample.deserialize(line.decode())
+                    sample = Sample.deserialize(line.decode(encoding="ascii"))
                 else:
-                    molecules.append(Molecule.deserialize(line.decode()))
+                    molecules.append(Molecule.deserialize(line.decode(encoding="ascii")))
         return MoleculePacket(molecule_packet_id, sample, molecules)
 
     @staticmethod
