@@ -49,6 +49,10 @@
     },
     "steps": [
       {
+        "step_name": "genome_alignment.GenomeAlignmentStep",
+        "parameters": []
+      },
+      {
         "step_name": "variants_finder.VariantsFinderStep",
         "parameters": {
           "cutoff_depth": 10,
