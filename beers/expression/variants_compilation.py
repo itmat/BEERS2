@@ -85,6 +85,10 @@ class VariantsCompilationStep():
                 variants = [{var: count for var, count in vars.items() if (var != ref_base and "N" not in var)}
                             for vars in variants]
 
+                #TODO: note that current versions of variant_finder.py do largely the same job as this already
+                # So one could remove most of these checks at some point, but no harm is done in running these
+                # (except for slowing down the process slightly)
+
                 # Find each sample's most likely variants that aren't just the reference
                 def common_variant(variants):
                     if variants:
