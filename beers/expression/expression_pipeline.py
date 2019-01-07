@@ -13,6 +13,7 @@ class ExpressionPipeline:
         self.output_directory_path = output_directory_path
         log_directory_path = os.path.join(output_directory_path, "logs")
         data_directory_path = os.path.join(output_directory_path, 'data')
+        self.create_intermediate_data_subdirectories(data_directory_path, log_directory_path)
         self.log_file_path = os.path.join(log_directory_path, "expression_pipeline.log")
         self.steps = {}
         for step in configuration['steps']:
@@ -28,6 +29,11 @@ class ExpressionPipeline:
         self.reference_genome_file_path = \
             os.path.join(resources['resources_folder'], "index_files", f"{resources['species_model']}",
                          f"{resources['reference_genome_filename']}")
+
+    def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
+        for sample in self.samples:
+            os.makedirs(os.path.join(data_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
+            os.makedirs(os.path.join(log_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
 
     def validate(self):
         if not all([step.validate() for step in self.steps.values()]):

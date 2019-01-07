@@ -251,8 +251,9 @@ class VariantsFinderStep:
         debugging purposes.
         """
         alignment_file_path = sample.input_file_path
-        variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
-        variants_file_path = os.path.join(self.data_directory_path, variants_filename)
+        # variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
+        variants_filename = "variants.txt"
+        variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}', variants_filename)
         self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
         self.chromosomes = chromosomes if chromosomes else self.get_chromosome_list()
         self.reference_genome = reference_genome
