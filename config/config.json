@@ -13,17 +13,9 @@
         {
           "filename": "Adapter_trimmed.1015_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
         }
-      ],
-      "fastq_filenames": [
-        "Adapter_trimmed.1002_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
-        "Adapter_trimmed.1015_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
-        "Adapter_trimmed.1016_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
-        "Adapter_trimmed.1021_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
-        "Adapter_trimmed.1022_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
       ]
     },
     "output_directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/pipeline_results",
-
     "flowcell": {
       "flowcell_geometry": {
         "min_x": 1012,
@@ -40,13 +32,6 @@
     }
   },
   "expression_pipeline": {
-    "input" : {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
-      "model_files": {
-        "reference_genome": "Homo_sapiens.GRCh38.reference_genome.fa",
-        "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt"
-      }
-    },
     "steps": [
       {
         "step_name": "genome_alignment.GenomeAlignmentStep",
@@ -171,6 +156,7 @@
   "resources":{
     "species_model": "hg38",
     "reference_genome_filename": "Homo_sapiens.GRCh38.reference_genome.fa",
+    "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt",
     "adapter_kit": "TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa"
   }
 
