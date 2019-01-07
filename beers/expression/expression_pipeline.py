@@ -57,7 +57,7 @@ class ExpressionPipeline:
         variants_compilation.execute(self.samples, self.reference_genome)
 
         beagle = self.steps['BeagleStep']
-        outcome = beagle.execute()
+        outcome = beagle.execute(self.resources)
         if outcome != 0:
             sys.stderr.write("Beagle process failed.\n")
             sys.exit(1)
