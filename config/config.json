@@ -48,6 +48,10 @@
         }
       },
       {
+        "step_name": "variants_compilation.VariantsCompilationStep",
+        "parameters": []
+      },
+      {
         "step_name": "beagle.BeagleStep",
         "parameters": {
           "command": "java -classpath /home/crislawrence/eclipse-workspace/Stubs/bin org.crislawrence.stubs.MockProcess 5"

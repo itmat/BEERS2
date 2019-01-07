@@ -24,7 +24,6 @@ class ExpressionPipeline:
             module = importlib.import_module(f'.{module_name}', package="beers.expression")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(step_log_file_path, data_directory_path, parameters)
-        input_directory_path = configuration["input"]["directory_path"]
         self.reference_genome = dict()
         self.reference_genome_file_path = \
             os.path.join(resources['resources_folder'], "index_files", f"{resources['species_model']}",
@@ -52,17 +51,18 @@ class ExpressionPipeline:
             genome_alignment.execute(sample, self.reference_genome)
 
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.reference_genome, ['19', 'X', 'Y'])
+            variants_finder.execute(sample, self.reference_genome, ['19'])
 
-        # Variants to VCF conversion goes here.
+        variants_compilation = self.steps['VariantsCompilationStep']
+        variants_compilation.execute(self.samples, self.reference_genome)
 
-        for sample in self.samples:
+        beagle = self.steps['BeagleStep']
+        outcome = beagle.execute()
+        if outcome != 0:
+            sys.stderr.write("Beagle process failed.\n")
+            sys.exit(1)
 
-            beagle = self.steps['BeagleStep']
-            outcome = beagle.execute()
-            if outcome != 0:
-                sys.stderr.write("Beagle process failed.\n")
-                sys.exit(1)
+        #for sample in self.samples:
 
             #genome_builder = self.steps['GenomeBuilderStep']
             #genome_builder.execute(sample, self.reference_genome)
