@@ -48,6 +48,9 @@ class ExpressionPipeline:
 
         for sample in self.samples:
 
+            genome_alignment = self.steps['GenomeAlignmentStep']
+            genome_alignment.execute(sample, self.reference_genome)
+
             variants_finder = self.steps['VariantsFinderStep']
             variants_finder.execute(sample, self.reference_genome, ['19', 'X', 'Y'])
 

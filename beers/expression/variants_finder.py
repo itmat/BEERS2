@@ -250,7 +250,8 @@ class VariantsFinderStep:
         :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
         debugging purposes.
         """
-        alignment_file_path = sample.input_file_path
+        alignment_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}',
+                                           'genome_alignment.bam')
         # variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
         variants_filename = "variants.txt"
         variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}', variants_filename)
