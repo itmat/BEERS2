@@ -322,7 +322,7 @@ class Controller:
         or may not be provided in the configuration data.  If not set, the gender will be inferred by the expression
         pipeline.
         """
-        input_directory_path = self.controller_configuration["input"]["directory_path"]
+        input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
         self.input_samples = []
         # TODO handle the situation where the adapter kit is not specified or not found
         # The kit is really only needed for library prep.  So if the expression pipeline does not generate
@@ -330,7 +330,7 @@ class Controller:
         # make the addition to thousands of molecule packets after the fact.
         adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
         AdapterGenerator.generate_adapters(adapter_kit_file_path)
-        for input_sample in self.controller_configuration["input"]["data"]:
+        for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
             sample_name = os.path.splitext(input_sample["filename"])[0]
             input_sample_file_path = os.path.join(input_directory_path, input_sample["filename"])
             self.input_samples.append(

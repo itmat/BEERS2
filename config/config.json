@@ -3,18 +3,6 @@
     "run_id": null,
     "seed": 100,
     "dispatcher_mode": "serial",
-    "input": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
-      "data": [
-        {
-          "filename": "Adapter_trimmed.1002_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
-          "gender": "female"
-        },
-        {
-          "filename": "Adapter_trimmed.1015_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
-        }
-      ]
-    },
     "output_directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/pipeline_results",
     "flowcell": {
       "flowcell_geometry": {
@@ -32,6 +20,18 @@
     }
   },
   "expression_pipeline": {
+    "input": {
+      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
+      "data": [
+        {
+          "filename": "Adapter_trimmed.1002_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
+          "gender": "female"
+        },
+        {
+          "filename": "Adapter_trimmed.1015_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
+        }
+      ]
+    },
     "steps": [
       {
         "step_name": "genome_alignment.GenomeAlignmentStep",

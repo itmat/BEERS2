@@ -180,9 +180,9 @@ class Flowcell:
         if not geometry:
             fastq_file_paths = []
             # TODO - untested since latest config.json changes
-            input_directory_path = self.configuration['controller']['input']['directory_path']
-            fasta_filenames = [item['filename'] for item in self.configuration['controller']['input']['data']]
-            for fastq_filename in fasta_filenames:
+            input_directory_path = self.configuration['expression_pipeline']['input']['directory_path']
+            fastq_filenames = [item['filename'] for item in self.configuration['expression_pipeline']['input']['data']]
+            for fastq_filename in fastq_filenames:
                 fastq_file_paths.append(os.path.join(input_directory_path, fastq_filename))
             self.get_coordinate_ranges(fastq_file_paths)
         else:
