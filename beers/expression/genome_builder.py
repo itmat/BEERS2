@@ -87,15 +87,15 @@ class GenomeBuilderStep:
     def get_paired_chr_list(self):
         paired_chr_list = []
         with gzip.open(self.beagle_file_path) as beagle_file:
-            for key, _ in self.group_data(beagle_file, lambda line: line.decode('ascii').split('t')[0]):
-                if key[1] != '#':
+            for key, _ in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')[0]):
+                if key[0] != '#':
                     paired_chr_list.append(key)
         return paired_chr_list
+
 
     @staticmethod
     def group_data(lines, group_function):
         for key, values in itertools.groupby(lines, key=group_function):
-            print(key,values)
             yield key, list(values)
 
     def locate_sample(self):
@@ -116,9 +116,9 @@ class GenomeBuilderStep:
                     raise ExpressionPipelineException(f"No sample data found.")
         return sample_index
 
-    def execute(self, sample, reference_genome, chromosome=None):
+    def execute(self, sample, reference_genome, chromosome_list=[]):
         self.reference_genome = reference_genome
-        self.chromosome_list = [chromosome] or list(reference_genome.keys())
+        self.chromosome_list = chromosome_list or list(reference_genome.keys())
         self.sample_id = f'sample{sample.sample_id}'
         self.gender = sample.gender
         self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, "variants.txt")
@@ -131,10 +131,13 @@ class GenomeBuilderStep:
         paired_chr_list = self.get_paired_chr_list()
         for chromosome in self.chromosome_list:
             if chromosome in self.unpaired_chr_list:
+                print(f'Chromosome {chromosome} in unpaired list')
                 self.make_unpaired_chromosome(chromosome)
             elif chromosome in paired_chr_list:
+                print(f'Chromosome {chromosome} in paired list')
                 self.make_paired_chromosomes(chromosome, sample_index)
             elif not (chromosome == self.gender_chr_names['Y'] and self.gender == 'female'):
+                print(f'Chromosome {chromosome} using ref genome chr')
                 self.make_reference_chromosome(chromosome)
 
     def make_reference_chromosome(self, chromosome):
@@ -194,9 +197,9 @@ class GenomeBuilderStep:
 
     def make_paired_chromosomes(self, chromosome, sample_index):
         reference_sequence = self.reference_genome[chromosome]
-        with open(self.log_file_path, 'a') as log_file, open(self.beagle_file_path) as beagle_file:
+        with open(self.log_file_path, 'a') as log_file, gzip.open(self.beagle_file_path) as beagle_file:
             genomes = []
-            for key, data in self.group_data(beagle_file, lambda line: line.split('t')):
+            for key, data in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')):
 
                 if key != chromosome:
                     continue
@@ -376,7 +379,6 @@ if __name__ == "__main__":
 Example Call:
 
 python genome_builder.py \
--c '19' \
 -d ../../data/pipeline_results_run99/expression_pipeline/data \
 -g ../../data/pipeline_results_run99/expression_pipeline/data/sample1/genome_builder_output \
 -r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
