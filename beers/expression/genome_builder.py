@@ -8,6 +8,7 @@ from beers.expression.expression_pipeline import ExpressionPipelineException
 import itertools
 from beers.utilities.expression_utils import ExpressionUtils
 from beers.sample import Sample
+from beers.beers_exception import BeersException
 
 
 SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'position', 'description'])
@@ -17,15 +18,18 @@ class GenomeBuilderStep:
 
     def __init__(self, logfile, data_directory_path, parameters):
         self.data_directory_path = data_directory_path
+        self.beagle_file_path = os.path.join(self.data_directory_path, 'beagle.vcf.vcf.gz')
         self.variant_line_pattern = re.compile(r'^([^|]+):(\d+) \| (.*)\tTOT')
         self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters['gender_chr_names'])}
+        self.genome_output_file_stem = os.path.join(self.data_directory_path,
+                                                    f'sample{sample.sample_id}',
+                                                    'custom_genome')
         self.ignore_indels = parameters['ignore_indels']
         self.ignore_snps = parameters['ignore_snps']
         self.genome_names = ['maternal', 'paternal']
         self.sample_id = None
         self.reference_genome = None
         self.variants_file_path = None
-        self.beagle_file_path = None
         self.log_file_path = logfile
 
     def validate(self):
@@ -122,22 +126,19 @@ class GenomeBuilderStep:
         self.sample_id = f'sample{sample.sample_id}'
         self.gender = sample.gender
         self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, "variants.txt")
-        self.genome_output_file_stem = \
-            os.path.join(self.data_directory_path, f'sample{sample.sample_id}', 'genome')
-        self.beagle_file_path = os.path.join(self.data_directory_path, 'beagle.vcf.vcf.gz')
         sample_index = self.locate_sample()
         self.unpaired_chr_list = self.get_unpaired_chr_list()
         self.unpaired_chr_variants = self.get_unpaired_chr_variant_data()
         paired_chr_list = self.get_paired_chr_list()
         for chromosome in self.chromosome_list:
             if chromosome in self.unpaired_chr_list:
-                print(f'Chromosome {chromosome} in unpaired list')
+                print(f'Processing chromosome {chromosome} in unpaired list')
                 self.make_unpaired_chromosome(chromosome)
             elif chromosome in paired_chr_list:
-                print(f'Chromosome {chromosome} in paired list')
+                print(f'Processing chromosome {chromosome} in paired list')
                 self.make_paired_chromosomes(chromosome, sample_index)
             elif not (chromosome == self.gender_chr_names['Y'] and self.gender == 'female'):
-                print(f'Chromosome {chromosome} using ref genome chr')
+                print(f'Processing chromosome {chromosome} using ref genome chr')
                 self.make_reference_chromosome(chromosome)
 
     def make_reference_chromosome(self, chromosome):
@@ -198,29 +199,26 @@ class GenomeBuilderStep:
     def make_paired_chromosomes(self, chromosome, sample_index):
         reference_sequence = self.reference_genome[chromosome]
         with open(self.log_file_path, 'a') as log_file, gzip.open(self.beagle_file_path) as beagle_file:
-            genomes = []
-            for key, data in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')):
+            for key, data in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')[0]):
+                if key == chromosome:
+                    break
+            else:
+                raise BeersException(f"Beagle does not have chr {chromosome}")
 
-                if key != chromosome:
-                    continue
+            genomes = [Genome(self.genome_names[0], chromosome, '', 0,
+                              self.genome_output_file_stem),
+                       Genome(self.genome_names[1], chromosome, '', 0,
+                              self.genome_output_file_stem)]
 
-                fields = data.rstrip('\n').split('\t')
+            for datum in data:
+
+                fields = datum.decode('ascii').rstrip('\n').split('\t')
                 beagle_chromosome, position, _, ref, alt, *others = fields
+                position = int(position)
                 sample = fields[sample_index]
 
                 # Making position 0 based.
                 position -= 1
-
-                log_file.write(f"Appending"
-                               f" {len(reference_sequence[:position])}"
-                               f" bases of reference sequence at reference position "
-                               f" 0 to start both genomes for chromosome {chromosome}.\n")
-                start_sequence = reference_sequence[0:position]
-
-                genomes = [Genome(self.genome_names[0], chromosome, start_sequence, position,
-                                  self.genome_output_file_stem),
-                           Genome(self.genome_names[1], chromosome, start_sequence, position,
-                                  self.genome_output_file_stem)]
 
                 for index, genome in enumerate(genomes):
 
@@ -255,16 +253,16 @@ class GenomeBuilderStep:
                             else:
                                 genome.delete_segment(len(ref) - len(alt))
 
-                # Save the genome data.
-                for genome in genomes:
-                    log_file.write(f"Appending"
-                                   f" {len(reference_sequence[genome.position + genome.offset:])}"
-                                   f" bases of reference sequence at reference position "
-                                   f" {genome.position + genome.offset} to complete the genome for"
-                                   f" chromosome {chromosome}.\n")
-                    genome.append_segment(reference_sequence[genome.position + genome.offset:])
-                    log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
-                    genome.save_to_file()
+            # Save the genome data.
+            for genome in genomes:
+                log_file.write(f"Appending"
+                                f" {len(reference_sequence[genome.position + genome.offset:])}"
+                                f" bases of reference sequence at reference position "
+                                f" {genome.position + genome.offset} to complete the genome for"
+                                f" chromosome {chromosome}.\n")
+                genome.append_segment(reference_sequence[genome.position + genome.offset:])
+                log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
+                genome.save_to_file()
 
 
 class Genome:
@@ -350,40 +348,54 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Make Genome Files')
     parser.add_argument('-r', '--reference_genome_file_path',
                         help="Fasta file containing the reference genome")
-    parser.add_argument('-g', '--genome_output_file_stem',
-                        help="Path of output genome file.  Will be suffixed _seq1.fa or _seq2.fa")
     parser.add_argument('-l', '--log_filename', help="Log file.")
     parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'],
                         help="Gender of input sample (male or female).")
     parser.add_argument('-n', '--gender_chr_names', type=lambda names: [name for name in names.split(',')],
                         help="Enter the gender specific chromosome names in X, Y, M order.")
-    parser.add_argument('-c', '--chromosomes', help="optional chromosome list")
+    parser.add_argument('-c', '--chromosomes', type=lambda chrs: [chr for chr in chrs.split(',')],
+                        help="optional chromosome list")
     parser.add_argument('-i', '--ignore_indels', action='store_true',
                         help="Use the reference genome base in place of an indel.  Defaults to false.")
     parser.add_argument('-j', '--ignore_snps', action='store_true',
                         help="Use the reference genome base in place of a snp.  Defaults to False.")
     parser.add_argument('-d','--data_directory', help='data directory')
+    parser.add_argument('-s', '--sample_id', type=int, help='sample name in vcf when prepended with sample')
     args = parser.parse_args()
     print(args)
 
     parameters = {"ignore_snps": args.ignore_snps,
                   "ignore_indels": args.ignore_indels,
                   "gender_chr_names": args.gender_chr_names}
-    sample = Sample(1, "debug sample", None, None, args.gender)
+    sample = Sample(args.sample_id, "debug sample", None, None, args.gender)
     reference_genome = ExpressionUtils.create_reference_genome(args.reference_genome_file_path)
+
+    # Remove old genome files if present
+    sample_folder = os.path.join(args.data_directory, f'sample{sample.sample_id}')
+    for item in os.listdir(sample_folder):
+        if item.startswith("custom_genome"):
+            os.remove(os.path.join(sample_folder, item))
+
     genome_builder = GenomeBuilderStep(args.log_filename, args.data_directory, parameters)
     genome_builder.execute(sample, reference_genome, args.chromosomes)
 
 
 '''
-Example Call:
-
+Example
 python genome_builder.py \
+-c "19" \
+-s 1 \
 -d ../../data/pipeline_results_run99/expression_pipeline/data \
--g ../../data/pipeline_results_run99/expression_pipeline/data/sample1/genome_builder_output \
 -r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
 -l ../../data/pipeline_results_run99/expression_pipeline/logs/sample1/genome_builder.log \
 -n "X,Y,MT" \
 -x female
 
+python genome_builder.py \
+-s 1 \
+-d ../../data/pipeline_results_run99/expression_pipeline/data \
+-r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
+-l ../../data/pipeline_results_run99/expression_pipeline/logs/sample1/genome_builder.log \
+-n "X,Y,MT" \
+-x female
 '''
