@@ -89,6 +89,10 @@ class GenomeBuilderStep:
         genome.append_segment(base_to_append)
 
     def get_paired_chr_list(self):
+        """
+        Find all the chromosomes handled in beagle.
+        :return: list of all the chromosomes for which beagle has data
+        """
         paired_chr_list = []
         with gzip.open(self.beagle_file_path) as beagle_file:
             for key, _ in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')[0]):
@@ -99,10 +103,22 @@ class GenomeBuilderStep:
 
     @staticmethod
     def group_data(lines, group_function):
+        """
+        Returns data grouped by the provided function
+        :param lines:  the lines of data to be grouped
+        :param group_function: The function to apply to determine the
+        groupping.
+        :return: a generator providing the next key (the groupping
+        parameter) and the groupped data as a list.
+        """
         for key, values in itertools.groupby(lines, key=group_function):
             yield key, list(values)
 
     def locate_sample(self):
+        """
+        Find the position of the sample in the beagle data
+        :return: The position of the sample in a line of beagle data
+        """
         with gzip.open(self.beagle_file_path) as beagle_file:
             for line in beagle_file:
                 line = line.decode('ascii')
@@ -142,6 +158,11 @@ class GenomeBuilderStep:
                 self.make_reference_chromosome(chromosome)
 
     def make_reference_chromosome(self, chromosome):
+        """
+        Here, the reference sequence for the given chromosome is copied as it, into the custom
+        genomes.
+        :param chromosome: The chromosome for which the reference sequence is used.
+        """
         reference_sequence = self.reference_genome[chromosome]
         with open(self.log_file_path, 'a') as log_file:
             position = len(reference_sequence)
@@ -155,6 +176,11 @@ class GenomeBuilderStep:
                 genome.save_to_file()
 
     def make_unpaired_chromosome(self, chromosome):
+        """
+        Here, the samples variants data is threaded together with the reference sequence to create a custom
+        sequence for the given chromosome.
+        :param chromosome: The chromosome for which the reference sequence is altered by variant data.
+        """
         reference_sequence = self.reference_genome[chromosome]
         with open(self.log_file_path, 'a') as log_file:
             genome = None
@@ -197,6 +223,12 @@ class GenomeBuilderStep:
             genome.save_to_file()
 
     def make_paired_chromosomes(self, chromosome, sample_index):
+        """
+        Here, the beagle data for the given sample is threaded together with the reference sequence to create a
+        custom sequence for the given chromosome
+        :param chromosome: The chromosome for which the reference sequence is altered by beagle data.
+        :param sample_index: identifies the position of the subject sample in the beagle data.
+        """
         reference_sequence = self.reference_genome[chromosome]
         with open(self.log_file_path, 'a') as log_file, gzip.open(self.beagle_file_path) as beagle_file:
             for key, data in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')[0]):
@@ -256,10 +288,10 @@ class GenomeBuilderStep:
             # Save the genome data.
             for genome in genomes:
                 log_file.write(f"Appending"
-                                f" {len(reference_sequence[genome.position + genome.offset:])}"
-                                f" bases of reference sequence at reference position "
-                                f" {genome.position + genome.offset} to complete the genome for"
-                                f" chromosome {chromosome}.\n")
+                               f" {len(reference_sequence[genome.position + genome.offset:])}"
+                               f" bases of reference sequence at reference position "
+                               f" {genome.position + genome.offset} to complete the genome for"
+                               f" chromosome {chromosome}.\n")
                 genome.append_segment(reference_sequence[genome.position + genome.offset:])
                 log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
                 genome.save_to_file()
