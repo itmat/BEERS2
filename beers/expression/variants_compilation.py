@@ -26,7 +26,7 @@ class VariantsCompilationStep():
         return chromosome, position, variants
 
     def execute(self, samples, reference):
-        contig_order = reference.keys()
+        contig_order = list(reference.keys())
         print("Converting variants into vcf file")
         contigs_so_far = []
         last_chromosome = None
