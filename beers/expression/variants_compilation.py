@@ -55,8 +55,8 @@ class VariantsCompilationStep():
                 chromosome = min(chr for chr, pos, vars in parsed_lines if chr != "DONE")
                 position = min(pos for chr, pos, vars in parsed_lines if chr == chromosome)
                 if chromosome != last_chromosome:
-                    print(f"Wrote chromosome {last_chromosome} to vcf file")
                     if last_chromosome is not None:
+                        print(f"Wrote chromosome {last_chromosome} to vcf file")
                         contigs_so_far.append(last_chromosome)
                         if contig_order.index(last_chromosome) > contig_order.index(chromosome):
                             print(
@@ -84,6 +84,10 @@ class VariantsCompilationStep():
                 # and do not include "N"s
                 variants = [{var: count for var, count in vars.items() if (var != ref_base and "N" not in var)}
                             for vars in variants]
+
+                #TODO: note that current versions of variant_finder.py do largely the same job as this already
+                # So one could remove most of these checks at some point, but no harm is done in running these
+                # (except for slowing down the process slightly)
 
                 # Find each sample's most likely variants that aren't just the reference
                 def common_variant(variants):
@@ -179,4 +183,5 @@ class VariantsCompilationStep():
                 next_lines = [line if not used else sample_file.readline()
                               for line, used, sample_file in zip(next_lines, used_samples, variant_files)]
 
+        print(f"Wrote chromosome {last_chromosome} to vcf file")
         print(f"Finished creating VCF file for Beagle with {i} variant entries")
