@@ -16,21 +16,18 @@ SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'posi
 
 class GenomeBuilderStep:
 
-    def __init__(self, logfile, data_directory_path, parameters):
+    def __init__(self, log_directory_path, data_directory_path, parameters):
         self.data_directory_path = data_directory_path
         self.beagle_file_path = os.path.join(self.data_directory_path, 'beagle.vcf.vcf.gz')
         self.variant_line_pattern = re.compile(r'^([^|]+):(\d+) \| (.*)\tTOT')
         self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters['gender_chr_names'])}
-        self.genome_output_file_stem = os.path.join(self.data_directory_path,
-                                                    f'sample{sample.sample_id}',
-                                                    'custom_genome')
         self.ignore_indels = parameters['ignore_indels']
         self.ignore_snps = parameters['ignore_snps']
         self.genome_names = ['maternal', 'paternal']
         self.sample_id = None
         self.reference_genome = None
         self.variants_file_path = None
-        self.log_file_path = logfile
+        self.log_directory_path = log_directory_path
 
     def validate(self):
         return True
@@ -143,6 +140,8 @@ class GenomeBuilderStep:
         self.gender = sample.gender
         self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, "variants.txt")
         sample_index = self.locate_sample()
+        self.genome_output_file_stem = os.path.join(self.data_directory_path, self.sample_id, 'custom_genome')
+        self.log_file_path = os.path.join(self.log_directory_path, self.sample_id, __class__.__name__ + ".log")
         self.unpaired_chr_list = self.get_unpaired_chr_list()
         self.unpaired_chr_variants = self.get_unpaired_chr_variant_data()
         paired_chr_list = self.get_paired_chr_list()

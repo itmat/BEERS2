@@ -1,6 +1,7 @@
 import sys
 import os
 import importlib
+from beers.constants import CONSTANTS
 from beers.expression.variants_finder import VariantsFinderStep
 from beers.expression.beagle import BeagleStep
 from beers.utilities.expression_utils import ExpressionUtils
@@ -11,19 +12,17 @@ class ExpressionPipeline:
         self.samples = input_samples
         self.resources = resources
         self.output_directory_path = output_directory_path
-        log_directory_path = os.path.join(output_directory_path, "logs")
-        data_directory_path = os.path.join(output_directory_path, 'data')
+        log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
+        data_directory_path = os.path.join(output_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
         self.create_intermediate_data_subdirectories(data_directory_path, log_directory_path)
         self.log_file_path = os.path.join(log_directory_path, "expression_pipeline.log")
         self.steps = {}
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
-            step_log_filename = f"{step_name}.log"
-            step_log_file_path = os.path.join(log_directory_path, step_log_filename)
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package="beers.expression")
             step_class = getattr(module, step_name)
-            self.steps[step_name] = step_class(step_log_file_path, data_directory_path, parameters)
+            self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
         self.reference_genome = dict()
         self.reference_genome_file_path = \
             os.path.join(resources['resources_folder'], "index_files", f"{resources['species_model']}",
@@ -62,10 +61,10 @@ class ExpressionPipeline:
             sys.stderr.write("Beagle process failed.\n")
             sys.exit(1)
 
-        #for sample in self.samples:
+        for sample in self.samples:
 
-            #genome_builder = self.steps['GenomeBuilderStep']
-            #genome_builder.execute(sample, self.reference_genome)
+            genome_builder = self.steps['GenomeBuilderStep']
+            genome_builder.execute(sample, self.reference_genome, ['19'])
 
             #annotation_updates = []
             #transcript_distributions = []
