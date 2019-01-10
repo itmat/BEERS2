@@ -160,6 +160,7 @@
   "resources":{
     "species_model": "hg38",
     "reference_genome_filename": "Homo_sapiens.GRCh38.reference_genome.fa",
+    "chr_ploidy_filename": "Homo_sapiens.GRCh38.chr_ploidy.txt",
     "annotation": "Homo_sapiens.GRCh38.92.annotation.sorted_to_match_fasta.txt",
     "adapter_kit": "TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa"
   }
