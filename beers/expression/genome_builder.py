@@ -20,23 +20,35 @@ class GenomeBuilderStep:
         self.data_directory_path = data_directory_path
         self.beagle_file_path = os.path.join(self.data_directory_path, 'beagle.vcf.vcf.gz')
         self.variant_line_pattern = re.compile(r'^([^|]+):(\d+) \| (.*)\tTOT')
-        self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters['gender_chr_names'])}
         self.ignore_indels = parameters['ignore_indels']
         self.ignore_snps = parameters['ignore_snps']
-        self.genome_names = ['maternal', 'paternal']
+        self.genome_names = ['1', '2']
         self.sample_id = None
         self.reference_genome = None
+        self.ploidy_data = None
         self.variants_file_path = None
         self.log_directory_path = log_directory_path
 
     def validate(self):
         return True
 
+    def get_missing_chr_list(self):
+        if not self.gender:
+            return [chr for chr in self.chr_ploidy_data.keys()
+                    if self.chr_ploidy_data[chr]['male'] == self.chr_ploidy_data[chr]['female'] == 0]
+        return [chr for chr in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr][self.gender] == 0]
+
     def get_unpaired_chr_list(self):
-        unpaired_chr_list = [self.gender_chr_names['M']]
-        if self.gender == 'male':
-            unpaired_chr_list.extend([self.gender_chr_names['X'], self.gender_chr_names['Y']])
-        return unpaired_chr_list
+        if not self.gender:
+            return [chr for chr in self.chr_ploidy_data.keys()
+                    if self.chr_ploidy_data[chr]['male'] == self.chr_ploidy_data[chr]['female'] == 1]
+        return [chr for chr in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr][self.gender] == 1]
+
+    def get_paired_chr_list(self):
+        if not self.gender:
+            return [chr for chr in self.chr_ploidy_data.keys()
+                    if self.chr_ploidy_data[chr]['male'] == self.chr_ploidy_data[chr]['female'] == 2]
+        return [chr for chr in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr][self.gender] == 2]
 
     def get_unpaired_chr_variant_data(self):
         unpaired_chr_variants = []
@@ -85,19 +97,6 @@ class GenomeBuilderStep:
         base_to_append = variant[0]
         genome.append_segment(base_to_append)
 
-    def get_paired_chr_list(self):
-        """
-        Find all the chromosomes handled in beagle.
-        :return: list of all the chromosomes for which beagle has data
-        """
-        paired_chr_list = []
-        with gzip.open(self.beagle_file_path) as beagle_file:
-            for key, _ in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')[0]):
-                if key[0] != '#':
-                    paired_chr_list.append(key)
-        return paired_chr_list
-
-
     @staticmethod
     def group_data(lines, group_function):
         """
@@ -133,9 +132,12 @@ class GenomeBuilderStep:
                     raise ExpressionPipelineException(f"No sample data found.")
         return sample_index
 
-    def execute(self, sample, reference_genome, chromosome_list=[]):
+    def execute(self, sample, chr_ploidy_data, reference_genome, chromosome_list=[]):
+        self.chr_ploidy_data = chr_ploidy_data
         self.reference_genome = reference_genome
-        self.chromosome_list = chromosome_list or list(reference_genome.keys())
+        # The chromosome list derived from the chr_ploidy_data is the gold standard.  Only those chromosomes/contigs
+        # are processed.
+        self.chromosome_list = chromosome_list or list(ploidy_data.keys())
         self.sample_id = f'sample{sample.sample_id}'
         self.gender = sample.gender
         self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, "variants.txt")
@@ -151,8 +153,9 @@ class GenomeBuilderStep:
                 self.make_unpaired_chromosome(chromosome)
             elif chromosome in paired_chr_list:
                 print(f'Processing chromosome {chromosome} in paired list')
-                self.make_paired_chromosomes(chromosome, sample_index)
-            elif not (chromosome == self.gender_chr_names['Y'] and self.gender == 'female'):
+                self.make_paired_chromosome(chromosome, sample_index)
+            elif chromosome not in self.get_missing_chr_list() and chromosome in self.ploidy_data.keys():
+                # We should never get here.
                 print(f'Processing chromosome {chromosome} using ref genome chr')
                 self.make_reference_chromosome(chromosome)
 
@@ -191,13 +194,13 @@ class GenomeBuilderStep:
                                    f" bases of reference sequence at reference position "
                                    f" 0 to start both genomes for chromosome {chromosome}.\n")
                     start_sequence = reference_sequence[0: variant.position]
-                    if (chromosome == self.gender_chr_names['M']) or (self.gender == 'male' and chromosome ==
-                                                                    self.gender_chr_names['X']):
-                        genome = Genome(self.genome_names[0], chromosome, start_sequence, variant.position,
+
+                    # We don't care where an unpaired chromosome ends up.  So we put it into the first of the two
+                    # genomes.  Whether the chromosome was contributed by the mother or the father is of no
+                    # importance.
+                    genome = Genome(self.genome_names[0], chromosome, start_sequence, variant.position,
                                         self.genome_output_file_stem)
-                    if chromosome == self.gender_chr_names['Y'] and self.gender == 'male':
-                        genome = Genome(self.genome_names[1], chromosome, start_sequence, variant.position,
-                                        self.genome_output_file_stem)
+
                 # If the nascent genome seq position translated to reference is downstream of the variant
                 # ignore the variant for this genome.
                 if genome.position + genome.offset > variant.position:
@@ -221,7 +224,7 @@ class GenomeBuilderStep:
             log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
             genome.save_to_file()
 
-    def make_paired_chromosomes(self, chromosome, sample_index):
+    def make_paired_chromosome(self, chromosome, sample_index):
         """
         Here, the beagle data for the given sample is threaded together with the reference sequence to create a
         custom sequence for the given chromosome
@@ -379,11 +382,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Make Genome Files')
     parser.add_argument('-r', '--reference_genome_file_path',
                         help="Fasta file containing the reference genome")
-    parser.add_argument('-l', '--log_filename', help="Log file.")
+    parser.add_argument('-l', '--log_directory_path', help="Path to log directory.")
     parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'],
                         help="Gender of input sample (male or female).")
-    parser.add_argument('-n', '--gender_chr_names', type=lambda names: [name for name in names.split(',')],
-                        help="Enter the gender specific chromosome names in X, Y, M order.")
     parser.add_argument('-c', '--chromosomes', type=lambda chrs: [chr for chr in chrs.split(',')],
                         help="optional chromosome list")
     parser.add_argument('-i', '--ignore_indels', action='store_true',
@@ -392,14 +393,16 @@ if __name__ == "__main__":
                         help="Use the reference genome base in place of a snp.  Defaults to False.")
     parser.add_argument('-d','--data_directory', help='data directory')
     parser.add_argument('-s', '--sample_id', type=int, help='sample name in vcf when prepended with sample')
+    parser.add_argument('-p', '--chr_ploidy_file_path', type=str, help="Path to chromosome ploidy file")
     args = parser.parse_args()
     print(args)
 
     parameters = {"ignore_snps": args.ignore_snps,
-                  "ignore_indels": args.ignore_indels,
-                  "gender_chr_names": args.gender_chr_names}
+                  "ignore_indels": args.ignore_indels
+                  }
     sample = Sample(args.sample_id, "debug sample", None, None, args.gender)
     reference_genome = ExpressionUtils.create_reference_genome(args.reference_genome_file_path)
+    chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
 
     # Remove old genome files if present
     sample_folder = os.path.join(args.data_directory, f'sample{sample.sample_id}')
@@ -407,26 +410,25 @@ if __name__ == "__main__":
         if item.startswith("custom_genome"):
             os.remove(os.path.join(sample_folder, item))
 
-    genome_builder = GenomeBuilderStep(args.log_filename, args.data_directory, parameters)
-    genome_builder.execute(sample, reference_genome, args.chromosomes)
-
+    genome_builder = GenomeBuilderStep(args.log_directory_path, args.data_directory, parameters)
+    genome_builder.execute(sample, chr_ploidy_data, reference_genome, args.chromosomes)
 
 '''
 Example
 python genome_builder.py \
--c "19" \
+-c "MT" \
 -s 1 \
 -d ../../data/pipeline_results_run99/expression_pipeline/data \
 -r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
--l ../../data/pipeline_results_run99/expression_pipeline/logs/sample1/genome_builder.log \
--n "X,Y,MT" \
+-p ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt \
+-l ../../data/pipeline_results_run99/expression_pipeline/logs \
 -x female
 
 python genome_builder.py \
 -s 1 \
 -d ../../data/pipeline_results_run99/expression_pipeline/data \
 -r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
--l ../../data/pipeline_results_run99/expression_pipeline/logs/sample1/genome_builder.log \
--n "X,Y,MT" \
+-p ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt \
+-l ../../data/pipeline_results_run99/expression_pipeline/logs \
 -x female
 '''

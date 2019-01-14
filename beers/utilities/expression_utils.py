@@ -3,6 +3,7 @@ from io import StringIO
 import os
 import gzip
 import itertools
+import pandas as pd
 
 class ExpressionUtils:
 
@@ -63,6 +64,11 @@ class ExpressionUtils:
                         chr = chr.rstrip()[1:]
                         reference_genome[chr] = seq.rstrip()
         return reference_genome
+
+    @staticmethod
+    def create_chr_ploidy_data(chr_ploidy_file_path):
+        df = pd.read_csv(chr_ploidy_file_path, sep='\t')
+        return df.set_index('chr').to_dict(orient='index')
 
 if __name__ == "__main__":
     ExpressionUtils.create_reference_genome("../../resources/index_files/hg38/Homo_sapiens.GRCh38.reference_genome.fa")

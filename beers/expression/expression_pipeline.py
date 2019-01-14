@@ -2,11 +2,8 @@ import sys
 import os
 import importlib
 from beers.constants import CONSTANTS
-from beers.expression.variants_finder import VariantsFinderStep
-from beers.expression.beagle import BeagleStep
 from beers.utilities.expression_utils import ExpressionUtils
-from beers.sample import Sample
-import pandas as pd
+
 
 class ExpressionPipeline:
     def __init__(self, configuration, resources, output_directory_path, input_samples):
@@ -24,29 +21,24 @@ class ExpressionPipeline:
             module = importlib.import_module(f'.{module_name}', package="beers.expression")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
-        self.reference_genome = dict()
-        self.reference_genome_file_path = \
-            os.path.join(resources['resources_folder'], "index_files", f"{resources['species_model']}",
-                         f"{resources['reference_genome_filename']}")
-        self.chr_ploidy_file_path = \
-            os.path.join(resources['resources_folder'], "index_files", f"{resources['species_model']}",
-                         f"{resources['chr_ploidy_filename']}")
-        self.reference_genome = ExpressionUtils.create_reference_genome(self.reference_genome_file_path)
-        self.create_chr_ploidy_data()
+        reference_genome_index_file_directory_path = \
+             os.path.join(resources['resources_folder'], "index_files", f"{resources['species_model']}")
+        reference_genome_file_path = \
+            os.path.join(reference_genome_index_file_directory_path, f"{resources['reference_genome_filename']}")
+        chr_ploidy_file_path = \
+            os.path.join(reference_genome_index_file_directory_path, f"{resources['chr_ploidy_filename']}")
+        self.reference_genome = ExpressionUtils.create_reference_genome(reference_genome_file_path)
+        self.chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(chr_ploidy_file_path)
+        print(self.chr_ploidy_data)
 
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
             os.makedirs(os.path.join(data_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
             os.makedirs(os.path.join(log_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
 
-    def create_chr_ploidy_data(self):
-        df = pd.read_csv(self.chr_ploidy_file_path, sep='\t', index_col=False)
-        self.chr_ploidy_data = df.to_dict(orient='records')
-
-
     def validate(self):
         reference_genome_chromosomes = self.reference_genome.keys()
-        ploidy_chromosomes = set([item['chr'] for item in self.chr_ploidy_data])
+        ploidy_chromosomes = set(self.chr_ploidy_data.keys())
         if not ploidy_chromosomes.issubset(reference_genome_chromosomes):
             raise BeersExpressionValidationException(
                 f"The chromosome ploidy has chromosomes not found in the reference genome file")
@@ -59,6 +51,7 @@ class ExpressionPipeline:
 
         for sample in self.samples:
 
+            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             genome_alignment = self.steps['GenomeAlignmentStep']
             genome_alignment.execute(sample, self.reference_genome)
 
@@ -77,7 +70,7 @@ class ExpressionPipeline:
         for sample in self.samples:
 
             genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.reference_genome, ['19'])
+            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
 
             #annotation_updates = []
             #transcript_distributions = []
