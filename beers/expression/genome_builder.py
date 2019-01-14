@@ -232,71 +232,72 @@ class GenomeBuilderStep:
         :param sample_index: identifies the position of the subject sample in the beagle data.
         """
         reference_sequence = self.reference_genome[chromosome]
-        with open(self.log_file_path, 'a') as log_file, gzip.open(self.beagle_file_path) as beagle_file:
+        with gzip.open(self.beagle_file_path) as beagle_file:
             for key, data in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')[0]):
                 if key == chromosome:
                     break
             else:
-                raise BeersException(f"Beagle does not have chr {chromosome}")
+                # If the paired chromosome is not found in the beagle file, use the reference chromosome.
+                self.make_reference_chromosome(chromosome)
+                return
 
-            genomes = [Genome(self.genome_names[0], chromosome, '', 0,
-                              self.genome_output_file_stem),
-                       Genome(self.genome_names[1], chromosome, '', 0,
-                              self.genome_output_file_stem)]
+            with open(self.log_file_path, 'a') as log_file:
 
-            for datum in data:
+                genomes = [Genome(self.genome_names[0], chromosome, '', 0, self.genome_output_file_stem),
+                           Genome(self.genome_names[1], chromosome, '', 0, self.genome_output_file_stem)]
 
-                fields = datum.decode('ascii').rstrip('\n').split('\t')
-                beagle_chromosome, position, _, ref, alt, *others = fields
-                position = int(position)
-                sample = fields[sample_index]
+                for datum in data:
 
-                # Making position 0 based.
-                position -= 1
+                    fields = datum.decode('ascii').rstrip('\n').split('\t')
+                    beagle_chromosome, position, _, ref, alt, *others = fields
+                    position = int(position)
+                    sample = fields[sample_index].strip()
 
-                for index, genome in enumerate(genomes):
+                    # Making position 0 based.
+                    position -= 1
 
-                    # If the nascent genome seq position translated to reference is downstrem of the variant
-                    # ignore the variant for this genome.
-                    if genome.position + genome.offset > position:
-                        continue
+                    for index, genome in enumerate(genomes):
 
-                    # If the nascent genome seq position translated to reference is upstream of the variant add
-                    # the appropriate reference segment to catch up
-                    if genome.position + genome.offset < position:
-                        log_file.write(f"Adding {position - genome.position - genome.offset}"
-                                       f" bases of reference sequence at reference position"
-                                       f" {genome.position + genome.offset}\n")
-                        genome.append_segment(reference_sequence[genome.position + genome.offset: position])
+                        # If the nascent genome seq position translated to reference is downstream of the variant
+                        # ignore the variant for this genome.
+                        if genome.position + genome.offset > position:
+                            continue
 
-                    select_ref = sample.split("|")[index] == 0
+                        # If the nascent genome seq position translated to reference is upstream of the variant add
+                        # the appropriate reference segment to catch up
+                        if genome.position + genome.offset < position:
+                            log_file.write(f"Adding {position - genome.position - genome.offset}"
+                                           f" bases of reference sequence at reference position"
+                                           f" {genome.position + genome.offset} to genome_{genome.name}\n")
+                            genome.append_segment(reference_sequence[genome.position + genome.offset: position])
 
-                    if select_ref:
-                        genome.append_segment(ref)
-                    else:
-                        if len(alt) == len(ref):
-                            if self.ignore_snps:
-                                genome.append_segment(ref)
-                            else:
-                                genome.append_segment(alt)
+                        if int(sample.split("|")[index]):
+                            genome.append_segment(ref)
                         else:
-                            if self.ignore_indels:
-                                genome.append_segment(ref)
-                            elif len(alt) > len(ref):
-                                genome.insert_segment(alt)
+                            if len(alt) == len(ref):
+                                if self.ignore_snps:
+                                    genome.append_segment(ref)
+                                else:
+                                    genome.append_segment(alt)
                             else:
-                                genome.delete_segment(len(ref) - len(alt))
+                                if self.ignore_indels:
+                                    genome.append_segment(ref)
+                                elif len(alt) > len(ref):
+                                    genome.insert_segment(alt)
+                                else:
+                                    genome.delete_segment(len(ref) - len(alt))
+                            log_file.write(f"Currently: {genome}\n")
 
-            # Save the genome data.
-            for genome in genomes:
-                log_file.write(f"Appending"
-                               f" {len(reference_sequence[genome.position + genome.offset:])}"
-                               f" bases of reference sequence at reference position "
-                               f" {genome.position + genome.offset} to complete the genome for"
-                               f" chromosome {chromosome}.\n")
-                genome.append_segment(reference_sequence[genome.position + genome.offset:])
-                log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
-                genome.save_to_file()
+                # Save the genome data.
+                for genome in genomes:
+                    log_file.write(f"Appending"
+                                   f" {len(reference_sequence[genome.position + genome.offset:])}"
+                                   f" bases of reference sequence at reference position "
+                                   f" {genome.position + genome.offset} to complete genome_{genome.name} for"
+                                   f" chromosome {chromosome}.\n")
+                    genome.append_segment(reference_sequence[genome.position + genome.offset:])
+                    log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
+                    genome.save_to_file()
 
 
 class Genome:
@@ -391,7 +392,7 @@ if __name__ == "__main__":
                         help="Use the reference genome base in place of an indel.  Defaults to false.")
     parser.add_argument('-j', '--ignore_snps', action='store_true',
                         help="Use the reference genome base in place of a snp.  Defaults to False.")
-    parser.add_argument('-d','--data_directory', help='data directory')
+    parser.add_argument('-d','--data_directory_path', help='Path to data directory')
     parser.add_argument('-s', '--sample_id', type=int, help='sample name in vcf when prepended with sample')
     parser.add_argument('-p', '--chr_ploidy_file_path', type=str, help="Path to chromosome ploidy file")
     args = parser.parse_args()
@@ -404,13 +405,20 @@ if __name__ == "__main__":
     reference_genome = ExpressionUtils.create_reference_genome(args.reference_genome_file_path)
     chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
 
-    # Remove old genome files if present
-    sample_folder = os.path.join(args.data_directory, f'sample{sample.sample_id}')
-    for item in os.listdir(sample_folder):
+    # Remove old genome data and log files if present
+    sample_data_folder = os.path.join(args.data_directory_path, f'sample{sample.sample_id}')
+    for item in os.listdir(sample_data_folder):
         if item.startswith("custom_genome"):
-            os.remove(os.path.join(sample_folder, item))
+            os.remove(os.path.join(sample_data_folder, item))
+    sample_log_folder = os.path.join(args.log_directory_path, f'sample{sample.sample_id}')
+    for item in os.listdir(sample_log_folder):
+        if item.startswith("GenomeBuilderStep"):
+            os.remove(os.path.join(sample_log_folder, item))
 
-    genome_builder = GenomeBuilderStep(args.log_directory_path, args.data_directory, parameters)
+    for chromosome in args.chromosomes:
+        print(f"Length of reference chromosome {chromosome} is {len(reference_genome[chromosome])}   ")
+
+    genome_builder = GenomeBuilderStep(args.log_directory_path, args.data_directory_path, parameters)
     genome_builder.execute(sample, chr_ploidy_data, reference_genome, args.chromosomes)
 
 '''
