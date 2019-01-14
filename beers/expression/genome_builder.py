@@ -137,7 +137,7 @@ class GenomeBuilderStep:
         self.reference_genome = reference_genome
         # The chromosome list derived from the chr_ploidy_data is the gold standard.  Only those chromosomes/contigs
         # are processed.
-        self.chromosome_list = chromosome_list or list(ploidy_data.keys())
+        self.chromosome_list = chromosome_list or list(chr_ploidy_data.keys())
         self.sample_id = f'sample{sample.sample_id}'
         self.gender = sample.gender
         self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, "variants.txt")
