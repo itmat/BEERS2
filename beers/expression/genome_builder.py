@@ -8,7 +8,6 @@ from beers.expression.expression_pipeline import ExpressionPipelineException
 import itertools
 from beers.utilities.expression_utils import ExpressionUtils
 from beers.sample import Sample
-from beers.beers_exception import BeersException
 
 
 SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'position', 'description'])
@@ -33,24 +32,48 @@ class GenomeBuilderStep:
         return True
 
     def get_missing_chr_list(self):
+        """
+        Return a list of those chromosomes from chr_ploidy_data that are missing for the sample's gender.  If no
+        sample gender is specified, only return a list of chromosomes from chr_ploidy_data where the chromosomes are
+        missing for both genders (unlikely scenario).
+        :return: list of chromosomes that are missing for this sample (likely owing to its gender)
+        """
         if not self.gender:
-            return [chr for chr in self.chr_ploidy_data.keys()
-                    if self.chr_ploidy_data[chr]['male'] == self.chr_ploidy_data[chr]['female'] == 0]
-        return [chr for chr in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr][self.gender] == 0]
+            return [chr_ for chr_ in self.chr_ploidy_data.keys()
+                    if self.chr_ploidy_data[chr_]['male'] == self.chr_ploidy_data[chr_]['female'] == 0]
+        return [chr_ for chr_ in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr_][self.gender] == 0]
 
     def get_unpaired_chr_list(self):
+        """
+        Return a list of those chromosomes from chr_ploidy_data that are unpaired for the sample's gender.  If no
+        sample gender is specified, only return a list of chromosomes from chr_ploidy_data where the chromosomes are
+        unpaired for both genders.
+        :return: list of chromosomes that are unpaired for this sample (likely owing to its gender)
+        """
         if not self.gender:
-            return [chr for chr in self.chr_ploidy_data.keys()
-                    if self.chr_ploidy_data[chr]['male'] == self.chr_ploidy_data[chr]['female'] == 1]
-        return [chr for chr in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr][self.gender] == 1]
+            return [chr_ for chr_ in self.chr_ploidy_data.keys()
+                    if self.chr_ploidy_data[chr_]['male'] == self.chr_ploidy_data[chr_]['female'] == 1]
+        return [chr_ for chr_ in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr_][self.gender] == 1]
 
     def get_paired_chr_list(self):
+        """
+        Return a list of those chromosomes from chr_ploidy_data that are paired for the sample's gender.  If no
+        sample gender is specified, only return a list of chromosomes from chr_ploidy_data where the chromosomes are
+        paired for both genders.
+        :return: list of chromosomes that are paired for this sample (likely owing to its gender)
+        """
         if not self.gender:
-            return [chr for chr in self.chr_ploidy_data.keys()
-                    if self.chr_ploidy_data[chr]['male'] == self.chr_ploidy_data[chr]['female'] == 2]
-        return [chr for chr in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr][self.gender] == 2]
+            return [chr_ for chr_ in self.chr_ploidy_data.keys()
+                    if self.chr_ploidy_data[chr_]['male'] == self.chr_ploidy_data[chr_]['female'] == 2]
+        return [chr_ for chr_ in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr_][self.gender] == 2]
 
     def get_unpaired_chr_variant_data(self):
+        """
+        There should be at most, one variant for any given position in an unpaired chromosome.  This method groups
+        the variant records by chromosome for those chromosomes found in the unpaired chr list and adds a single
+        instance variant to the an unpaired_chr_variants list for every such variant found and returns the list.
+        :return: A list of all unpaired chromosome variants
+        """
         unpaired_chr_variants = []
         with open(self.variants_file_path) as variants_file:
             for chromosome, data in self.group_data(variants_file, lambda line: line[:line.find(':')]):
@@ -133,6 +156,16 @@ class GenomeBuilderStep:
         return sample_index
 
     def execute(self, sample, chr_ploidy_data, reference_genome, chromosome_list=[]):
+        """
+        Entry point for genome builder.  Uses the chr_ploidy_data and reference_genome resources along with beagle and
+        variant finder output to build two custom genomes.
+        :param sample: sample for which the genome is being built
+        :param chr_ploidy_data: dictionary indicating chromosomes to be processed and their ploidy based on sample
+        gender.
+        :param reference_genome: dictionary relating chr to its reference sequence
+        :param chromosome_list: a debug feature that overrides the chr_ploidy_data chr list.  Useful for testing a
+        specific chromosome only or a small subset of chromosomes.
+        """
         self.chr_ploidy_data = chr_ploidy_data
         self.reference_genome = reference_genome
         # The chromosome list derived from the chr_ploidy_data is the gold standard.  Only those chromosomes/contigs
@@ -146,17 +179,15 @@ class GenomeBuilderStep:
         self.log_file_path = os.path.join(self.log_directory_path, self.sample_id, __class__.__name__ + ".log")
         self.unpaired_chr_list = self.get_unpaired_chr_list()
         self.unpaired_chr_variants = self.get_unpaired_chr_variant_data()
-        paired_chr_list = self.get_paired_chr_list()
+        self.paired_chr_list = self.get_paired_chr_list()
+        # How the chromosome should be processed depends upon whether it is paired or not.
         for chromosome in self.chromosome_list:
             if chromosome in self.unpaired_chr_list:
-                print(f'Processing chromosome {chromosome} in unpaired list')
                 self.make_unpaired_chromosome(chromosome)
-            elif chromosome in paired_chr_list:
-                print(f'Processing chromosome {chromosome} in paired list')
+            elif chromosome in self.paired_chr_list:
                 self.make_paired_chromosome(chromosome, sample_index)
             elif chromosome not in self.get_missing_chr_list() and chromosome in self.ploidy_data.keys():
                 # We should never get here.
-                print(f'Processing chromosome {chromosome} using ref genome chr')
                 self.make_reference_chromosome(chromosome)
 
     def make_reference_chromosome(self, chromosome):
@@ -165,15 +196,18 @@ class GenomeBuilderStep:
         genomes.
         :param chromosome: The chromosome for which the reference sequence is used.
         """
+        print(f'Processing chromosome {chromosome} using reference genome chromosome sequence.')
         reference_sequence = self.reference_genome[chromosome]
         with open(self.log_file_path, 'a') as log_file:
             position = len(reference_sequence)
             genomes = [Genome(self.genome_names[0], chromosome, reference_sequence, position,
-                              self.genome_output_file_stem),
-                       Genome(self.genome_names[1], chromosome, reference_sequence, position,
                               self.genome_output_file_stem)]
+
+            # Add reference sequence to both genomes only if the chromosome is designated as paired.
+            if chromosome in self.paired_chr_list:
+                genomes.append(Genome(self.genome_names[1], chromosome, reference_sequence, position,
+                                      self.genome_output_file_stem))
             for genome in genomes:
-                genome.append_segment(reference_sequence[genome.position + genome.offset:])
                 log_file.write(f"Final Genome (from reference) for chromosome {chromosome}: {genome}\n")
                 genome.save_to_file()
 
@@ -184,9 +218,14 @@ class GenomeBuilderStep:
         :param chromosome: The chromosome for which the reference sequence is altered by variant data.
         """
         reference_sequence = self.reference_genome[chromosome]
+        genome = None
+        variants = list(filter(lambda x: x.chromosome == chromosome, self.unpaired_chr_variants))
+        # If no variants are found for this chromosome, copy over the reference sequence instead.
+        if not variants:
+            self.make_reference_chromosome(chromosome)
+            return
+        print(f'Processing chromosome {chromosome} from unpaired chromosome list.')
         with open(self.log_file_path, 'a') as log_file:
-            genome = None
-            variants = filter(lambda x: x.chromosome == chromosome, self.unpaired_chr_variants)
             for index, variant in enumerate(variants):
                 if index == 0:
                     log_file.write(f"Appending"
@@ -199,7 +238,7 @@ class GenomeBuilderStep:
                     # genomes.  Whether the chromosome was contributed by the mother or the father is of no
                     # importance.
                     genome = Genome(self.genome_names[0], chromosome, start_sequence, variant.position,
-                                        self.genome_output_file_stem)
+                                    self.genome_output_file_stem)
 
                 # If the nascent genome seq position translated to reference is downstream of the variant
                 # ignore the variant for this genome.
@@ -241,6 +280,7 @@ class GenomeBuilderStep:
                 self.make_reference_chromosome(chromosome)
                 return
 
+            print(f'Processing chromosome {chromosome} from paired chromosome list.')
             with open(self.log_file_path, 'a') as log_file:
 
                 genomes = [Genome(self.genome_names[0], chromosome, '', 0, self.genome_output_file_stem),
@@ -379,6 +419,7 @@ class Genome:
         """
         return f"name: {self.name}, chromosome: {self.chromosome}, position: {self.position}, offset: {self.offset}"
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Make Genome Files')
     parser.add_argument('-r', '--reference_genome_file_path',
@@ -386,40 +427,39 @@ if __name__ == "__main__":
     parser.add_argument('-l', '--log_directory_path', help="Path to log directory.")
     parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'],
                         help="Gender of input sample (male or female).")
-    parser.add_argument('-c', '--chromosomes', type=lambda chrs: [chr for chr in chrs.split(',')],
+    parser.add_argument('-c', '--chromosomes', type=lambda chrs: [chr_ for chr_ in chrs.split(',')],
                         help="optional chromosome list")
     parser.add_argument('-i', '--ignore_indels', action='store_true',
                         help="Use the reference genome base in place of an indel.  Defaults to false.")
     parser.add_argument('-j', '--ignore_snps', action='store_true',
                         help="Use the reference genome base in place of a snp.  Defaults to False.")
-    parser.add_argument('-d','--data_directory_path', help='Path to data directory')
+    parser.add_argument('-d', '--data_directory_path', help='Path to data directory')
     parser.add_argument('-s', '--sample_id', type=int, help='sample name in vcf when prepended with sample')
     parser.add_argument('-p', '--chr_ploidy_file_path', type=str, help="Path to chromosome ploidy file")
     args = parser.parse_args()
     print(args)
 
-    parameters = {"ignore_snps": args.ignore_snps,
-                  "ignore_indels": args.ignore_indels
-                  }
-    sample = Sample(args.sample_id, "debug sample", None, None, args.gender)
-    reference_genome = ExpressionUtils.create_reference_genome(args.reference_genome_file_path)
-    chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
+    test_parameters = {"ignore_snps": args.ignore_snps,
+                       "ignore_indels": args.ignore_indels}
+    test_sample = Sample(args.sample_id, "debug sample", None, None, args.gender)
+    reference_genome_ = ExpressionUtils.create_reference_genome(args.reference_genome_file_path)
+    chr_ploidy_data_ = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
 
     # Remove old genome data and log files if present
-    sample_data_folder = os.path.join(args.data_directory_path, f'sample{sample.sample_id}')
+    sample_data_folder = os.path.join(args.data_directory_path, f'sample{test_sample.sample_id}')
     for item in os.listdir(sample_data_folder):
         if item.startswith("custom_genome"):
             os.remove(os.path.join(sample_data_folder, item))
-    sample_log_folder = os.path.join(args.log_directory_path, f'sample{sample.sample_id}')
+    sample_log_folder = os.path.join(args.log_directory_path, f'sample{test_sample.sample_id}')
     for item in os.listdir(sample_log_folder):
         if item.startswith("GenomeBuilderStep"):
             os.remove(os.path.join(sample_log_folder, item))
 
-    for chromosome in args.chromosomes:
-        print(f"Length of reference chromosome {chromosome} is {len(reference_genome[chromosome])}   ")
+    for ref_chromosome in args.chromosomes:
+        print(f"Length of reference chromosome {ref_chromosome} sequence is {len(reference_genome_[ref_chromosome])}")
 
-    genome_builder = GenomeBuilderStep(args.log_directory_path, args.data_directory_path, parameters)
-    genome_builder.execute(sample, chr_ploidy_data, reference_genome, args.chromosomes)
+    genome_builder = GenomeBuilderStep(args.log_directory_path, args.data_directory_path, test_parameters)
+    genome_builder.execute(test_sample, chr_ploidy_data_, reference_genome_, args.chromosomes)
 
 '''
 Example
