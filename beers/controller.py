@@ -54,6 +54,9 @@ class Controller:
         """
         stage_name = "expression_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
+        if not self.validate_samples():
+            raise ControllerValidationException("Sample data is not valid.  Please consult the standard error file"
+                                                "for details.")
         self.assemble_input_samples()
         ExpressionPipeline.main(self.configuration['expression_pipeline'], self.resources,
                                 os.path.join(self.output_directory_path, stage_name),
@@ -313,6 +316,34 @@ class Controller:
             controller_log_file.write(f"Configuration:\n")
             json.dump(self.configuration, controller_log_file, indent=2)
 
+    def validate_samples(self):
+        """
+        Iterates over the starting samples and verifies that their files can be found and that the gender designations,
+        if any, are appropriate.
+        :return: True is valid and false otherwise.
+        """
+        valid = True
+        input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
+        self.input_samples = []
+        for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
+            input_sample_file_path = os.path.join(input_directory_path, input_sample["filename"])
+            if not os.path.exists(input_sample_file_path) or not os.path.isfile(input_sample_file_path):
+                print(f"The input sample file, {input_sample_file_path}, does not exist as a file.", file=sys.stderr)
+                valid = False
+            gender = input_sample.get("gender", None)
+            if gender:
+                gender = gender.lower()
+                if gender not in [CONSTANTS.MALE_GENDER, CONSTANTS.FEMALE_GENDER]:
+                    print(f"The gender, {gender}, for input sample {input_sample['filename']} must be either"
+                          f" {CONSTANTS.MALE_GENDER}, {CONSTANTS.FEMALE_GENDER} or not present.", file=sys.stderr)
+                    valid = False
+            else:
+                print(f"The input sample, {input_sample['filename']} has no gender specified.  Consequently, no"
+                      f" gender specific chromosomes will be processed for this sample.")
+        return valid
+
+
+
     def assemble_input_samples(self):
         """
         Creates a list of sample objects, attached to the controller, that represent those samples that are to be
@@ -336,10 +367,6 @@ class Controller:
             gender = input_sample.get("gender", None)
             if gender:
                 gender = gender.lower()
-                if gender not in [CONSTANTS.MALE_GENDER, CONSTANTS.FEMALE_GENDER]:
-                    raise ControllerValidationException(f"The sample gender, {gender},"
-                                                        f" must be either {CONSTANTS.MALE}, {CONSTANTS.FEMALE}"
-                                                        f" or not present.")
             self.input_samples.append(
                 Sample(Sample.next_sample_id,
                        sample_name,

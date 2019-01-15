@@ -1,6 +1,7 @@
 import os
 import pysam
 import re
+import sys
 from collections import namedtuple
 from operator import attrgetter, itemgetter
 import math
@@ -37,23 +38,26 @@ class VariantsFinderStep:
     reads that match the corresponding base in the reference genome are not variants and as such are not kept.
     """
 
-    DEFAULT_DEPTH_CUTOFF = 10
     DEFAULT_MIN_THRESHOLD = 0.03
 
     name = "Variants Finder Step"
 
     def __init__(self, logfile, data_directory_path, parameters):
         self.data_directory_path = data_directory_path
-        self.entropy_sort = parameters["sort_by_entropy"]
-        self.depth_cutoff = parameters["cutoff_depth"] or VariantsFinderStep.DEFAULT_DEPTH_CUTOFF
-        self.min_abundance_threshold = parameters['min_threshold'] or VariantsFinderStep.DEFAULT_MIN_THRESHOLD
+        self.entropy_sort = parameters.get("sort_by_entropy", False)
+        self.min_abundance_threshold = parameters.get('min_threshold', VariantsFinderStep.DEFAULT_MIN_THRESHOLD)
         self.clip_at_start_pattern = re.compile(r"(^\d+)[SH]")
         self.clip_at_end_pattern = re.compile(r"\d+[SH]$")
         self.variant_pattern = re.compile(r"(\d+)([NMID])")
         self.indel_pattern = re.compile(r"\|([^|]+)")
 
     def validate(self):
-        return True
+        valid = True
+        if not (0 < self.min_abundance_threshold < 1):
+            print(f"The min_threshold, {self.min_abundance_threshold} must be between 0 and 1 exclusive.",
+                  file=sys.stderr)
+            valid = False
+        return valid
 
     def remove_clips(self, cigar, sequence):
         """
