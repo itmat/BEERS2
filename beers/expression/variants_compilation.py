@@ -25,7 +25,8 @@ class VariantsCompilationStep():
         variants = {base: int(count) for base, count in [variant.split(":") for variant in variants]}
         return chromosome, position, variants
 
-    def execute(self, samples, reference):
+    def execute(self, samples, chr_ploidy_data, reference):
+        self.chr_ploidy_data = chr_ploidy_data
         contig_order = list(reference.keys())
         print("Converting variants into vcf file")
         contigs_so_far = []

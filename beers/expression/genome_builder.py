@@ -186,7 +186,7 @@ class GenomeBuilderStep:
                 self.make_unpaired_chromosome(chromosome)
             elif chromosome in self.paired_chr_list:
                 self.make_paired_chromosome(chromosome, sample_index)
-            elif chromosome not in self.get_missing_chr_list() and chromosome in self.ploidy_data.keys():
+            elif chromosome not in self.get_missing_chr_list() and chromosome in self.chr_ploidy_data.keys():
                 # We should never get here.
                 self.make_reference_chromosome(chromosome)
 
@@ -250,10 +250,11 @@ class GenomeBuilderStep:
                     if genome.position + genome.offset < variant.position:
                         log_file.write(f"Adding {variant.position - genome.position - genome.offset}"
                                        f" bases of reference sequence at reference position"
-                                       f" {genome.position + genome.offset}\n")
+                                       f" {genome.position + genome.offset} for chromosome {chromosome}\n")
                         genome.append_segment(reference_sequence[genome.position + genome.offset: variant.position])
                         reference_base = reference_sequence[genome.position + genome.offset: variant.position]
                         self.build_sequence_from_variant(genome, variant.description, reference_base)
+                        log_file.write(f"Currently: {genome}\n")
             log_file.write(f"Appending"
                            f" {len(reference_sequence[genome.position + genome.offset:])}"
                            f" bases of reference sequence at reference position "
@@ -289,6 +290,7 @@ class GenomeBuilderStep:
                 for datum in data:
 
                     fields = datum.decode('ascii').rstrip('\n').split('\t')
+                    log_file.write(f"Beagle Field: {fields}\n")
                     beagle_chromosome, position, _, ref, alt, *others = fields
                     position = int(position)
                     sample = fields[sample_index].strip()
@@ -421,6 +423,7 @@ class Genome:
 
 
 if __name__ == "__main__":
+    import pandas as pd
     parser = argparse.ArgumentParser(description='Make Genome Files')
     parser.add_argument('-r', '--reference_genome_file_path',
                         help="Fasta file containing the reference genome")
@@ -442,7 +445,7 @@ if __name__ == "__main__":
     test_parameters = {"ignore_snps": args.ignore_snps,
                        "ignore_indels": args.ignore_indels}
     test_sample = Sample(args.sample_id, "debug sample", None, None, args.gender)
-    reference_genome_ = ExpressionUtils.create_reference_genome(args.reference_genome_file_path)
+    reference_genome_ = ExpressionUtils.create_genome(args.reference_genome_file_path)
     chr_ploidy_data_ = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
 
     # Remove old genome data and log files if present
@@ -455,11 +458,15 @@ if __name__ == "__main__":
         if item.startswith("GenomeBuilderStep"):
             os.remove(os.path.join(sample_log_folder, item))
 
-    for ref_chromosome in args.chromosomes:
-        print(f"Length of reference chromosome {ref_chromosome} sequence is {len(reference_genome_[ref_chromosome])}")
-
     genome_builder = GenomeBuilderStep(args.log_directory_path, args.data_directory_path, test_parameters)
     genome_builder.execute(test_sample, chr_ploidy_data_, reference_genome_, args.chromosomes)
+
+    results = ExpressionUtils.compare_genome_sequence_lengths(args.reference_genome_file_path,
+                                                              os.path.join(sample_data_folder, 'custom_genome_1.fa'),
+                                                              os.path.join(sample_data_folder, 'custom_genome_2.fa'),
+                                                              args.chromosomes or chr_ploidy_data_.keys())
+    df = pd.DataFrame.from_dict(results, orient='index', columns=['Reference Genome', 'Genome 1', 'Genome 2'])
+    print(df)
 
 '''
 Example
@@ -474,9 +481,9 @@ python genome_builder.py \
 
 python genome_builder.py \
 -s 1 \
--d ../../data/pipeline_results_run99/expression_pipeline/data \
+-d ../../data/pipeline_results_run89/expression_pipeline/data \
 -r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
 -p ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt \
--l ../../data/pipeline_results_run99/expression_pipeline/logs \
+-l ../../data/pipeline_results_run89/expression_pipeline/logs \
 -x female
 '''

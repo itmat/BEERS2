@@ -27,9 +27,8 @@ class ExpressionPipeline:
             os.path.join(reference_genome_index_file_directory_path, f"{resources['reference_genome_filename']}")
         chr_ploidy_file_path = \
             os.path.join(reference_genome_index_file_directory_path, f"{resources['chr_ploidy_filename']}")
-        self.reference_genome = ExpressionUtils.create_reference_genome(reference_genome_file_path)
+        self.reference_genome = ExpressionUtils.create_genome(reference_genome_file_path)
         self.chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(chr_ploidy_file_path)
-        print(self.chr_ploidy_data)
 
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
@@ -56,10 +55,10 @@ class ExpressionPipeline:
             genome_alignment.execute(sample, self.reference_genome)
 
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.reference_genome, ['19'])
+            variants_finder.execute(sample, self.reference_genome)
 
         variants_compilation = self.steps['VariantsCompilationStep']
-        variants_compilation.execute(self.samples, self.reference_genome)
+        variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
 
         beagle = self.steps['BeagleStep']
         outcome = beagle.execute(self.resources)
@@ -70,7 +69,7 @@ class ExpressionPipeline:
         for sample in self.samples:
 
             genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
+            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
 
             #annotation_updates = []
             #transcript_distributions = []
