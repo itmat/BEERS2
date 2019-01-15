@@ -40,7 +40,7 @@ class GenomeBuilderStep:
         """
         if not self.gender:
             return [chr_ for chr_ in self.chr_ploidy_data.keys()
-                    if self.chr_ploidy_data[chr_]['male'] == self.chr_ploidy_data[chr_]['female'] == 0]
+                    if self.chr_ploidy_data[chr_]['male'] != self.chr_ploidy_data[chr_]['female']]
         return [chr_ for chr_ in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr_][self.gender] == 0]
 
     def get_unpaired_chr_list(self):
@@ -187,7 +187,7 @@ class GenomeBuilderStep:
             elif chromosome in self.paired_chr_list:
                 self.make_paired_chromosome(chromosome, sample_index)
             elif chromosome not in self.get_missing_chr_list() and chromosome in self.chr_ploidy_data.keys():
-                # We should never get here.
+                # We should never get here since the conditions above should be mutually exclusive.
                 self.make_reference_chromosome(chromosome)
 
     def make_reference_chromosome(self, chromosome):
