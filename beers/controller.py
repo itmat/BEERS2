@@ -333,12 +333,19 @@ class Controller:
         for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
             sample_name = os.path.splitext(input_sample["filename"])[0]
             input_sample_file_path = os.path.join(input_directory_path, input_sample["filename"])
+            gender = input_sample.get("gender", None)
+            if gender:
+                gender = gender.lower()
+                if gender not in [CONSTANTS.MALE_GENDER, CONSTANTS.FEMALE_GENDER]:
+                    raise ControllerValidationException(f"The sample gender, {gender},"
+                                                        f" must be either {CONSTANTS.MALE}, {CONSTANTS.FEMALE}"
+                                                        f" or not present.")
             self.input_samples.append(
                 Sample(Sample.next_sample_id,
                        sample_name,
                        input_sample_file_path,
                        AdapterGenerator.get_unique_adapter_sequences(),
-                       input_sample.get("gender", None)))
+                       gender))
             Sample.next_sample_id += 1
 
     def create_step_log_directories(self, file_count, stage_name, log_directory_path):

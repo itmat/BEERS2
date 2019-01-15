@@ -5,10 +5,11 @@ from collections import namedtuple
 from operator import attrgetter, itemgetter
 import math
 from io import StringIO
+from beers.constants import CONSTANTS
 
 
 Read = namedtuple('Read', ['position', 'description'])
-"""
+Read.__doc__ = """
 A named tuple that possesses all the attributes of a variant
 type:  match (M), deletion (D), insertion (I)
 chromosome: chrN
@@ -50,20 +51,9 @@ class VariantsFinderStep:
         self.clip_at_end_pattern = re.compile(r"\d+[SH]$")
         self.variant_pattern = re.compile(r"(\d+)([NMID])")
         self.indel_pattern = re.compile(r"\|([^|]+)")
-        self.gender_chr_names = {name[0]: name[1] for name in zip(['X', 'Y', 'M'], parameters.get('gender_chr_names'))}
 
     def validate(self):
         return True
-
-    def get_chromosome_list(self):
-        """
-        Use the BAM header to identify all the chromosomes in the alignment file provided.
-        :return: list of chromosomes
-        """
-        chromosomes = []
-        for item in self.alignment_file.header['SQ']:
-            chromosomes.append(item['SN'])
-        return chromosomes
 
     def remove_clips(self, cigar, sequence):
         """
@@ -227,48 +217,44 @@ class VariantsFinderStep:
                     loc_on_read += length
         return reads
 
-    @staticmethod
-    def establish_gender(variants):
-        print(f"Number of X chromosome variants {len(variants)}")
-        total_heterozygous = 0
-        for variant in variants:
-            if len(variant.reads) > 1:
-                total_heterozygous += 1
-        print(f"Number of X chromosome heterozygous variants {total_heterozygous}")
-        gender = 'male' if total_heterozygous < 5000 else 'female'
-        print(f"Gender is {gender}")
-        return gender
-
-    def execute(self, sample, reference_genome, chromosomes = None):
+    def execute(self, sample, chr_ploidy_data, reference_genome, chromosomes = None):
         """
-        Entry point into variants_finder when accessed via imports.  Iterates over the chromosomes in the list
-        provided by the alignment file header and logs those variants found.  If the sample's gender is not provided,
-        variants are not found for the gender chromosomes.  If the sample's gender is female, variants are not found
-        for the Y chromosome.
+        Entry point into variants_finder.  Iterates over the chromosomes in the list provided by the chr_ploidy_data
+        keys to pick out variants.  Chromosomes that are not pertainent to the sample's gender are skipped.  If no
+        sample gender is specified, only those chromosomes that have the same ploidy for both genders are processed.
         :param sample: The sample for which the variants for to be found
+        :param chr_ploidy_data: dictionary of chromosomes as keys and a dictionary of male/female ploidy as values.
         :param reference_genome: A dictionary representation of the reference genome
         :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
         debugging purposes.
         """
         alignment_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}',
                                            'genome_alignment.bam')
-        # variants_filename = os.path.splitext(os.path.basename(alignment_file_path))[0] + "_variants.txt"
-        variants_filename = "variants.txt"
+        variants_filename = CONSTANTS.VARIANTS_FILE_NAME
         variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}', variants_filename)
         self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
-        self.chromosomes = chromosomes if chromosomes else self.get_chromosome_list()
+        self.chromosomes = chromosomes if chromosomes else chr_ploidy_data.keys()
         self.reference_genome = reference_genome
-        gender = sample.gender
+        self.filter_chromosome_list(sample, chr_ploidy_data)
         for chromosome in self.chromosomes:
-            if not gender and chromosome in self.gender_chr_names.values():
-                print(f"Skipping gender chromosome {chromosome} because no gender was provided.")
-                continue
-            if gender and gender.lower() == 'female' and chromosome == self.gender_chr_names['Y']:
-                print(f"Skipping Y chromosome, {chromosome}, because the provided gender is female.")
-                continue
             print(f"Finding variants for chromosome {chromosome}")
             variants = self.call_variants(chromosome, self.collect_reads(chromosome))
             self.log_variants(variants, variants_file_path)
+
+    def filter_chromosome_list(self, sample, chr_ploidy_data):
+        """
+        Culls from the chromosome list, those chromosomes that are either not relevant given the sample gender or
+        not relevant because no sample gender was provided.
+        :param sample: subject sample which contains gender information
+        :param chr_ploidy_data: dictionary of chromosomes as keys and a dictionary of male/female ploidy as values.
+        """
+        gender = sample.gender
+        if not gender:
+            self.chromosomes = [chr_ for chr_ in self.chromosomes
+                                if chr_ploidy_data[chr_][CONSTANTS.MALE_GENDER] ==
+                                chr_ploidy_data[chr_][CONSTANTS.FEMALE_GENDER] != 0]
+        else:
+            self.chromosomes = [chr_ for chr_ in self.chromosomes if chr_ploidy_data[chr_][gender] != 0]
 
     def log_variants(self, variants, variants_file_path):
         """

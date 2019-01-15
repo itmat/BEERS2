@@ -61,8 +61,7 @@
         "step_name": "genome_builder.GenomeBuilderStep",
         "parameters": {
           "ignore_indels": false,
-          "ignore_snps": false,
-          "gender_chr_names": ["X","Y","MT"]
+          "ignore_snps": false
         }
       }
     ]
