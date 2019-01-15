@@ -8,6 +8,7 @@ from beers.expression.expression_pipeline import ExpressionPipelineException
 import itertools
 from beers.utilities.expression_utils import ExpressionUtils
 from beers.sample import Sample
+from beers.constants import CONSTANTS
 
 
 SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'position', 'description'])
@@ -15,12 +16,12 @@ SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'posi
 
 class GenomeBuilderStep:
 
-    def __init__(self, log_directory_path, data_directory_path, parameters):
+    def __init__(self, log_directory_path, data_directory_path, parameters=dict()):
         self.data_directory_path = data_directory_path
-        self.beagle_file_path = os.path.join(self.data_directory_path, 'beagle.vcf.vcf.gz')
+        self.beagle_data_file_path = os.path.join(self.data_directory_path, CONSTANTS.BEAGLE_DATA_FILE_NAME)
         self.variant_line_pattern = re.compile(r'^([^|]+):(\d+) \| (.*)\tTOT')
-        self.ignore_indels = parameters['ignore_indels']
-        self.ignore_snps = parameters['ignore_snps']
+        self.ignore_indels = parameters.get('ignore_indels', False)
+        self.ignore_snps = parameters.get('ignore_snps', False)
         self.genome_names = ['1', '2']
         self.sample_id = None
         self.reference_genome = None
@@ -40,7 +41,8 @@ class GenomeBuilderStep:
         """
         if not self.gender:
             return [chr_ for chr_ in self.chr_ploidy_data.keys()
-                    if self.chr_ploidy_data[chr_]['male'] != self.chr_ploidy_data[chr_]['female']]
+                    if self.chr_ploidy_data[chr_][CONSTANTS.MALE_GENDER] !=
+                    self.chr_ploidy_data[chr_][CONSTANTS.FEMALE_GENDER]]
         return [chr_ for chr_ in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr_][self.gender] == 0]
 
     def get_unpaired_chr_list(self):
@@ -52,7 +54,8 @@ class GenomeBuilderStep:
         """
         if not self.gender:
             return [chr_ for chr_ in self.chr_ploidy_data.keys()
-                    if self.chr_ploidy_data[chr_]['male'] == self.chr_ploidy_data[chr_]['female'] == 1]
+                    if self.chr_ploidy_data[chr_][CONSTANTS.MALE_GENDER] ==
+                    self.chr_ploidy_data[chr_][CONSTANTS.FEMALE_GENDER] == 1]
         return [chr_ for chr_ in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr_][self.gender] == 1]
 
     def get_paired_chr_list(self):
@@ -64,7 +67,8 @@ class GenomeBuilderStep:
         """
         if not self.gender:
             return [chr_ for chr_ in self.chr_ploidy_data.keys()
-                    if self.chr_ploidy_data[chr_]['male'] == self.chr_ploidy_data[chr_]['female'] == 2]
+                    if self.chr_ploidy_data[chr_][CONSTANTS.MALE_GENDER] ==
+                    self.chr_ploidy_data[chr_][CONSTANTS.FEMALE_GENDER] == 2]
         return [chr_ for chr_ in self.chr_ploidy_data.keys() if self.chr_ploidy_data[chr_][self.gender] == 2]
 
     def get_unpaired_chr_variant_data(self):
@@ -138,7 +142,7 @@ class GenomeBuilderStep:
         Find the position of the sample in the beagle data
         :return: The position of the sample in a line of beagle data
         """
-        with gzip.open(self.beagle_file_path) as beagle_file:
+        with gzip.open(self.beagle_data_file_path) as beagle_file:
             for line in beagle_file:
                 line = line.decode('ascii')
                 if line[0] == '#' and line[0:2] != "##":
@@ -173,7 +177,7 @@ class GenomeBuilderStep:
         self.chromosome_list = chromosome_list or list(chr_ploidy_data.keys())
         self.sample_id = f'sample{sample.sample_id}'
         self.gender = sample.gender
-        self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, "variants.txt")
+        self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, CONSTANTS.VARIANTS_FILE_NAME)
         sample_index = self.locate_sample()
         self.genome_output_file_stem = os.path.join(self.data_directory_path, self.sample_id, 'custom_genome')
         self.log_file_path = os.path.join(self.log_directory_path, self.sample_id, __class__.__name__ + ".log")
@@ -272,7 +276,7 @@ class GenomeBuilderStep:
         :param sample_index: identifies the position of the subject sample in the beagle data.
         """
         reference_sequence = self.reference_genome[chromosome]
-        with gzip.open(self.beagle_file_path) as beagle_file:
+        with gzip.open(self.beagle_data_file_path) as beagle_file:
             for key, data in self.group_data(beagle_file, lambda line: line.decode('ascii').split('\t')[0]):
                 if key == chromosome:
                     break
