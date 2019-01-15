@@ -7,6 +7,7 @@ from operator import attrgetter, itemgetter
 import math
 from io import StringIO
 from beers.constants import CONSTANTS
+from prettytable import PrettyTable
 
 
 Read = namedtuple('Read', ['position', 'description'])
@@ -42,7 +43,7 @@ class VariantsFinderStep:
 
     name = "Variants Finder Step"
 
-    def __init__(self, logfile, data_directory_path, parameters):
+    def __init__(self, log_directory_path, data_directory_path, parameters = dict()):
         self.data_directory_path = data_directory_path
         self.entropy_sort = parameters.get("sort_by_entropy", False)
         self.min_abundance_threshold = parameters.get('min_threshold', VariantsFinderStep.DEFAULT_MIN_THRESHOLD)
@@ -50,6 +51,7 @@ class VariantsFinderStep:
         self.clip_at_end_pattern = re.compile(r"\d+[SH]$")
         self.variant_pattern = re.compile(r"(\d+)([NMID])")
         self.indel_pattern = re.compile(r"\|([^|]+)")
+        self.log_directory_path = log_directory_path
 
     def validate(self):
         valid = True
@@ -236,14 +238,38 @@ class VariantsFinderStep:
                                            'genome_alignment.bam')
         variants_filename = CONSTANTS.VARIANTS_FILE_NAME
         variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}', variants_filename)
+        log_file_path = os.path.join(self.log_directory_path, f'sample{sample.sample_id}', __class__.__name__ + ".log")
         self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
         self.chromosomes = chromosomes if chromosomes else chr_ploidy_data.keys()
         self.reference_genome = reference_genome
         self.filter_chromosome_list(sample, chr_ploidy_data)
+        log_table = PrettyTable()
+        log_table.field_names =['chromosome','chromosome length','# positions with variants',
+                                '# variants having no ref base variant','# positions having 1 variant',
+                                '# positions having 2 variants']
+        log_table.align['chromosome length'] = 'r'
+        log_table.align['# positions with variants'] = 'r'
+        log_table.align['# positions having no ref base variant'] = 'r'
+        log_table.align['# positions having 1 variant'] = 'r'
+        log_table.align['# positions having 2 variants'] = 'r'
+        row_totals = [0, 0, 0, 0, 0]
         for chromosome in self.chromosomes:
             print(f"Finding variants for chromosome {chromosome}")
             variants = self.call_variants(chromosome, self.collect_reads(chromosome))
-            self.log_variants(variants, variants_file_path)
+            self.load_variants(variants, variants_file_path)
+            variants_without_ref_base = len([variant for variant in variants if not variant.contains_reference_base])
+            pos_with_one_variant = len([variant for variant in variants if len(variant.reads) == 1])
+            pos_with_two_variants = len([variant for variant in variants if len(variant.reads) == 2])
+            row_values = [len(self.reference_genome[chromosome]), len(variants),
+                          variants_without_ref_base, pos_with_one_variant, pos_with_two_variants]
+            row_totals = [sum(item) for item in zip(row_totals, row_values)]
+            row_values = [chromosome] + row_values
+            log_table.add_row(row_values)
+        row_totals = ['Totals'] + row_totals
+        log_table.add_row(row_totals)
+        with open(log_file_path, 'w') as log_file:
+            log_file.write(log_table.get_string())
+            log_file.write('\n')
 
     def filter_chromosome_list(self, sample, chr_ploidy_data):
         """
@@ -260,9 +286,9 @@ class VariantsFinderStep:
         else:
             self.chromosomes = [chr_ for chr_ in self.chromosomes if chr_ploidy_data[chr_][gender] != 0]
 
-    def log_variants(self, variants, variants_file_path):
+    def load_variants(self, variants, variants_file_path):
         """
-        Logs the variants to a file in the user's designated output directory one chromosome at a time.  The filename
+        Load the variants to a file in the user's designated output directory one chromosome at a time.  The filename
         has the stem of the alignment filename suffixed with _variants.txt
         :param variants: variants list for one chromosome.
         """
@@ -282,6 +308,7 @@ class PositionInfo:
         self.chromosome = chromosome
         self.position = position
         self.reads = []
+        self.contains_reference_base = None
 
     def add_read(self, description, read_count):
         self.reads.append((description, read_count))
@@ -372,6 +399,8 @@ class PositionInfo:
                     variants = []
 
         # The only position reads remaining are variants
+        if variants:
+            self.contains_reference_base = any([variant[0] == reference_base for variant in variants])
         self.reads = variants
 
     def __bool__(self):
