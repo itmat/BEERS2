@@ -1,7 +1,6 @@
 import sys
 import os
 import importlib
-import shutil
 from beers.constants import CONSTANTS
 from beers.utilities.expression_utils import ExpressionUtils
 
@@ -47,6 +46,7 @@ class ExpressionPipeline:
         :param resources: dictionary containing resources from the configuration file
         :return: a tuple = valid (True/False), reference genome file path, chr ploidy file path and beagle file path
         """
+        # TODO a some point STAR and samtools will be in thrid party software and may require validation
         reference_genome_file_path, chr_ploidy_file_path, beagle_file_path = None, None, None
         valid = True
         if 'species_model' not in resources:
@@ -94,7 +94,7 @@ class ExpressionPipeline:
                     valid = False
         else:
             beagle_filenames = [filename for filename in os.listdir(third_party_software_directory_path)
-                               if "beagle" in filename]
+                                if "beagle" in filename]
 
             if not beagle_filenames:
                 print(f"No file is the third party software directory can be identified as the Beagle program",
@@ -124,7 +124,7 @@ class ExpressionPipeline:
         print("Execution of the Expression Pipeline Started...")
 
         for sample in self.samples:
-            print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
+            print(f"Processing sample{sample.sample_id} ({sample.sample_name})...")
 
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             genome_alignment = self.steps['GenomeAlignmentStep']
@@ -140,8 +140,7 @@ class ExpressionPipeline:
         beagle = self.steps['BeagleStep']
         outcome = beagle.execute(self.beagle_file_path)
         if outcome != 0:
-            sys.stderr.write("Beagle process failed.\n")
-            sys.exit(1)
+            raise ExpressionPipelineException("Beagle process failed.")
 
         for sample in self.samples:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
@@ -172,7 +171,7 @@ class ExpressionPipeline:
     def main(configuration, resources, output_directory_path, input_samples):
         pipeline = ExpressionPipeline(configuration, resources, output_directory_path, input_samples)
         if not pipeline.validate():
-            raise ExpressionPipelineException("Expression Pipeline Validation Failed.  "
+            raise ExpressionPipelineValidationException("Expression Pipeline Validation Failed.  "
                                               "Consult the standard error file for details.")
         pipeline.execute()
 
