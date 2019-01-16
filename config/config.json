@@ -48,14 +48,10 @@
         }
       },
       {
-        "step_name": "variants_compilation.VariantsCompilationStep",
-        "parameters": []
+        "step_name": "variants_compilation.VariantsCompilationStep"
       },
       {
-        "step_name": "beagle.BeagleStep",
-        "parameters": {
-          "command": "java -classpath /home/crislawrence/eclipse-workspace/Stubs/bin org.crislawrence.stubs.MockProcess 5"
-        }
+        "step_name": "beagle.BeagleStep"
       },
       {
         "step_name": "genome_builder.GenomeBuilderStep",
@@ -63,6 +59,9 @@
           "ignore_indels": false,
           "ignore_snps": false
         }
+      },
+      {
+        "step_name": "update_annotation_for_genome.UpdateAnnoationForGenomeStep"
       }
     ]
   },

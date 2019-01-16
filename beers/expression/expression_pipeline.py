@@ -23,7 +23,7 @@ class ExpressionPipeline:
             module = importlib.import_module(f'.{module_name}', package="beers.expression")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
-        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path =\
+        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path =\
             self.validate_and_gather_resources(resources)
         if not valid:
             raise ExpressionPipelineValidationException("The resources data is not completely valid."
@@ -31,6 +31,7 @@ class ExpressionPipeline:
         self.reference_genome = ExpressionUtils.create_genome(reference_genome_file_path)
         self.chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(chr_ploidy_file_path)
         self.beagle_file_path = beagle_file_path
+        self.annotation_file_path = annotation_file_path
 
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
@@ -86,6 +87,18 @@ class ExpressionPipeline:
                         print(f"The chr ploidy file path, {chr_ploidy_file_path} must exist as a file",
                               file=sys.stderr)
                         valid = False
+                if 'annotation_filename' not in resources:
+                    print(f"The annotation filename must be specified in the resources section of the configuration"
+                          f" file.", file=sys.stderr)
+                    valid = False
+                else:
+                    annotation_file_path = \
+                        os.path.join(resources_index_files_directory_path, resources['annotation_filename'])
+                    if not(os.path.exists(annotation_file_path) and
+                           os.path.isfile(annotation_file_path)):
+                        print(f"The annotation file path, {annotation_file_path} must exist as a file",
+                              file=sys.stderr)
+                        valid = False
         third_party_software_directory_path = os.path.join(resources['resources_folder'], "third_party_software")
         if not (os.path.exists(third_party_software_directory_path) and
                 os.path.isdir(third_party_software_directory_path)):
@@ -107,7 +120,7 @@ class ExpressionPipeline:
                     print(f"The beagle file path, {beagle_file_path}, must exist as an executable jar file.",
                           file=sys.stderr)
                     valid = False
-        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path
+        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path
 
     def validate(self):
         valid = True
@@ -131,7 +144,7 @@ class ExpressionPipeline:
             genome_alignment.execute(sample, self.reference_genome)
 
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19','MT'])
+            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome)
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
@@ -146,15 +159,13 @@ class ExpressionPipeline:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
 
             genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19', 'MT'])
+            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
 
-            #annotation_updates = []
-            #transcript_distributions = []
-            #molecules = []
-            #for item in genomes:
-            #    indel_data = item[1]
-            #    annotation_updater = UpdateAnnotationForGenome(indel_data, self.annotation_filename)
-            #    annotation_updates.append(annotation_updater.update_annotation())
+            for suffix in [1,2]:
+
+                annotation_updater = self.steps['UpdateAnnotationForGenomeStep']
+                annotation_updater.execute(sample, suffix, self.annotation_file_path)
+
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
             #    transcript_distributions.append(quantifier.quantify())
@@ -165,7 +176,6 @@ class ExpressionPipeline:
             #r_rna = RibosomalRNA(self.parameters)
             #molecules.append(r_rna.generate_rRNA_sample())
         print("Execution of the Expression Pipeline Ended")
-        #return molecules
 
     @staticmethod
     def main(configuration, resources, output_directory_path, input_samples):
