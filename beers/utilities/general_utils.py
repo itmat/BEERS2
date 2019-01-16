@@ -95,6 +95,9 @@ class GeneralUtils:
             level_file_count //= directory_counts.pop(-1)
         return subdirectory_list
 
+class BeersUtilsException(Exception):
+    """Base class for other Utils exceptions."""
+    pass
 
 if __name__ == "__main__":
     pass

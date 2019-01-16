@@ -253,14 +253,6 @@ class Utils:
         camel_case_str = camel_case_str.replace("_", "")
         return camel_case_str
 
-class BeersUtilsException(Exception):
-    """Base class for other Utils exceptions."""
-    pass
-
-class NoExonsInGTF(BeersUtilsException):
-    """Raised when GTF file contains no lines with "exon" in the 3rd column (feature_type)."""
-    pass
-
 
 if __name__ == "__main__":
     # print(Utils.create_complement_strand("AAGTGACCTAAG"))

@@ -4,6 +4,7 @@ import os
 import gzip
 import itertools
 import pandas as pd
+from beers.utilities.general_utils import BeersUtilsException
 
 class ExpressionUtils:
 
@@ -143,7 +144,7 @@ class ExpressionUtils:
                 open(output_annot_filename, 'w') as output_annot_file:
 
             #Print annot file header (note the '#' prefix)
-            output_annot_file.write("#" + Utils.annot_output_format.replace('{', '').replace('}', ''))
+            output_annot_file.write("#" + ExpressionUtils.annot_output_format.replace('{', '').replace('}', ''))
 
             #Regex patterns used to extract individual attributes from the 9th
             #column in the GTF file (the "attributes" column)
@@ -211,7 +212,7 @@ class ExpressionUtils:
 
                         #Format data from previous transcript and write to annotation file
                         output_annot_file.write(
-                            Utils.annot_output_format.format(
+                            ExpressionUtils.annot_output_format.format(
                                 chrom=chrom,
                                 strand=strand,
                                 txStart=ex_starts[0],
@@ -258,7 +259,7 @@ class ExpressionUtils:
 
             #Format data from last transcript and write to annotation file
             output_annot_file.write(
-                Utils.annot_output_format.format(
+                ExpressionUtils.annot_output_format.format(
                     chrom=chrom,
                     strand=strand,
                     txStart=ex_starts[0],
@@ -274,6 +275,12 @@ class ExpressionUtils:
             )
 
         return output_annot_filename
+
+
+
+class NoExonsInGTF(BeersUtilsException):
+    """Raised when GTF file contains no lines with "exon" in the 3rd column (feature_type)."""
+    pass
 
 
 
