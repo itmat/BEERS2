@@ -61,7 +61,7 @@
         }
       },
       {
-        "step_name": "update_annotation_for_genome.UpdateAnnoationForGenomeStep"
+        "step_name": "update_annotation_for_genome.UpdateAnnotationForGenomeStep"
       }
     ]
   },
