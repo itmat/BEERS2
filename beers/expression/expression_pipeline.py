@@ -48,7 +48,8 @@ class ExpressionPipeline:
         :return: a tuple = valid (True/False), reference genome file path, chr ploidy file path and beagle file path
         """
         # TODO a some point STAR and samtools will be in thrid party software and may require validation
-        reference_genome_file_path, chr_ploidy_file_path, beagle_file_path = None, None, None
+        reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path = \
+            None, None, None, None
         valid = True
         if 'species_model' not in resources:
             print("The species_model must be listed in the resources section of the configuration file.",
@@ -144,7 +145,7 @@ class ExpressionPipeline:
             genome_alignment.execute(sample, self.reference_genome)
 
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome)
+            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
@@ -159,7 +160,7 @@ class ExpressionPipeline:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
 
             genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
+            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
 
             for suffix in [1,2]:
 
