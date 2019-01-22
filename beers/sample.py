@@ -37,7 +37,8 @@ class Sample:
         :return: single string representing the sample data
         """
         adapter_sequences_tuple = ",".join([str(adapter_sequence) for adapter_sequence in self.adapter_sequences])
-        return f"{self.sample_id}\t{self.sample_name}\t{self.input_file_paths}\t{self.gender}\t{adapter_sequences_tuple}"
+        input_file_paths_tuple = ",".join([str(input_file_path) for input_file_path in self.input_file_paths])
+        return f"{self.sample_id}\t{self.sample_name}\t{self.gender}\t{input_file_paths_tuple}\t{adapter_sequences_tuple}"
 
     @staticmethod
     def deserialize(data):
@@ -48,6 +49,7 @@ class Sample:
         :return: Sample object populated with the serialized data.
         """
         data = data[1:] if(data.startswith("#")) else data
-        sample_id, sample_name, input_file_paths, gender, adapter_sequences_str = data.rstrip().split('\t')
+        sample_id, sample_name, gender, input_file_paths_str, adapter_sequences_str = data.rstrip().split('\t')
         adapter_labels = tuple(str(adapter_label) for adapter_label in adapter_sequences_str.split(','))
+        input_file_paths = tuple(str(input_file_path) for input_file_path in input_file_paths_str.split(','))
         return Sample(sample_id, sample_name, input_file_paths, adapter_labels, gender)
