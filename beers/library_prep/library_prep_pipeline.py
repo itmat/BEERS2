@@ -3,6 +3,7 @@ import time
 import os
 import resource
 import json
+import math
 
 import numpy as np
 
@@ -74,14 +75,29 @@ class LibraryPrepPipeline:
             module = importlib.import_module(f'.{module_name}', package=LibraryPrepPipeline.package)
             step_class = getattr(module, step_name)
             steps.append(step_class(None, parameters))
-        if not all([step.validate() for step in steps]):
+        if not all([step.validate() for step in steps]
+                   + [LibraryPrepPipeline.validate_flowcell_retention(configuration)]):
             raise BeersLibraryPrepValidationException("Validation error in step: see stderr for details.")
 
-    def execute(self):
+    @staticmethod
+    def validate_flowcell_retention(configuration):
+        valid = True
+        msg = ""
+        if 'flowcell_retention_percentage' not in configuration:
+            valid = False
+            msg += f"A flowcell retention percentage must be specified."
+        if configuration['flowcell_retention_percentage'] <= 0 or configuration['flowcell_retention_percentage'] >= 100:
+            valid = False
+            msg += f"The flowcell retention percentage, {configuration['flowcell_retention_percentage']}," \
+                   f" must be between 0 and 100 exclusive."
+        return valid
+
+    def execute(self, flowcell_retention):
         """
         Opens the pipeline log for writing and serially runs the execute method of each step object found in the
         step list generated when this pipeline stage was initialized.  The final product (a modified molecule
-        packet) is serialized into a data file.
+        packet) is serialized into a data file.  Note that loss due to flowcell loading is incorporated into this
+        packet to avoid creating overly large files.
         """
         with open(self.log_file_path, 'w') as log_file:
             self.log_sample(log_file)
@@ -105,6 +121,11 @@ class LibraryPrepPipeline:
 
             pipeline_elapsed_time = time.time() - pipeline_start
             print(f"Finished {LibraryPrepPipeline.stage_name} in {pipeline_elapsed_time:.1f} seconds")
+
+        # Need to use flowcell retention rate here to avoid storing massive files.
+        number_samples_to_draw = math.floor(flowcell_retention * len(molecule_packet.molecules))
+        retained_molecules = np.random.choice(molecule_packet.molecules, size=number_samples_to_draw, replace=False)
+        molecule_packet.molecules = retained_molecules
 
         # Write final sample to a gzip file for inspection
         molecule_packet.serialize(self.results_file_path)
@@ -163,7 +184,7 @@ class LibraryPrepPipeline:
         molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, directory_structure,
                                                     molecule_packet)
-        library_prep_pipeline.execute()
+        library_prep_pipeline.execute(configuration['flowcell_retention_percentage']/100)
 
 
 class BeersLibraryPrepValidationException(Exception):

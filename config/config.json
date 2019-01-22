@@ -15,7 +15,6 @@
         "min_lane": 1,
         "max_lane": 8
       },
-      "flowcell_retention_percentage": 0.008,
       "lanes_to_use": [1,2,8]
     }
   },
@@ -66,6 +65,7 @@
     ]
   },
   "library_prep_pipeline": {
+    "flowcell_retention_percentage": 0.008,
     "steps": [
       {
         "step_name": "polya_step.PolyAStep",

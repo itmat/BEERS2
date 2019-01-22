@@ -41,7 +41,6 @@ class Flowcell:
         self.run_id = run_id
         self.configuration = configuration
         self.parameters = parameters
-        self.flowcell_retention = self.parameters["flowcell_retention_percentage"] / 100
         self.min_coords = {"lane": 10_000, "tile": 10_000, "x": 10_000, "y": 10_000}
         self.max_coords = {"lane": 0, "tile": 0, "x": 0, "y": 0}
         self.set_flowcell_coordinate_ranges()
@@ -66,21 +65,7 @@ class Flowcell:
             valid = False
             msg += f"The flowcell lanes to use {self.lanes_to_use} must be a subset of the available lanes" \
                    f" {self.available_lanes}.\n"
-        if not self.flowcell_retention or self.flowcell_retention >= 1:
-            valid = False
-            msg += f"The flowcell retention {self.flowcell_retention} value must be less than 1" \
-                   f" (1 signifies total retention)."
         return valid, msg
-
-    def identify_retained_molecules(self, molecule_packet):
-        """
-        Identifies those molecules in a given molecule packet to be retained on the flowcell by
-        sampling without replacement.
-        :param molecule_packet: The packet of molecules being applied to the flowcell.
-        :return: Those molecules retained by the flowcell.
-        """
-        number_samples_to_draw = math.floor(self.flowcell_retention * len(molecule_packet.molecules))
-        return np.random.choice(molecule_packet.molecules, size=number_samples_to_draw, replace=False)
 
     def convert_molecule_pkt_to_cluster_pkt(self, molecule_packet):
         """
@@ -120,9 +105,6 @@ class Flowcell:
         :param molecule_packet: incoming molecule packet (from library prep or a simulated library prep output)
         :return: cluster packet contained those retained molecules affixed to the flowcell via unique coordinates.
         """
-        retained_molecules = self.identify_retained_molecules(molecule_packet)
-        print(f"Number of molecules to be attached to flowcell {len(retained_molecules)}")
-        molecule_packet.molecules = retained_molecules
         cluster_packet = self.convert_molecule_pkt_to_cluster_pkt(molecule_packet)
         return cluster_packet
 
