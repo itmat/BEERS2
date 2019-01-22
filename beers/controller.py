@@ -17,6 +17,7 @@ from beers.molecule_packet import MoleculePacket
 from beers.dispatcher import Dispatcher
 from beers.fast_q import FastQ
 from beers.auditor import Auditor
+from beers.validator import Validator
 import glob
 
 
@@ -192,6 +193,7 @@ class Controller:
         sys.excepthook = exception_handler
         self.retrieve_configuration(args.config)
         self.set_run_id(args.run_id)
+        Validator.validate(stage_names, self.configuration)
         self.plant_seed()
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()

@@ -4,6 +4,7 @@ import time
 import numpy as np
 import resource
 import json
+import re
 from beers.constants import CONSTANTS
 from beers.cluster_packet import ClusterPacket
 from beers.utilities.general_utils import GeneralUtils
@@ -53,12 +54,20 @@ class SequencePipeline:
                            f"result_cluster_pkt{self.cluster_packet.cluster_packet_id}.gzip"
         self.results_file_path = os.path.join(data_subdirectory_path, results_filename)
 
-    def validate(self):
+    @staticmethod
+    def validate(configuration):
         """
-        Runs each step validate process to identify errant parameters.  If any errors are found, a validation exception
-        is raised.
+        Static method to run each step validate process to identify errant parameters.  If any errors are found,
+        a validation exception is raised.
         """
-        if not all([step.validate() for step in self.steps]):
+        steps = []
+        for step in configuration['steps']:
+            module_name, step_name = step["step_name"].rsplit(".")
+            parameters = step["parameters"]
+            module = importlib.import_module(f'.{module_name}', package=SequencePipeline.package)
+            step_class = getattr(module, step_name)
+            steps.append(step_class(None, parameters))
+        if not all([step.validate() for step in steps]):
             raise BeersSequenceValidationException("Validation error in step: see stderr for details.")
 
     def execute(self):
@@ -107,16 +116,25 @@ class SequencePipeline:
         :param directory_structure: instructions for creating the scaffolding needed to house the pipeline data and logs
         :param cluster_packet_filename: the file from which to unmarshall the cluster packet
         """
+        # Normally the cluster_packet_id should be derived from the serialized cluster_packet in the file.  But if
+        # the file cannot be found, we still need an id to report back to the auditor if at all possible.  So we
+        # extract it from the file name just in case.
+        cluster_packet = None
+        cluster_packet_id_pattern = re.compile(r'^.*cluster_packet.*_pkt(\d+)\..*$')
+        cluster_packet_id_match = re.match(cluster_packet_id_pattern, cluster_packet_filename)
+        cluster_packet_id = None if not cluster_packet_id_match else cluster_packet_id_match.group(1)
         try:
             np.random.seed(int(seed))
             configuration = json.loads(configuration)
             cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_directory_path, cluster_packet_filename)
             sequence_pipeline = SequencePipeline(configuration, output_directory_path, directory_structure,
                                                  cluster_packet)
-            sequence_pipeline.validate()
             sequence_pipeline.execute()
         finally:
-            Auditor.note_packet_completed(cluster_packet.cluster_packet_id, output_directory_path)
+            # Using the file name to recover the cluster packet id only if the cluster_packet was never created.
+            # They should be the same.
+            cluster_packet_id = cluster_packet_id if not cluster_packet else cluster_packet,cluster_packet_id
+            Auditor.note_packet_completed(cluster_packet_id, output_directory_path)
 
 
 class BeersSequenceValidationException(Exception):

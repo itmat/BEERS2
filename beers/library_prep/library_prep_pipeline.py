@@ -59,14 +59,22 @@ class LibraryPrepPipeline:
                            f"result_molecule_pkt{self.molecule_packet.molecule_packet_id}.txt"
         self.results_file_path = os.path.join(data_subdirectory_path, results_filename)
 
-    def validate(self):
+    @staticmethod
+    def validate(configuration):
         """
-        Validates the molecules provided and runs each step validate process to identify errant parameters.  If any
-        errors are found, a validation exception is raised.
+        Static method to run each step validate process to identify errant parameters.  If any errors are found,
+        a validation exception is raised.
         """
-        if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
-            raise BeersLibraryPrepValidationException("Validation error in molecule packet: see stderr for details.")
-        if not all([step.validate() for step in self.steps]):
+        #if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
+        #    raise BeersLibraryPrepValidationException("Validation error in molecule packet: see stderr for details.")
+        steps = []
+        for step in configuration['steps']:
+            module_name, step_name = step["step_name"].rsplit(".")
+            parameters = step["parameters"]
+            module = importlib.import_module(f'.{module_name}', package=LibraryPrepPipeline.package)
+            step_class = getattr(module, step_name)
+            steps.append(step_class(None, parameters))
+        if not all([step.validate() for step in steps]):
             raise BeersLibraryPrepValidationException("Validation error in step: see stderr for details.")
 
     def execute(self):
@@ -155,7 +163,6 @@ class LibraryPrepPipeline:
         molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, directory_structure,
                                                     molecule_packet)
-        library_prep_pipeline.validate()
         library_prep_pipeline.execute()
 
 
