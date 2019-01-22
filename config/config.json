@@ -23,11 +23,11 @@
       "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/expression/GRCh38",
       "data": [
         {
-          "filename": "Adapter_trimmed.1002_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz",
+          "filenames": ["Adapter_trimmed.1002_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"],
           "gender": "female"
         },
         {
-          "filename": "Adapter_trimmed.1015_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"
+          "filenames": ["Adapter_trimmed.1015_baseline.Fw.merged_FGC1718_FGC1720_FGC1834_FGC1846_FGC1853.fastq.gz"]
         }
       ]
     },

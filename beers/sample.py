@@ -9,7 +9,7 @@ class Sample:
 
     next_sample_id = 1
 
-    def __init__(self, sample_id, sample_name, input_file_path, adapter_sequences, gender=None):
+    def __init__(self, sample_id, sample_name, input_file_paths, adapter_sequences, gender=None):
         """
         The gender may not be known upon instantiation.
         :param sample_id: An integer uniquely indentifying the sample
@@ -21,13 +21,13 @@ class Sample:
         # TODO Should adapter_sequences be replaced with the Adapter namedtuple, which does contain more information
         self.sample_id = sample_id
         self.sample_name = sample_name
-        self.input_file_path = input_file_path
+        self.input_file_paths = input_file_paths
         self.gender = gender
         self.adapter_sequences = adapter_sequences
 
     def __str__(self):
         return f"sample id: {self.sample_id}, sample name: {self.sample_name},\n" \
-               f"input_file_path: {self.input_file_path},\n" \
+               f"input_file_paths: {self.input_file_paths},\n" \
                f"gender: {self.gender}, adapter sequences: {self.adapter_sequences}"
 
     def serialize(self):
@@ -37,7 +37,7 @@ class Sample:
         :return: single string representing the sample data
         """
         adapter_sequences_tuple = ",".join([str(adapter_sequence) for adapter_sequence in self.adapter_sequences])
-        return f"{self.sample_id}\t{self.sample_name}\t{self.input_file_path}\t{self.gender}\t{adapter_sequences_tuple}"
+        return f"{self.sample_id}\t{self.sample_name}\t{self.input_file_paths}\t{self.gender}\t{adapter_sequences_tuple}"
 
     @staticmethod
     def deserialize(data):
@@ -48,6 +48,6 @@ class Sample:
         :return: Sample object populated with the serialized data.
         """
         data = data[1:] if(data.startswith("#")) else data
-        sample_id, sample_name, input_file_path, gender, adapter_sequences_str = data.rstrip().split('\t')
+        sample_id, sample_name, input_file_paths, gender, adapter_sequences_str = data.rstrip().split('\t')
         adapter_labels = tuple(str(adapter_label) for adapter_label in adapter_sequences_str.split(','))
-        return Sample(sample_id, sample_name, input_file_path, adapter_labels, gender)
+        return Sample(sample_id, sample_name, input_file_paths, adapter_labels, gender)

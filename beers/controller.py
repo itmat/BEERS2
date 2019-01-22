@@ -328,10 +328,11 @@ class Controller:
         input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
         self.input_samples = []
         for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
-            input_sample_file_path = os.path.join(input_directory_path, input_sample["filename"])
-            if not os.path.exists(input_sample_file_path) or not os.path.isfile(input_sample_file_path):
-                print(f"The input sample file, {input_sample_file_path}, does not exist as a file.", file=sys.stderr)
-                valid = False
+            for input_sample_file_path in [os.path.join(input_directory_path, filename)
+                                           for filename in input_sample["filenames"]]:
+                if not os.path.exists(input_sample_file_path) or not os.path.isfile(input_sample_file_path):
+                    print(f"The input sample file, {input_sample_file_path}, does not exist as a file.", file=sys.stderr)
+                    valid = False
             gender = input_sample.get("gender", None)
             if gender:
                 gender = gender.lower()
@@ -340,7 +341,7 @@ class Controller:
                           f" {CONSTANTS.MALE_GENDER}, {CONSTANTS.FEMALE_GENDER} or not present.", file=sys.stderr)
                     valid = False
             else:
-                print(f"The input sample, {input_sample['filename']} has no gender specified.  Consequently, no"
+                print(f"The input sample, {input_sample['filenames']} has no gender specified.  Consequently, no"
                       f" gender specific chromosomes will be processed for this sample.")
         return valid
 
@@ -364,15 +365,16 @@ class Controller:
         adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
         AdapterGenerator.generate_adapters(adapter_kit_file_path)
         for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
-            sample_name = os.path.splitext(input_sample["filename"])[0]
-            input_sample_file_path = os.path.join(input_directory_path, input_sample["filename"])
+            sample_name = os.path.splitext(input_sample["filenames"][0])[0]
+            input_sample_file_paths = [os.path.join(input_directory_path, filename)
+                                       for filename in input_sample["filenames"]]
             gender = input_sample.get("gender", None)
             if gender:
                 gender = gender.lower()
             self.input_samples.append(
                 Sample(Sample.next_sample_id,
                        sample_name,
-                       input_sample_file_path,
+                       input_sample_file_paths,
                        AdapterGenerator.get_unique_adapter_sequences(),
                        gender))
             Sample.next_sample_id += 1
