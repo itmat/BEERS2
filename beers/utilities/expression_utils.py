@@ -51,18 +51,25 @@ class ExpressionUtils:
         :param genome_file_path: path to reference genome file (either compressed or not)
         :return: genome as a dictionary with the chromosomes/contigs as keys and the sequences as values.
         """
+        chr_pattern = re.compile(">([^\s]*)")
         genome = dict()
         _, file_extension = os.path.splitext(genome_file_path)
         if 'gz' in file_extension:
             with gzip.open(genome_file_path, 'r') as genome_file:
                 for chr, seq in itertools.zip_longest(*[genome_file] * 2):
-                    chr = chr.decode("ascii").rstrip()[1:]
+                    chr_match = re.match(chr_pattern, chr.decode("ascii"))
+                    if not chr_match:
+                        raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
+                    chr = chr_match.group(1)
                     genome[chr] = seq.decode("ascii").rstrip()
         else:
             with open(genome_file_path, 'r') as reference_genome_file:
                 with open(genome_file_path, 'r') as genome_file:
                     for chr, seq in itertools.zip_longest(*[genome_file] * 2):
-                        chr = chr.rstrip()[1:]
+                        chr_match = re.match(chr_pattern, chr)
+                        if not chr_match:
+                            raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
+                        chr = chr_match.group(1)
                         genome[chr] = seq.rstrip()
         return genome
 
