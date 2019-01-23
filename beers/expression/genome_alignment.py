@@ -6,9 +6,10 @@ class GenomeAlignmentStep():
 
     name = "Genome Alignment Step"
 
-    def __init__(self, log_directory_path, data_directory_path, parameters):
+    def __init__(self, log_directory_path, data_directory_path, parameters = dict()):
         self.log_directory_path = log_directory_path
         self.data_directory_path = data_directory_path
+        self.options = parameters
 
     def validate(self):
         # TODO: validate and use parameters for STAR
@@ -32,13 +33,8 @@ class GenomeAlignmentStep():
         star_command = ' '.join([f"{star_file_path}",
                            f"--outFileNamePrefix {out_file_prefix}",
                            f"--genomeDir {star_index_path}",
-                           f"--runMode alignReads",
-                           f"--runThreadN 4",
-                           f"--outSAMtype BAM Unsorted",
-                           f"--outFilterMismatchNmax 33",
-                           f"--seedSearchStartLmax 33",
-                           f"--alignSJoverhangMin 8",
-                           f"--readFilesCommand zcat",
+                           for key, value in self.options.items():
+                            ' '.join(key, value),
                            f"--readFilesIn {read_files}" ])
 
         bsub_command = f"bsub \
@@ -46,8 +42,8 @@ class GenomeAlignmentStep():
                             -M 40000 \
                             -R \"span[hosts=1]\" \
                             -J STAR_{sample.sample_id}_{sample.sample_name} \
-                            -oo {stdout_log} \
-                            -eo {stderr_log} \
+                            -oo {stdout_log.%J} \
+                            -eo {stderr_log.%J} \
                             {star_command}"
 
         if mode == "serial" or mode == "parallel":
