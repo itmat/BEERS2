@@ -1,41 +1,58 @@
 import shutil
 import os
+import subprocess
 
 class GenomeAlignmentStep():
 
     name = "Genome Alignment Step"
 
-    sample_map = {
-        "1002": "Test_data.1002_baseline.sorted.bam",
-        "1015": "Test_data.1015_baseline.sorted.bam",
-        "ILB_9577": "ILB_9577.Aligned.sortedByCoord.out.bam",
-        "ILB_9578": "ILB_9578.Aligned.sortedByCoord.out.bam",
-        "ILB_9583": "ILB_9583.Aligned.sortedByCoord.out.bam",
-        "UNT_9576": "UNT_9576.Aligned.sortedByCoord.out.bam",
-        "UNT_9580": "UNT_9580.Aligned.sortedByCoord.out.bam",
-        "UNT_9584": "UNT_9584.Aligned.sortedByCoord.out.bam"
-    }
-
-    def __init__(self, logfile, data_directory_path, parameters):
+    def __init__(self, log_directory_path, data_directory_path, parameters):
+        self.log_directory_path = log_directory_path
         self.data_directory_path = data_directory_path
 
     def validate(self):
+        # TODO: validate and use parameters for STAR
         return True
 
-    def execute(self, sample, reference_genome):
-        # TODO Stub!!  Hard-coded alignment files to stub for STAR alignments.
-        alignment_file_path = ''
-        alignment_index_file_path = ''
-        parent_dir = os.path.abspath(os.path.join(sample.input_file_paths[0], os.pardir))
-        for key, value in GenomeAlignmentStep.sample_map.items():
-            if key in sample.sample_name:
-                alignment_file_path = os.path.join(parent_dir, value)
-                alignment_index_file_path = os.path.join(parent_dir, value + ".bai")
-                break
-        shutil.copyfile(alignment_file_path,
-                        os.path.join(self.data_directory_path, f'sample{sample.sample_id}', 'genome_alignment.bam'))
-        shutil.copyfile(alignment_index_file_path,
-                        os.path.join(self.data_directory_path, f'sample{sample.sample_id}', 'genome_alignment.bai'))
+    def execute(self, sample, reference_genome, mode="serial"):
+        # Right now, options are mode="serial", "parallel" and "lsf"
+        # and mode="parallel" is the same as "serial"
 
+        #TODO: module load STAR-v2.6.0c
+        assert 1 <= len(self.sample.input_file_paths) <= 2
+        read_files = ' '.join(self.sample.input_file_paths)
 
+        out_file_prefix = os.path.join(self.data_directory_path, sample.sample_id, "genome_alignment")
 
+        stdout_log = os.path.join(self.log_directory_path, sample.sample_id, "star_bsub.out")
+        stderr_log = os.path.join(self.log_directory_path, sample.sample_id, "star_bsub.err")
+
+        #TODO: always use zcat?
+        star_command = "STAR \
+                            --outFileNamePrefix {out_file_prefix} \
+                            --genomeDir {reference_genome} \
+                            --runMode alignReads \
+                            --runThreadN 4 \
+                            --outSAMtype BAM Unsorted \
+                            --outFilterMismatchNmax 33 \
+                            --seedSearchStartLmax 33 \
+                            --alignSJoverhangMin 8 \
+                            --readFilesCommand zcat \
+                            --readFilesIn {read_files}"
+
+        bsub_command = f"bsub \
+                            -n 4 \
+                            -M 40000 \
+                            -R \"span[hosts=1]\" \
+                            -J STAR_{sample.sample_id}_{sample.sample_name} \
+                            -oo {stdout_log} \
+                            -eo {stderr_log} \
+                            {star_command}"
+
+        if mode == "serial" or mode == "parallel":
+            print(f"Starting STAR on sample {sample.sample_name}.")
+            result =  subprocess.run(star_command, shell=True, check=True)
+            print(f"Finished running STAR on sample{sample.sample_id} {sample.sample_name}.")
+        elif mode == "lsf":
+            #TODO: implement lsf support - or move this functionality to other files
+            raise NotImplementedError()

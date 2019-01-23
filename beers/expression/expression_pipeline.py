@@ -138,12 +138,12 @@ class ExpressionPipeline:
         print("Execution of the Expression Pipeline Started...")
 
         for sample in self.samples:
-            print(f"Processing sample{sample.sample_id} ({sample.sample_name})...")
-
-            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             genome_alignment = self.steps['GenomeAlignmentStep']
             genome_alignment.execute(sample, self.reference_genome)
 
+        for sample in self.samples:
+            print(f"Processing variants in sample {sample.sample_id} ({sample.sample_name})...")
+            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             variants_finder = self.steps['VariantsFinderStep']
             variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
 
