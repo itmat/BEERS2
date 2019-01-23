@@ -21,7 +21,7 @@ class ExpressionUtils:
         data.
         """
         reference_genome = dict()
-        fasta_chromosome_pattern = re.compile(">([^\s]*)")
+        fasta_chromosome_pattern = re.compile(">([^\s]*).*")
         chromosome, sequence = '', None
         building_sequence = False
         with open(reference_genome_file_path, 'r') as reference_genome_file:
@@ -56,29 +56,21 @@ class ExpressionUtils:
         _, file_extension = os.path.splitext(genome_file_path)
         if 'gz' in file_extension:
             with gzip.open(genome_file_path, 'r') as genome_file:
-                for line in genome_file:
-                    line = line.decode()
-                    if line.startswith("#"):
-                        continue
-                    elif line.startswith(">"):
-                        chr_match = re.match(chr_pattern, line)
-                        if not chr_match:
-                            raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
-                        chromosome = chr_match.group(1)
-                        genome[chromosome] = genome_file.readline().decode().rstrip()
+                for chr, seq in itertools.zip_longest(*[genome_file] * 2):
+                    chr_match = re.match(chr_pattern, chr.decode("ascii"))
+                    if not chr_match:
+                        raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
+                    chr = chr_match.group(1)
+                    genome[chr] = seq.decode("ascii").rstrip()
         else:
-            with open(genome_file_path, 'r') as genome_file:
-                for line in genome_file:
-                    if line.startswith("#"):
-                        continue
-                    elif line.startswith(">"):
-                        chr_match = re.match(chr_pattern, line)
+            with open(genome_file_path, 'r') as reference_genome_file:
+                with open(genome_file_path, 'r') as genome_file:
+                    for chr, seq in itertools.zip_longest(*[genome_file] * 2):
+                        chr_match = re.match(chr_pattern, chr)
                         if not chr_match:
                             raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
-                        chromosome = chr_match.group(1)
-                        genome[chromosome] = genome_file.readline().rstrip()
-        for chr,seq in genome.items():
-            print(f'chr:seq =  {chr}:{seq[0:10]}')
+                        chr = chr_match.group(1)
+                        genome[chr] = seq.rstrip()
         return genome
 
     @staticmethod
