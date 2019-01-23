@@ -3,7 +3,7 @@
     "run_id": null,
     "seed": 100,
     "dispatcher_mode": "serial",
-    "output_directory_path": "/project/itmatlab/for_dimitra/BEER2.0_dev/BEERS2.0/data/pipeline_results",
+    "output_directory_path": "/project/itmatlab/for_tom/BEERS2.0_dev/BEERS2.0/data/pipeline_results",
     "flowcell": {
       "flowcell_geometry": {
         "min_x": 1012,
@@ -22,14 +22,14 @@
     "input": {
       "directory_path": "/project/itmatlab/for_cris/Test_Mouse_Samples/data/expression/GRCm38/",
       "data": {
-        "TruSeq_UNT_9576":
+        "ILB_9577":
         {
-          "filenames": ["FGC1130_Illumina_UNT_9576_s_6_1_ACAGTG.fastq.gz", "FGC1130_Illumina_UNT_9576_s_6_2_ACAGTG.fastq.gz"],
-          "gender": "female"
+          "filenames": ["Small_1mil_reads.FGC1130_Illumina_ILB_9577_s_6_1_GCCAAT.fastq.gz", "Small_1mil_reads.FGC1130_Illumina_ILB_9577_s_6_2_GCCAAT.fastq.gz"],
+          "gender": "male"
         },
-        "TruSeq_UNT_9577":
+        "UNT_9576":
         {
-          "filenames": ["FGC1130_Illumina_UNT_9577_s_6_1_ACAGTG.fastq.gz", "FGC1130_Illumina_UNT_9577_s_6_2_ACAGTG.fastq.gz"],
+          "filenames": ["Small_1mil_reads.FGC1130_Illumina_UNT_9576_s_6_1_ACAGTG.fastq.gz", "Small_1mil_reads.FGC1130_Illumina_UNT_9576_s_6_2_ACAGTG.fastq.gz"],
           "gender": "male"
         }
       }
@@ -156,7 +156,7 @@
     }
   },
   "resources":{
-    "species_model": "mm10",
+    "species_model": "GRCm38",
     "reference_genome_filename": "Mus_musculus.GRCm38.dna.oneline_seqs.fa.gz",
     "chr_ploidy_filename": "Mus_musculus.GRCm38.chr_ploidy.txt",
     "annotation_filename": "Mus_musculus.GRCm38.93.annotation.txt",
