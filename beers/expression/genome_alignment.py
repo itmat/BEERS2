@@ -14,31 +14,32 @@ class GenomeAlignmentStep():
         # TODO: validate and use parameters for STAR
         return True
 
-    def execute(self, sample, reference_genome, mode="serial"):
+    def execute(self, sample, reference_genome_file_path, star_file_path, mode="serial"):
         # Right now, options are mode="serial", "parallel" and "lsf"
         # and mode="parallel" is the same as "serial"
 
         #TODO: module load STAR-v2.6.0c
-        assert 1 <= len(self.sample.input_file_paths) <= 2
-        read_files = ' '.join(self.sample.input_file_paths)
+        assert 1 <= len(sample.input_file_paths) <= 2
+        read_files = ' '.join(sample.input_file_paths)
 
-        out_file_prefix = os.path.join(self.data_directory_path, sample.sample_id, "genome_alignment")
+        out_file_prefix = os.path.join(self.data_directory_path, f"sample{sample.sample_id}", "genome_alignment.")
 
-        stdout_log = os.path.join(self.log_directory_path, sample.sample_id, "star_bsub.out")
-        stderr_log = os.path.join(self.log_directory_path, sample.sample_id, "star_bsub.err")
+        stdout_log = os.path.join(self.log_directory_path, f"sample{sample.sample_id}", "star_bsub.out")
+        stderr_log = os.path.join(self.log_directory_path, f"sample{sample.sample_id}", "star_bsub.err")
+        star_index_path = os.path.join(reference_genome_file_path, "genome")
 
         #TODO: always use zcat?
-        star_command = "STAR \
-                            --outFileNamePrefix {out_file_prefix} \
-                            --genomeDir {reference_genome} \
-                            --runMode alignReads \
-                            --runThreadN 4 \
-                            --outSAMtype BAM Unsorted \
-                            --outFilterMismatchNmax 33 \
-                            --seedSearchStartLmax 33 \
-                            --alignSJoverhangMin 8 \
-                            --readFilesCommand zcat \
-                            --readFilesIn {read_files}"
+        star_command = ' '.join([f"{star_file_path}",
+                           f"--outFileNamePrefix {out_file_prefix}",
+                           f"--genomeDir {star_index_path}",
+                           f"--runMode alignReads",
+                           f"--runThreadN 4",
+                           f"--outSAMtype BAM Unsorted",
+                           f"--outFilterMismatchNmax 33",
+                           f"--seedSearchStartLmax 33",
+                           f"--alignSJoverhangMin 8",
+                           f"--readFilesCommand zcat",
+                           f"--readFilesIn {read_files}" ])
 
         bsub_command = f"bsub \
                             -n 4 \
