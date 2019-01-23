@@ -365,7 +365,8 @@ class Controller:
         adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
         AdapterGenerator.generate_adapters(adapter_kit_file_path)
         for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
-            sample_name = os.path.splitext(input_sample["filenames"][0])[0]
+            #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
+            sample_name = input_sample
             input_sample_file_paths = [os.path.join(input_directory_path, filename)
                                        for filename in input_sample["filenames"]]
             gender = input_sample.get("gender", None)
