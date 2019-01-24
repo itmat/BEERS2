@@ -1,6 +1,7 @@
 import shutil
 import os
 import subprocess
+import re #Probably won't need this if we switch to an LSF API
 
 class GenomeAlignmentStep():
 
@@ -66,11 +67,21 @@ class GenomeAlignmentStep():
             print(f"Starting STAR on sample {sample.sample_name}.")
             result =  subprocess.run(star_command, shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
             stdout = result.stdout
+            job_id = ""
             print(f"Finished running STAR on sample{sample.sample_id} {sample.sample_name}.")
         elif mode == "lsf":
+            print(f"Submitting STAR command to {mode} for sample {sample.sample_name}.")
+            result =  subprocess.run(bsub_command, shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
+            stdout = result.stdout
+
+            #Extract job ID from LSF stdout
+            lsf_output_pattern = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
+            job_id = lsf_output_pattern.match(stdout).group("job_id")
+
+            print(f"Finished submitting STAR command to {mode} for sample{sample.sample_id} {sample.sample_name}.")
             #TODO: implement lsf support - or move this functionality to other files
-            raise NotImplementedError()
+            #raise NotImplementedError()
 
         # Return the path of the output so that later steps can use it
         # Or move it to a standard location?
-        return bam_output_file
+        return bam_output_file, job_id
