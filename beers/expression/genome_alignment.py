@@ -16,6 +16,15 @@ class GenomeAlignmentStep():
         self.options = parameters
 
     def validate(self):
+        invalid_STAR_parameters = ["--outFileNamePrefix", "--genomeDir", "--runMode", "--outSAMtype", "--readFilesIn"]
+        for key, value in self.options.items():
+            if not key.startswith("--"):
+                print(f"Genome Alignment parameter {key} with value {value} needs to be a STAR option starting with double dashes --", sys.stderr)
+                return False
+            if key in invalid_STAR_parameters:
+                print(f"Genome Alignment parameter {key} with value {value} cannot be used as a STAR option since the value is already determined by the genome alignment script.")
+                return False
+
         # TODO: validate and use parameters for STAR
         return True
 
@@ -81,6 +90,9 @@ class GenomeAlignmentStep():
         return bam_output_file
 
     def index(self, sample, bam_file, mode = "serial"):
+        ''' Build index of a given bam file '''
+        # indexing is necessary for the variant finding step
+
         if mode == "serial" or mode == "parallel":
             print(f"Creating index for sample{sample.sample_id} {sample.sample_name}")
             pysam.index(bam_file)
