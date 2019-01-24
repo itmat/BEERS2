@@ -155,11 +155,15 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
+        genome_alignment = self.steps['GenomeAlignmentStep']
+
         bam_files = []
         for sample in self.samples:
-            genome_alignment = self.steps['GenomeAlignmentStep']
             bam_file = genome_alignment.execute(sample, self.resources_index_files_directory_path, self.star_file_path)
             bam_files.append(bam_file)
+
+        for bam_file, sample in zip(bam_files, self.samples):
+            genome_alignment.index(sample, bam_file)
 
         for bam_file, sample in zip(bam_files, self.samples):
             print(f"Processing variants in sample {sample.sample_id} ({sample.sample_name})...")

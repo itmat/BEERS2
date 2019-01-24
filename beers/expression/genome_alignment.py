@@ -1,6 +1,10 @@
-import shutil
 import os
+import sys
+import io
+import shutil
 import subprocess
+
+import pysam
 
 class GenomeAlignmentStep():
 
@@ -38,39 +42,54 @@ class GenomeAlignmentStep():
         star_index_path = os.path.join(reference_genome_file_path, "genome")
 
         # STAR's output bam files are always of this path
-        bam_output_file = f"{out_file_prefix}Aligned.out.bam"
+        bam_output_file = f"{out_file_prefix}Aligned.sortedByCoord.out.bam"
 
         #TODO: always use zcat?
-        star_command = ' '.join([f"{star_file_path}",
-                           f"--outFileNamePrefix {out_file_prefix}",
-                           f"--genomeDir {star_index_path}",
-                           f"--runMode alignReads",
-                           f"--runThreadN 4",
-                           f"--outSAMtype BAM SortedByCoordinate",
-                           f"--outFilterMismatchNmax 33",
-                           f"--seedSearchStartLmax 33",
-                           f"--alignSJoverhangMin 8",
-                           f"--readFilesCommand zcat",
-                           f"--readFilesIn {read_files}" ])
+        star_command = (f"{star_file_path}"
+                          f" --outFileNamePrefix {out_file_prefix}"
+                          f" --genomeDir {star_index_path}"
+                          f" --runMode alignReads"
+                          f" --runThreadN 4"
+                          f" --outSAMtype BAM SortedByCoordinate"
+                          f" --outFilterMismatchNmax 33"
+                          f" --seedSearchStartLmax 33"
+                          f" --alignSJoverhangMin 8"
+                          f" --readFilesCommand zcat"
+                          f" --readFilesIn {read_files}")
 
-        bsub_command = f"bsub \
-                            -n 4 \
-                            -M 40000 \
-                            -R \"span[hosts=1]\" \
-                            -J STAR_{sample.sample_id}_{sample.sample_name} \
-                            -oo {stdout_log} \
-                            -eo {stderr_log} \
-                            {star_command}"
+        bsub_command = (f"bsub"
+                         f" -n 4"
+                         f" -M 40000"
+                         f" -R \"span[hosts=1]\""
+                         f" -J STAR_{sample.sample_id}_{sample.sample_name}"
+                         f" -oo {stdout_log}"
+                         f" -eo {stderr_log}"
+                         f" {star_command}")
 
         if mode == "serial" or mode == "parallel":
             print(f"Starting STAR on sample {sample.sample_name}.")
-            result =  subprocess.run(star_command, shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
-            stdout = result.stdout
+            result =  subprocess.run(star_command, shell=True, check=True)
             print(f"Finished running STAR on sample{sample.sample_id} {sample.sample_name}.")
         elif mode == "lsf":
             #TODO: implement lsf support - or move this functionality to other files
             raise NotImplementedError()
 
+            # bsub it and capture stdout to read bsub's results (job id)
+            result =  subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
+            print(result.stdout)
+
         # Return the path of the output so that later steps can use it
         # Or move it to a standard location?
         return bam_output_file
+
+    def index(self, sample, bam_file, mode = "serial"):
+        if mode == "serial" or mode == "parallel":
+            print(f"Creating index for sample{sample.sample_id} {sample.sample_name}")
+            pysam.index(bam_file)
+            print(f"Done creating index for sample{sample.sample_id} {sample.sample_name}")
+        elif mode == "lsf":
+            raise NotImplementedError()
+
+            bsub_command = (f"bsub samtools index {bam_file}")
+            result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
+            print(result.stdout)
