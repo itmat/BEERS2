@@ -20,6 +20,15 @@ class GenomeAlignmentStep():
 
         #TODO: module load STAR-v2.6.0c
         assert 1 <= len(sample.input_file_paths) <= 2
+
+        # Check if they are already bam files and so we don't need to re-run the alignment
+        if sample.input_file_paths[0].endswith("bam"):
+            assert len(sample.input_file_paths) == 1
+            print(f"sample{sample.sample_id} {sample.sample_name} is already aligned.")
+
+            # Give the path to the already-existing bam file
+            return sample.input_file_paths[0]
+
         read_files = ' '.join(sample.input_file_paths)
 
         out_file_prefix = os.path.join(self.data_directory_path, f"sample{sample.sample_id}", "genome_alignment.")
@@ -28,13 +37,16 @@ class GenomeAlignmentStep():
         stderr_log = os.path.join(self.log_directory_path, f"sample{sample.sample_id}", "star_bsub.err")
         star_index_path = os.path.join(reference_genome_file_path, "genome")
 
+        # STAR's output bam files are always of this path
+        bam_output_file = f"{out_file_prefix}Aligned.out.bam"
+
         #TODO: always use zcat?
         star_command = ' '.join([f"{star_file_path}",
                            f"--outFileNamePrefix {out_file_prefix}",
                            f"--genomeDir {star_index_path}",
                            f"--runMode alignReads",
                            f"--runThreadN 4",
-                           f"--outSAMtype BAM Unsorted",
+                           f"--outSAMtype BAM SortedByCoordinate",
                            f"--outFilterMismatchNmax 33",
                            f"--seedSearchStartLmax 33",
                            f"--alignSJoverhangMin 8",
@@ -52,8 +64,13 @@ class GenomeAlignmentStep():
 
         if mode == "serial" or mode == "parallel":
             print(f"Starting STAR on sample {sample.sample_name}.")
-            result =  subprocess.run(star_command, shell=True, check=True)
+            result =  subprocess.run(star_command, shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
+            stdout = result.stdout
             print(f"Finished running STAR on sample{sample.sample_id} {sample.sample_name}.")
         elif mode == "lsf":
             #TODO: implement lsf support - or move this functionality to other files
             raise NotImplementedError()
+
+        # Return the path of the output so that later steps can use it
+        # Or move it to a standard location?
+        return bam_output_file

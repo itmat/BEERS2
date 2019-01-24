@@ -223,7 +223,7 @@ class VariantsFinderStep:
                     loc_on_read += length
         return reads
 
-    def execute(self, sample, chr_ploidy_data, reference_genome, chromosomes = None):
+    def execute(self, sample, alignment_file_path, chr_ploidy_data, reference_genome, chromosomes = None):
         """
         Entry point into variants_finder.  Iterates over the chromosomes in the list provided by the chr_ploidy_data
         keys to pick out variants.  Chromosomes that are not pertainent to the sample's gender are skipped.  If no
@@ -234,8 +234,6 @@ class VariantsFinderStep:
         :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
         debugging purposes.
         """
-        alignment_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}',
-                                           'genome_alignment.bam')
         variants_filename = CONSTANTS.VARIANTS_FILE_NAME
         variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}', variants_filename)
         log_file_path = os.path.join(self.log_directory_path, f'sample{sample.sample_id}', __class__.__name__ + ".log")

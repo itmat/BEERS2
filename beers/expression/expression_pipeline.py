@@ -155,15 +155,17 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
+        bam_files = []
         for sample in self.samples:
             genome_alignment = self.steps['GenomeAlignmentStep']
-            genome_alignment.execute(sample, self.resources_index_files_directory_path, self.star_file_path)
+            bam_file = genome_alignment.execute(sample, self.resources_index_files_directory_path, self.star_file_path)
+            bam_files.append(bam_file)
 
-        for sample in self.samples:
+        for bam_file, sample in zip(bam_files, self.samples):
             print(f"Processing variants in sample {sample.sample_id} ({sample.sample_name})...")
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
+            variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome, ['19'])
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
