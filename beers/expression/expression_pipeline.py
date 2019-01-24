@@ -23,7 +23,7 @@ class ExpressionPipeline:
             module = importlib.import_module(f'.{module_name}', package="beers.expression")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
-        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path =\
+        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, resources_index_files_directory_path =\
             self.validate_and_gather_resources(resources)
         if not valid:
             raise ExpressionPipelineValidationException("The resources data is not completely valid."
@@ -32,6 +32,9 @@ class ExpressionPipeline:
         self.chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(chr_ploidy_file_path)
         self.beagle_file_path = beagle_file_path
         self.annotation_file_path = annotation_file_path
+        self.star_file_path = star_file_path
+        self.reference_genome_file_path = reference_genome_file_path
+        self.resources_index_files_directory_path = resources_index_files_directory_path
 
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
@@ -121,7 +124,22 @@ class ExpressionPipeline:
                     print(f"The beagle file path, {beagle_file_path}, must exist as an executable jar file.",
                           file=sys.stderr)
                     valid = False
-        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path
+
+            star_filenames = [filename for filename in os.listdir(third_party_software_directory_path)
+                                if "STAR" in filename]
+
+            if not star_filenames:
+                print(f"No file is the third party software directory can be identified as the STAR program",
+                      file=sys.stderr)
+                valid = False
+            else:
+                star_file_path = os.path.join(third_party_software_directory_path, star_filenames[0])
+                if not (os.path.exists(star_file_path) and os.path.isfile(star_file_path)):
+                    print(f"The star file path, {star_file_path}, must exist as an executable",
+                          file=sys.stderr)
+                    valid = False
+
+        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, resources_index_files_directory_path
 
     def validate(self):
         valid = True
@@ -137,15 +155,17 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
+        bam_files = []
         for sample in self.samples:
-            print(f"Processing sample{sample.sample_id} ({sample.sample_name})...")
-
-            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             genome_alignment = self.steps['GenomeAlignmentStep']
-            genome_alignment.execute(sample, self.reference_genome)
+            bam_file = genome_alignment.execute(sample, self.resources_index_files_directory_path, self.star_file_path)
+            bam_files.append(bam_file)
 
+        for bam_file, sample in zip(bam_files, self.samples):
+            print(f"Processing variants in sample {sample.sample_id} ({sample.sample_name})...")
+            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
+            variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome, ['19'])
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)

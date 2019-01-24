@@ -327,7 +327,7 @@ class Controller:
         valid = True
         input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
         self.input_samples = []
-        for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
+        for input_sample in self.configuration['expression_pipeline']["input"]["data"].values():
             for input_sample_file_path in [os.path.join(input_directory_path, filename)
                                            for filename in input_sample["filenames"]]:
                 if not os.path.exists(input_sample_file_path) or not os.path.isfile(input_sample_file_path):
@@ -364,8 +364,8 @@ class Controller:
         # make the addition to thousands of molecule packets after the fact.
         adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
         AdapterGenerator.generate_adapters(adapter_kit_file_path)
-        for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
-            sample_name = os.path.splitext(input_sample["filenames"][0])[0]
+        for sample_name, input_sample in self.configuration['expression_pipeline']["input"]["data"].items():
+            #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
             input_sample_file_paths = [os.path.join(input_directory_path, filename)
                                        for filename in input_sample["filenames"]]
             gender = input_sample.get("gender", None)
