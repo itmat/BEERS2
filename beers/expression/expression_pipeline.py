@@ -146,7 +146,10 @@ class ExpressionPipeline:
         reference_genome_chromosomes = self.reference_genome.keys()
         ploidy_chromosomes = set(self.chr_ploidy_data.keys())
         if not ploidy_chromosomes.issubset(reference_genome_chromosomes):
-            print("The chromosome ploidy has chromosomes not found in the reference genome file", file=sys.stderr)
+            missing_chromosomes = ' '.join(chrom for chrom in ploidy_chromosomes.difference(reference_genome_chromosomes))
+            reference_chroms = ' '.join(chrom for chrom in reference_genome_chromosomes.keys())
+            print(f"The chromosome ploidy has chromosomes `{missing_chromosomes}` not found in the reference genome file", file=sys.stderr)
+            print(f"The reference genome has chromosomes {reference_chroms}", file=sys.stderr)
             valid = False
         if not all([step.validate() for step in self.steps.values()]):
             valid = False
