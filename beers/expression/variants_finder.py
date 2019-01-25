@@ -313,6 +313,7 @@ class PositionInfo:
         self.chromosome = chromosome
         self.position = position
         self.reads = []
+        self.reference_base = None
         self.contains_reference_base = None
 
     def add_read(self, description, read_count):
@@ -366,6 +367,8 @@ class PositionInfo:
         :param min_abundance_threshold:  criterion for minimum abundance threshold
         :param reference_base:  the base of the reference genome at this position.
         """
+
+        self.reference_base = reference_base
 
         variants = []
 
@@ -427,6 +430,12 @@ class PositionInfo:
         for read in self.reads:
             s.write(f' | {read[0]}:{read[1]}')
         s.write(f"\tTOT={self.get_total_reads()}")
-        s.write(f"\t{','.join(abundances)}")
+        annotated_abundances = []
+        for read, abundance in zip(self.reads, abundances):
+            if  read[0] == self.reference_base:
+                annotated_abundances.append(f'r{abundance}')
+            else:
+                annotated_abundances.append(abundance)
+        s.write(f"\t{','.join(annotated_abundances)}")
         s.write(f"\tE={self.calculate_entropy()}\n")
         return s.getvalue()
