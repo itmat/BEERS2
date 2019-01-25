@@ -145,7 +145,7 @@ class ExpressionPipeline:
             genome_alignment.execute(sample, self.reference_genome)
 
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
+            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome)
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
@@ -160,7 +160,7 @@ class ExpressionPipeline:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
 
             genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
+            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
 
             for suffix in [1,2]:
 

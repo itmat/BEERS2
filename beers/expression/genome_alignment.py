@@ -13,8 +13,12 @@ class GenomeAlignmentStep():
         "ILB_9583": "ILB_9583.Aligned.sortedByCoord.out.bam",
         "UNT_9576": "UNT_9576.Aligned.sortedByCoord.out.bam",
         "UNT_9580": "UNT_9580.Aligned.sortedByCoord.out.bam",
-        "UNT_9584": "UNT_9584.Aligned.sortedByCoord.out.bam"
+        "UNT_9584": "UNT_9584.Aligned.sortedByCoord.out.bam",
+        "9576": "aligned/baby_sample1.bam",
+        "9577": "aligned/baby_sample2.bam",
+        "9578": "aligned/baby_sample3.bam"
     }
+
 
     def __init__(self, logfile, data_directory_path, parameters):
         self.data_directory_path = data_directory_path
@@ -28,6 +32,7 @@ class GenomeAlignmentStep():
         alignment_index_file_path = ''
         parent_dir = os.path.abspath(os.path.join(sample.input_file_paths[0], os.pardir))
         for key, value in GenomeAlignmentStep.sample_map.items():
+            print(sample.sample_name)
             if key in sample.sample_name:
                 alignment_file_path = os.path.join(parent_dir, value)
                 alignment_index_file_path = os.path.join(parent_dir, value + ".bai")

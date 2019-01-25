@@ -160,7 +160,7 @@ class VariantsFinderStep:
             if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
                 continue
 
-            # Alignment Seqment reference_start is zero-based - so adding 1 to conform to convention.
+            # Alignment Segment reference_start is zero-based - so adding 1 to conform to convention.
             start = line.reference_start + 1
             sequence = line.query_sequence
             cigar = line.cigarstring
@@ -196,8 +196,11 @@ class VariantsFinderStep:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        key = Read(location, sequence[loc_on_read - 1])
-                        reads[key] = reads.get(key, 0) + 1
+                        # Skip any read that contains an N or n in the sequence base
+                        base = sequence[loc_on_read - 1].upper()
+                        if 'N' not in base:
+                            key = Read(location, base)
+                            reads[key] = reads.get(key, 0) + 1
                         loc_on_read += 1
                         current_pos_in_genome += 1
                     continue
@@ -217,9 +220,11 @@ class VariantsFinderStep:
                 # insertion of the same bases at the same position will be added to this key.
                 if read_type == "I":
                     location = current_pos_in_genome
-                    insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length]
-                    key = Read(location, f'I{insertion_sequence}')
-                    reads[key] = reads.get(key, 0) + 1
+                    insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length].upper()
+                    # Skip any read that contains an N or n in the insertion sequence
+                    if 'N' not in insertion_sequence:
+                        key = Read(location, f'I{insertion_sequence}')
+                        reads[key] = reads.get(key, 0) + 1
                     loc_on_read += length
         return reads
 
