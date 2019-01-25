@@ -162,7 +162,7 @@ class VariantsFinderStep:
 
             # Alignment Segment reference_start is zero-based - so adding 1 to conform to convention.
             start = line.reference_start + 1
-            sequence = line.query_sequence
+            sequence = line.query_sequence.upper()
             cigar = line.cigarstring
             cigar, sequence = self.remove_clips(cigar, sequence)
             current_pos_in_genome = int(start)
@@ -197,7 +197,7 @@ class VariantsFinderStep:
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
                         # Skip any read that contains an N or n in the sequence base
-                        base = sequence[loc_on_read - 1].upper()
+                        base = sequence[loc_on_read - 1]
                         if 'N' not in base:
                             key = Read(location, base)
                             reads[key] = reads.get(key, 0) + 1
@@ -220,7 +220,7 @@ class VariantsFinderStep:
                 # insertion of the same bases at the same position will be added to this key.
                 if read_type == "I":
                     location = current_pos_in_genome
-                    insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length].upper()
+                    insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length]
                     # Skip any read that contains an N or n in the insertion sequence
                     if 'N' not in insertion_sequence:
                         key = Read(location, f'I{insertion_sequence}')
