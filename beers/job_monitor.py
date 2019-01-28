@@ -29,10 +29,16 @@ class Monitor:
             Mapping of job/process IDs to their associated sample IDs. Job
             monitoring involves tracking which jobs/processes are still running
             (requires job/process IDs), as well as parsing log files (requires
-            sample IDs).
-        samples : dict
-            Sample information (IDs, input files). This might not be necessary if
-            the only info I need is the sample ID.
+            sample list).
+        samples : list
+            For information for each sample. At the moment the code below is
+            only using sample IDs, sample names, and sample. At the moment it's
+            helpful to store the full set of sample info here and convert it to
+            a dictionary indexed by sample ID because it makes it easier for
+            other functions to access this info directly, instead of needing to
+            parse the list of samples each time. Eventually, if we re-write the
+            samples list in the controller class to be a dictionary, it won't be
+            necessary to store this here.
         dispatcher_mode : string
             The mode used to submit the jobs/processes. Currently supports
             {",".join(SUPPORTED_DISPATCHER_MODES)}.
@@ -51,7 +57,6 @@ class Monitor:
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
         self.data_directory = os.path.join(self.output_directory, CONSTANTS.DATA_DIRECTORY_NAME)
         self.process_list = process_list
-        self.samples = samples
         self.step_name = step_name
         #Tracks which of the submitted jobs have stalled or failed and ultimately
         #will require resubmission. I might want to separate stalled jobs from
@@ -59,6 +64,11 @@ class Monitor:
         #indicate why the job is listed as failed.
         self.resubmission_list = {}
         self.completed_list = {}
+
+        #Store list of samples in dictionary indexed by sample ID.
+        self.samples_by_ids = {}
+        for sample in samples:
+            self.samples_by_ids[sample.sample_id] = sample
 
         if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
             raise BeersException(f'{dispatcher_mode} is not a supported mode.\n'
@@ -92,7 +102,6 @@ class Monitor:
     def mark_process_completed(self, process_id, sample_id):
         self.completed_list[process_id] = sample_id
         del self.process_list[process_id]
-        print("Job's done and added to completed list")
 
     def mark_process_for_resubmission(self, process_id, sample_id):
         self.resubmission_list[process_id] = sample_id
@@ -100,12 +109,25 @@ class Monitor:
         #in the process list rollowing resubmission.
         del self.process_list[process_id]
 
-    def resubmit_process(self, process_id, sample_id):
+    def resubmit_process(self, original_process_id, new_process_id, sample_id):
+        """
+        Adds resubmitted job to list of running processes with new process ID.
+        Removes the original process from resubmission list.
+
+        Parameters
+        ----------
+        original_process_id : string
+            Process ID for the original job on the resubmission list.
+        new_process_id : string
+            New process ID created during resubmissionof the job.
+        sample_id : string
+            ID of sample corresponding to the job that was resubmitted.
+        """
         #TODO: Add check to make sure resubmitted process isn't already in the list
         #      in the process_list. Probably best to also verify the process ID
         #      is also in the resubmission list.
-        self.process_list[process_id] = sample_id
-        del self.resubmission_list[process_id]
+        self.process_list[new_process_id] = sample_id
+        del self.resubmission_list[original_process_id]
 
     def check_job_status(self, process_id, sample_id):
 
@@ -162,3 +184,9 @@ class Monitor:
         else:
             #TODO: generalize code, implement code for other steps, or both.
             raise NotImplementedError()
+
+    def get_sample(self, sample_id):
+        """
+        Helper function returns sample object given a sample_id.
+        """
+        return self.samples_by_ids[sample_id]
