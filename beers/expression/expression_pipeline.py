@@ -149,7 +149,10 @@ class ExpressionPipeline:
         reference_genome_chromosomes = self.reference_genome.keys()
         ploidy_chromosomes = set(self.chr_ploidy_data.keys())
         if not ploidy_chromosomes.issubset(reference_genome_chromosomes):
-            print("The chromosome ploidy has chromosomes not found in the reference genome file", file=sys.stderr)
+            missing_chromosomes = ' '.join(chrom for chrom in ploidy_chromosomes.difference(reference_genome_chromosomes))
+            reference_chroms = ' '.join(chrom for chrom in reference_genome_chromosomes.keys())
+            print(f"The chromosome ploidy has chromosomes `{missing_chromosomes}` not found in the reference genome file", file=sys.stderr)
+            print(f"The reference genome has chromosomes {reference_chroms}", file=sys.stderr)
             valid = False
         if not all([step.validate() for step in self.steps.values()]):
             valid = False
@@ -158,12 +161,18 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
+        genome_alignment = self.steps['GenomeAlignmentStep']
+
         bam_files = []
         job_ids_to_samples = {}
         for sample in self.samples:
+<<<<<<< HEAD
             genome_alignment = self.steps['GenomeAlignmentStep']
             (bam_file, job_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
                                                           self.star_file_path, self.dispatcher_mode)
+=======
+            bam_file = genome_alignment.execute(sample, self.resources_index_files_directory_path, self.star_file_path)
+>>>>>>> genome_alignment
             bam_files.append(bam_file)
             job_ids_to_samples[job_id] = sample.sample_id
 
@@ -183,10 +192,13 @@ class ExpressionPipeline:
             time.sleep(60)
 
         for bam_file, sample in zip(bam_files, self.samples):
+            genome_alignment.index(sample, bam_file)
+
+        for bam_file, sample in zip(bam_files, self.samples):
             print(f"Processing variants in sample {sample.sample_id} ({sample.sample_name})...")
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome, ['19'])
+            variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome)
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
@@ -201,7 +213,7 @@ class ExpressionPipeline:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
 
             genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome, ['19'])
+            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
 
             for suffix in [1,2]:
 

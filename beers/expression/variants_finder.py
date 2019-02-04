@@ -366,8 +366,11 @@ class PositionInfo:
         filtered_reads = [read for read in self.reads if read[1] > 1]
 
         # If only a single read remains, remove if it matches the reference base - there are no variants
-        if len(filtered_reads) == 1 and filtered_reads[0][0] == reference_base:
-            variants = []
+        if len(filtered_reads) == 1:
+            if filtered_reads[0][0] == reference_base:
+                variants = []
+            else:
+                variants = filtered_reads
 
         # If multiple reads remain, retain only the top 2 reads
         elif len(filtered_reads) > 1:

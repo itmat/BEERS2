@@ -1,17 +1,31 @@
-import shutil
 import os
+import sys
+import io
+import shutil
 import subprocess
 import re #Probably won't need this if we switch to an LSF API
+
+import pysam
 
 class GenomeAlignmentStep():
 
     name = "Genome Alignment Step"
 
-    def __init__(self, log_directory_path, data_directory_path, parameters):
+    def __init__(self, log_directory_path, data_directory_path, parameters = dict()):
         self.log_directory_path = log_directory_path
         self.data_directory_path = data_directory_path
+        self.options = parameters
 
     def validate(self):
+        invalid_STAR_parameters = ["--outFileNamePrefix", "--genomeDir", "--runMode", "--outSAMtype", "--readFilesIn"]
+        for key, value in self.options.items():
+            if not key.startswith("--"):
+                print(f"Genome Alignment parameter {key} with value {value} needs to be a STAR option starting with double dashes --", sys.stderr)
+                return False
+            if key in invalid_STAR_parameters:
+                print(f"Genome Alignment parameter {key} with value {value} cannot be used as a STAR option since the value is already determined by the genome alignment script.")
+                return False
+
         # TODO: validate and use parameters for STAR
         return True
 
@@ -39,35 +53,36 @@ class GenomeAlignmentStep():
         star_index_path = os.path.join(reference_genome_file_path, "genome")
 
         # STAR's output bam files are always of this path
-        bam_output_file = f"{out_file_prefix}Aligned.out.bam"
+        bam_output_file = f"{out_file_prefix}Aligned.sortedByCoord.out.bam"
 
         #TODO: always use zcat?
-        star_command = ' '.join([f"{star_file_path}",
-                           f"--outFileNamePrefix {out_file_prefix}",
-                           f"--genomeDir {star_index_path}",
-                           f"--runMode alignReads",
-                           f"--runThreadN 4",
-                           f"--outSAMtype BAM SortedByCoordinate",
-                           f"--outFilterMismatchNmax 33",
-                           f"--seedSearchStartLmax 33",
-                           f"--alignSJoverhangMin 8",
-                           f"--readFilesCommand zcat",
-                           f"--readFilesIn {read_files}" ])
+        options = ' '.join( f"{key} {value}" for key,value in self.options.items() )
+        star_command = (f"{star_file_path}"
+                          f" --outFileNamePrefix {out_file_prefix}"
+                          f" --genomeDir {star_index_path}"
+                          f" --runMode alignReads"
+                          f" --outSAMtype BAM SortedByCoordinate"
+                          f" {options}"
+                          f" --readFilesIn {read_files}")
 
-        bsub_command = f"bsub \
-                            -n 4 \
-                            -M 40000 \
-                            -R \"span[hosts=1]\" \
-                            -J STAR_{sample.sample_id}_{sample.sample_name} \
-                            -oo {stdout_log} \
-                            -eo {stderr_log} \
-                            {star_command}"
+        bsub_command = (f"bsub"
+                         f" -n 4"
+                         f" -M 40000"
+                         f" -R \"span[hosts=1]\""
+                         f" -J STAR_{sample.sample_id}_{sample.sample_name}"
+                         f" -oo {stdout_log}.%J"
+                         f" -eo {stderr_log}.%J"
+                         f" {star_command}")
 
         if mode == "serial" or mode == "parallel":
             print(f"Starting STAR on sample {sample.sample_name}.")
+<<<<<<< HEAD
             result =  subprocess.run(star_command, shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
             stdout = result.stdout
             job_id = ""
+=======
+            result =  subprocess.run(star_command, shell=True, check=True)
+>>>>>>> genome_alignment
             print(f"Finished running STAR on sample{sample.sample_id} {sample.sample_name}.")
         elif mode == "lsf":
             print(f"Submitting STAR command to {mode} for sample {sample.sample_name}.")
@@ -82,6 +97,29 @@ class GenomeAlignmentStep():
             #TODO: implement lsf support - or move this functionality to other files
             #raise NotImplementedError()
 
+            # bsub it and capture stdout to read bsub's results (job id)
+            result =  subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
+            print(result.stdout)
+
         # Return the path of the output so that later steps can use it
         # Or move it to a standard location?
+<<<<<<< HEAD
         return bam_output_file, job_id
+=======
+        return bam_output_file
+
+    def index(self, sample, bam_file, mode = "serial"):
+        ''' Build index of a given bam file '''
+        # indexing is necessary for the variant finding step
+
+        if mode == "serial" or mode == "parallel":
+            print(f"Creating index for sample{sample.sample_id} {sample.sample_name}")
+            pysam.index(bam_file)
+            print(f"Done creating index for sample{sample.sample_id} {sample.sample_name}")
+        elif mode == "lsf":
+            raise NotImplementedError()
+
+            bsub_command = (f"bsub samtools index {bam_file}")
+            result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
+            print(result.stdout)
+>>>>>>> genome_alignment
