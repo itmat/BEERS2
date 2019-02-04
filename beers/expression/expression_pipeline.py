@@ -166,13 +166,8 @@ class ExpressionPipeline:
         bam_files = []
         job_ids_to_samples = {}
         for sample in self.samples:
-<<<<<<< HEAD
-            genome_alignment = self.steps['GenomeAlignmentStep']
             (bam_file, job_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
                                                           self.star_file_path, self.dispatcher_mode)
-=======
-            bam_file = genome_alignment.execute(sample, self.resources_index_files_directory_path, self.star_file_path)
->>>>>>> genome_alignment
             bam_files.append(bam_file)
             job_ids_to_samples[job_id] = sample.sample_id
 

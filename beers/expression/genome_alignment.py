@@ -76,13 +76,8 @@ class GenomeAlignmentStep():
 
         if mode == "serial" or mode == "parallel":
             print(f"Starting STAR on sample {sample.sample_name}.")
-<<<<<<< HEAD
-            result =  subprocess.run(star_command, shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
-            stdout = result.stdout
-            job_id = ""
-=======
             result =  subprocess.run(star_command, shell=True, check=True)
->>>>>>> genome_alignment
+            job_id = ""
             print(f"Finished running STAR on sample{sample.sample_id} {sample.sample_name}.")
         elif mode == "lsf":
             print(f"Submitting STAR command to {mode} for sample {sample.sample_name}.")
@@ -103,10 +98,7 @@ class GenomeAlignmentStep():
 
         # Return the path of the output so that later steps can use it
         # Or move it to a standard location?
-<<<<<<< HEAD
         return bam_output_file, job_id
-=======
-        return bam_output_file
 
     def index(self, sample, bam_file, mode = "serial"):
         ''' Build index of a given bam file '''
@@ -122,4 +114,3 @@ class GenomeAlignmentStep():
             bsub_command = (f"bsub samtools index {bam_file}")
             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
             print(result.stdout)
->>>>>>> genome_alignment
