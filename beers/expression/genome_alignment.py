@@ -25,14 +25,12 @@ class GenomeAlignmentStep():
                 print(f"Genome Alignment parameter {key} with value {value} cannot be used as a STAR option since the value is already determined by the genome alignment script.")
                 return False
 
-        # TODO: validate and use parameters for STAR
         return True
 
     def execute(self, sample, reference_genome_file_path, star_file_path, mode="serial"):
         # Right now, options are mode="serial", "parallel" and "lsf"
         # and mode="parallel" is the same as "serial"
 
-        #TODO: module load STAR-v2.6.0c
         assert 1 <= len(sample.input_file_paths) <= 2
 
         # Check if they are already bam files and so we don't need to re-run the alignment
@@ -54,7 +52,6 @@ class GenomeAlignmentStep():
         # STAR's output bam files are always of this path
         bam_output_file = f"{out_file_prefix}Aligned.sortedByCoord.out.bam"
 
-        #TODO: always use zcat?
         options = ' '.join( f"{key} {value}" for key,value in self.options.items() )
         star_command = (f"{star_file_path}"
                           f" --outFileNamePrefix {out_file_prefix}"
