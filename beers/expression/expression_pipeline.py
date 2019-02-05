@@ -161,29 +161,30 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
+        expression_pipeline_monitor = Monitor(self.output_directory_path, self.dispatcher_mode)
+
         genome_alignment = self.steps['GenomeAlignmentStep']
 
         bam_files = []
-        job_ids_to_samples = {}
         for sample in self.samples:
-            (bam_file, job_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
-                                                          self.star_file_path, self.dispatcher_mode)
+            (bam_file, system_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
+                                                             self.star_file_path, self.dispatcher_mode)
             bam_files.append(bam_file)
-            job_ids_to_samples[job_id] = sample.sample_id
+            expression_pipeline_monitor.submit_new_job("1", sample, "GenomeAlignmentStep",
+                                                       self.output_directory_path, system_id)
 
         #TODO: Move the job monitoring code after the index steps (in its final
         #      form, the monitor should be able to manage jobs from multiple
         #      stages in the pipeline.
-        genome_alignment_monitor = Monitor(self.output_directory_path, job_ids_to_samples, self.samples, self.dispatcher_mode, "GenomeAlignmentStep")
-        while not genome_alignment_monitor.is_processing_complete():
-            resubmission_jobs = genome_alignment_monitor.resubmission_list.copy()
-            if len(resubmission_jobs) > 0:
-                for resub_job_id, resub_sample_id in resubmission_jobs.items():
-                    sample = genome_alignment_monitor.get_sample(resub_sample_id)
-                    genome_alignment = self.steps['GenomeAlignmentStep']
-                    (bam_file, job_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
-                                                                  self.star_file_path, self.dispatcher_mode)
-                    genome_alignment_monitor.resubmit_process(resub_job_id, job_id, sample.sample_id)
+
+        while not expression_pipeline_monitor.is_processing_complete():
+            resubmission_jobs = expression_pipeline_monitor.resubmission_list.copy()
+            if resubmission_jobs:
+                for resub_job in resubmission_jobs.items():
+                    sample = expression_pipeline_monitor.get_sample(resub_job.sample_id)
+                    (bam_file, system_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
+                                                                     self.star_file_path, self.dispatcher_mode)
+                    expression_pipeline_monitor.resubmit_job(resub_job.job_id, system_id)
             time.sleep(60)
 
         for bam_file, sample in zip(bam_files, self.samples):

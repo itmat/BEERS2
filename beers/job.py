@@ -17,7 +17,7 @@ class Job:
     lsf_bjobs_output_pattern = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
 
     def __init__(self, job_id, sample_id, step_name, output_directory_path,
-                 dispatcher_mode, system_id=None):
+                 dispatcher_mode, system_id=None, dependency_list=None):
         """
         Initialize job to track the status of a step/operation running on the
         current sample.
@@ -48,11 +48,14 @@ class Job:
             has not been submitted to the system yet (e.g. it is waiting for one
             of its dependencies to finish), then the system_id should be set to
             "None" [default].
+        dependency_list: list
+            List of BEERS job IDs that this job is dependent upon (i.e. this
+            job will wait until all those on the dependency list have completed).
+            Empty list or "None" if there are no dependencies [default].
         """
 
         self.job_id = job_id
         self.sample_id = sample_id
-        self.system_id = system_id
         self.step_name = step_name
         self.output_directory = output_directory_path
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -64,22 +67,24 @@ class Job:
         else:
             self.dispatcher_mode = dispatcher_mode
 
-        self.dependency_list = []
+        self.system_id = system_id
+        self.dependency_list = set()
+        if dependency_list:
+            self.add_dependencies(dependency_list)
 
-    def add_dependency(self, dependency_job_id):
+
+    def add_dependencies(self, dependency_job_ids):
         """
-        Add given id to job's dependency list, if it is not already there.
+        Add given ids to job's dependency list, if they are not already there.
 
         Parameters
         ----------
-        dependency_job_id : string
-            Internal BEERS ID to add to dependency list.
+        dependency_job_ids : list
+            Internal BEERS IDs to add to dependency list.
 
         """
-        if dependency_job_id not in self.dependency_list:
-            self.dependency_list.append(dependency_job_id)
-
-
+        for job_id in dependency_job_ids:
+            self.dependency_list.add(job_id)
 
     def check_job_status(self):
         """
