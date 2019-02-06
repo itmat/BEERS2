@@ -174,29 +174,87 @@ class ExpressionPipeline:
                                                        sample, "GenomeAlignmentStep",
                                                        self.output_directory_path, system_id)
 
-        #TODO: Move the job monitoring code after the index steps (in its final
-        #      form, the monitor should be able to manage jobs from multiple
-        #      stages in the pipeline.
+        for sample in self.samples:
+            #system_id = genome_alignment.index(sample, self.dispatcher_mode)
+            expression_pipeline_monitor.submit_new_job(f'GenomeBamIndex.{sample.sample_id}',
+                                                       sample, "GenomeBamIndexStep",
+                                                       self.output_directory_path, system_id=None,
+                                                       dependency_list=[f'GenomeAlignment.{sample.sample_id}'])
 
+        #TODO: Create a generalized job submitter framework for the steps in
+        #      this pipeline. Given a sample object , and the step name, we should
+        #      be able to call a single function which will perform the step-
+        #      specific code to launch each job and return a system id (or
+        #      perhaps even handles queuing to the job monitor itself). This will
+        #      cut down on the code redundancy between the rest of the script and
+        #      the loop below.
+        #Wait here until all of the preceding steps have finished. Submit any
+        #jobs that were waiting on dependencies to complete and resubmit any
+        #failed jobs.
+        print(f'Waiting until all samples finish processing before running Beagle.')
         while not expression_pipeline_monitor.is_processing_complete():
+            #Check for jobs requiring resubmission
             resubmission_jobs = expression_pipeline_monitor.resubmission_list.copy()
             if resubmission_jobs:
+                print(f'Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.')
                 for resub_job_id, resub_job in resubmission_jobs.items():
                     resub_sample = expression_pipeline_monitor.get_sample(resub_job.sample_id)
-                    (bam_file, system_id) = genome_alignment.execute(resub_sample,
-                                                                     self.resources_index_files_directory_path,
-                                                                     self.star_file_path, self.dispatcher_mode)
-                    expression_pipeline_monitor.resubmit_job(resub_job.job_id, system_id)
-            time.sleep(60)
 
-        for bam_file, sample in zip(bam_files, self.samples):
-            genome_alignment.index(sample, bam_file)
+                    #Generate bam file name from sample info using same rules as the
+                    #execute code from genome_alignment.
+                    bam_filename = os.path.join(genome_alignment.data_directory_path,
+                                                f'sample{resub_sample.sample_id}',
+                                                f'genome_alignment.{genome_alignment.star_bamfile_suffix}')
+
+                    if resub_job.step_name == "GenomeAlignmentStep":
+                        (bam_file, system_id) = genome_alignment.execute(resub_sample,
+                                                                         self.resources_index_files_directory_path,
+                                                                         self.star_file_path, self.dispatcher_mode)
+                    elif resub_job.step_name == "GenomeBamIndexStep":
+                        system_id = genome_alignment.index(resub_sample, bam_filename, self.dispatcher_mode)
+                    """
+                    elif resub_job.step_name == "VariantsFinderStep":
+                        print(f'Processing variants in sample {resub_sample.sample_id} ({resub_sample.sample_name})...')
+                        # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
+                        variants_finder = self.steps['VariantsFinderStep']
+                        system_id = variants_finder.execute(resub_sample, bam_file,
+                                                            self.chr_ploidy_data,
+                                                            self.reference_genome)
+                    """
+                    expression_pipeline_monitor.resubmit_job(resub_job_id, system_id)
+            #Check if pending jobs have satisfied their dependencies
+            pending_jobs = expression_pipeline_monitor.pending_list.copy()
+            if pending_jobs:
+                print(f'Check {len(pending_jobs)} pending jobs for satisfied dependencies:')
+                for pend_job_id, pend_job in pending_jobs.items():
+                    if expression_pipeline_monitor.are_dependencies_satisfied(pend_job_id):
+                        pend_sample = expression_pipeline_monitor.get_sample(pend_job.sample_id)
+                        #Generate bam file name from sample info using same rules as the
+                        #execute code from genome_alignment.
+                        bam_filename = os.path.join(genome_alignment.data_directory_path,
+                                                    f'sample{pend_sample.sample_id}',
+                                                    f'genome_alignment.{genome_alignment.star_bamfile_suffix}')
+
+                        if pend_job.step_name == "GenomeAlignmentStep":
+                            (bam_file, system_id) = genome_alignment.execute(pend_sample,
+                                                                             self.resources_index_files_directory_path,
+                                                                             self.star_file_path, self.dispatcher_mode)
+                        elif pend_job.step_name == "GenomeBamIndexStep":
+                            system_id = genome_alignment.index(pend_sample, bam_filename, self.dispatcher_mode)
+                        expression_pipeline_monitor.submit_pending_job(pend_job_id, system_id)
+            time.sleep(60)
 
         for bam_file, sample in zip(bam_files, self.samples):
             print(f"Processing variants in sample {sample.sample_id} ({sample.sample_name})...")
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             variants_finder = self.steps['VariantsFinderStep']
             variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome)
+            """
+            expression_pipeline_monitor.submit_new_job(f'VariantsFinder.{sample.sample_id}',
+                                                       sample, "VariantsFinderStep",
+                                                       self.output_directory_path, system_id,
+                                                       dependency_list=[f'GenomeBamIndex.{sample.sample_id}'])
+            """
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)

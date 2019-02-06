@@ -14,7 +14,15 @@ class Job:
     """
 
     #Regular expression for parsion bjobs output (including header)
-    lsf_bjobs_output_pattern = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
+    LSF_BJOBS_OUTPUT_PATTERN = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
+    #List of valid outputs from job status-reporting methods. This is a guide
+    #for future development and users who wish to add custom status-checking
+    #methods.
+    JOB_STATUS_OUTPUTS = ['SUBMITTED',              #job submitted to system (might be running or waiting).
+                          'FAILED',                 #job finished with error status or incomplete output files.
+                          'STALLED',                #job running without any change in output files for longer than threshold time.
+                          'COMPLETED',              #job finished successfully with complete output files.
+                          'WAITING_FOR_DEPENDENCY'] #job not submitted and waiting for dependency to complete.
 
     def __init__(self, job_id, sample_id, step_name, output_directory_path,
                  dispatcher_mode, system_id=None, dependency_list=None):
@@ -72,6 +80,12 @@ class Job:
         if dependency_list:
             self.add_dependencies(dependency_list)
 
+        #Tracks number of times job has been resubmitted. Can use this to kill
+        #entire pipeline if single jobs fail too many times (might indicate
+        #something other than system instability is the cause for the failure
+        #and should be remedied.
+        self.resubmission_counter = 0
+
 
     def add_dependencies(self, dependency_job_ids):
         """
@@ -94,11 +108,12 @@ class Job:
         Returns
         -------
         string
-            SUBMITTED - job submitted to system (might be running or waiting).
-            FAILED - job finished with error status or incomplete output files.
-            STALLED - job running without any change in output files for longer than threshold time.
-            COMPLETED - job finished successfully with complete output files.
-            WAITING_FOR_DEPENDENCY - job not submitted and waiting for dependency to complete.
+            One of the following:
+                SUBMITTED - job submitted to system (might be running or waiting).
+                FAILED - job finished with error status or incomplete output files.
+                STALLED - job running without any change in output files for longer than threshold time.
+                COMPLETED - job finished successfully with complete output files.
+                WAITING_FOR_DEPENDENCY - job not submitted and waiting for dependency to complete.
         """
 
         job_status = "SUBMITTED"
@@ -115,8 +130,8 @@ class Job:
             #Skip first line bjobs output, since it just contains the header info.
             #job_status = result.stdout.split("\n")[1].split()[2]
 
-            if Job.lsf_bjobs_output_pattern.match(result.stdout):
-                lsf_job_status = Job.lsf_bjobs_output_pattern.match(result.stdout).group("job_status")
+            if Job.LSF_BJOBS_OUTPUT_PATTERN.match(result.stdout):
+                lsf_job_status = Job.LSF_BJOBS_OUTPUT_PATTERN.match(result.stdout).group("job_status")
 
 
                 #Job still waiting or is currently running, so we don't care.
@@ -129,6 +144,12 @@ class Job:
                 elif lsf_job_status == "EXIT":
                     job_status = "FAILED"
                 elif lsf_job_status == "DONE":
+                    #TODO: To clean up the code, we should probably create
+                    #      separate methods to check the status of various steps,
+                    #      rather than build them all in here. This code will
+                    #      check the name of the step and call the appropriate
+                    #      one of these methods.
+
                     #Check output files
                     if self.step_name == "GenomeAlignmentStep":
                         aligner_log_file_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "genome_alignment.Log.progress.out")
@@ -141,6 +162,14 @@ class Job:
                                 job_status = "COMPLETED"
                             else:
                                 job_status = "FAILED"
+                    elif self.step_name == "GenomeBamIndexStep":
+                        index_file_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "genome_alignment.Aligned.sortedByCoord.out.bam.bai")
+                        if os.path.isfile(index_file_path):
+                            job_status = "COMPLETED"
+                        else:
+                            job_status = "FAILED"
+                    else:
+                        raise NotImplementedError()
                 else:
                     #TODO: Handle all other possible status messages from bjobs. Search
                     #      the bjobs manpage for "JOB STATUS" to find the full list and

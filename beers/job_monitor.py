@@ -175,7 +175,7 @@ class Monitor:
     def resubmit_job(self, job_id, new_system_id):
         """
         Update job with new system ID and move it from the resubmission list to
-        the list of running jobs.
+        the list of running jobs. Also increment job's resubmission counter.
 
         Parameters
         ----------
@@ -194,6 +194,7 @@ class Monitor:
         else:
             job = self.resubmission_list[job_id]
             job.system_id = new_system_id
+            job.resubmission_counter += 1
             self.running_list[job_id] = job
             del self.resubmission_list[job_id]
 
