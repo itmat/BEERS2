@@ -87,14 +87,9 @@ class GenomeAlignmentStep():
             #Extract job ID from LSF stdout
             lsf_output_pattern = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
             job_id = lsf_output_pattern.match(stdout).group("job_id")
+            print(f"\t{result.stdout}")
 
             print(f"Finished submitting STAR command to {mode} for sample{sample.sample_id} {sample.sample_name}.")
-            #TODO: implement lsf support - or move this functionality to other files
-            #raise NotImplementedError()
-
-            # bsub it and capture stdout to read bsub's results (job id)
-            result =  subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
-            print(result.stdout)
 
         # Return the path of the output so that later steps can use it
         # Or move it to a standard location?

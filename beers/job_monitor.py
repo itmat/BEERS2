@@ -58,9 +58,9 @@ class Monitor:
         for job_id, job in dict(self.running_list).items():
             job_status = job.check_job_status()
             if job_status == "FAILED":
-                self.mark_job_completed(job_id)
-            elif job_status == "COMPLETED":
                 self.mark_job_for_resubmission(job_id)
+            elif job_status == "COMPLETED":
+                self.mark_job_completed(job_id)
         #TODO: Check pending_list's dependencies to see if they need to move to running_list.
         return True if (not self.running_list and
                         not self.pending_list and
