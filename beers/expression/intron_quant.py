@@ -1,8 +1,11 @@
 import collections
 import itertools
+import os
 
 import numpy
 import pysam
+
+OUTPUT_FILE_NAME = "intron_quantifications.txt"
 
 class IntronQuantificationStep:
     def __init__(self, geneinfo_file_path, flank_size = 1500):
@@ -18,7 +21,7 @@ class IntronQuantificationStep:
 
             # Read in the gene alignment information
             chrom_lengths = dict(zip(alignments.references, alignments.lengths))
-            exons, mintrons, genics, intergenics, mintron_annotations = load_gene_info(self.geneinfo_file_path, chrom_lengths, self.flank_size)
+            self.load_gene_info(self.geneinfo_file_path, chrom_lengths)
 
             # (chrom, strand) -> {(transcriptID, intron_number) -> read_count}
             intron_read_counts = collections.defaultdict(lambda: collections.defaultdict(lambda:0))
@@ -47,7 +50,7 @@ class IntronQuantificationStep:
 
                 chrom = read.reference_name
                 # Check annotations are available for that chromosome
-                if chrom not in intergenics:
+                if chrom not in self.intergenics:
                     if chrom not in skipped_chromosomes:
                         print(f"Alignment from chromosome {chrom} skipped")
                         skipped_chromosomes.append(chrom)
@@ -63,8 +66,8 @@ class IntronQuantificationStep:
                 else:
                     strand = "+" if (read.is_reverse and read.is_read1) or (not read.is_reverse and read.is_read2) else "-"
 
-                mintron_starts, mintron_ends = mintrons[(chrom, strand)]
-                intergenic_starts, intergenic_ends = intergenics[chrom]
+                mintron_starts, mintron_ends = self.mintrons[(chrom, strand)]
+                intergenic_starts, intergenic_ends = self.intergenics[chrom]
 
                 mintrons_touched = set()
                 intergenics_touched = set()
@@ -106,96 +109,146 @@ class IntronQuantificationStep:
 
                 # Accumulate the reads
                 for mintron in mintrons_touched:
-                    for intron in mintron_annotations[(chrom,strand)][mintron]:
+                    for intron in self.mintron_annotations[(chrom,strand)][mintron]:
                         intron_read_counts[(chrom,strand)][intron] += 1
 
                 for intergenic in intergenics_touched:
                     intergenic_read_counts[chrom][intergenic] += 1
 
-        return intron_read_counts, intergenic_read_counts
+        normalized_intron_read_counts, percentages, gene_level_counts, transcript_level_counts \
+                = normalize_read_counts(intron_read_counts, self.effective_transcript_lengths)
 
-def load_gene_info(geneinfo_file_path, chrom_lengths, flank_size):
-    # Assumes that geneinfo_file is sorted by feature starts within a chromosome!!
-    # and that the chromosomes in geneinfo_file are all present in chrom_lengths (i.e. in the bam file header)
+        # Write out the results to output file
+        output_file_path =  os.path.join( output_directory, OUTPUT_FILE_NAME)
+        with open(output_file_path, "w") as output_file:
+            output_file.write("#gene_id\ttranscript_id\tgene_reads\ttranscript_reads\tintron_percentages\n")
+            # take transcripts from all chromosomes and combine them, sorting by gene id and then transcript id
+            transcripts = sorted( itertools.chain(*(info for info in self.transcript_info.values())) )
+            for (gene_id, transcript_id), _, _ in transcripts:
+                num_introns = len(self.intron_info[gene_id, transcript_id][0])
+                transcript_reads = str(transcript_level_counts[gene_id, transcript_id])
+                gene_reads = str(gene_level_counts[gene_id])
+                pcts = [str(percentages[(gene_id, transcript_id), i]) for i in range(num_introns)]
 
-    # Gather exon boundaries from all annotations, sorted by their start
-    # Collect exons by chromosome and strand, and intergenics just by chromosome
-    make_deque = lambda: collections.deque()
-    make_dict = lambda: dict()
-    exons = collections.defaultdict(make_deque)
-    genics = collections.defaultdict(make_deque)
-    all_introns = collections.defaultdict(make_deque)
-    transcript_info = collections.defaultdict(make_deque)
-    gene_info = collections.defaultdict(make_dict)
-    with open(geneinfo_file_path) as geneinfo_file:
-        for line in geneinfo_file:
-            if line.startswith("#"):
-                continue
-            chrom, strand, txStart, txEnd, exonCount, exonStarts, exonEnds, transcriptID, geneID, geneSymbol, biotype = line.split('\t')
-            txStart, txEnd = int(txStart), int(txEnd)
-            exonStarts = [int(start) for start in exonStarts.split(',')]
-            exonEnds = [int(end) for end in exonEnds.split(',')]
-            exons[(chrom,strand)].extend(zip(exonStarts, exonEnds)) # Track strandedness of exons
-            genics[chrom].append( (txStart, txEnd) )
-            transcript_info[chrom].append( ((geneID, transcriptID), txStart, txEnd) )
+                output_file.write('\t'.join([gene_id,
+                                             transcript_id,
+                                             gene_reads,
+                                             transcript_reads,
+                                             ','.join(pcts),
+                                             ]) + '\n')
 
-            intronStarts = [end + 1 for end in exonEnds[:-1]]
-            intronEnds = [start - 1 for start in  exonStarts[1:]]
-            all_introns[(chrom,strand)].append( ((geneID, transcriptID), intronStarts, intronEnds) )
+    def load_gene_info(self, geneinfo_file_path, chrom_lengths):
+        # Assumes that geneinfo_file is sorted by feature starts within a chromosome!!
+        # and that the chromosomes in geneinfo_file are all present in chrom_lengths (i.e. in the bam file header)
 
-            if geneID in gene_info:
-                geneStart, geneEnd = gene_info[geneID]
-                gene_info[geneID] = (min(geneStart, txStart), max(geneEnd, txEnd))
-            else:
-                gene_info[geneID] = (txStart, txEnd)
+        # Gather exon boundaries from all annotations, sorted by their start
+        # Collect exons by chromosome and strand, and intergenics just by chromosome
+        make_deque = lambda: collections.deque()
+        make_dict = lambda: dict()
+        exons = collections.defaultdict(make_deque)
+        genics = collections.defaultdict(make_deque)
+        all_introns = collections.defaultdict(make_deque)
+        transcript_info = collections.defaultdict(make_deque)
+        gene_info = collections.defaultdict(make_dict)
+        with open(geneinfo_file_path) as geneinfo_file:
+            for line in geneinfo_file:
+                if line.startswith("#"):
+                    continue
+                chrom, strand, txStart, txEnd, exonCount, exonStarts, exonEnds, transcriptID, geneID, geneSymbol, biotype = line.split('\t')
+                txStart, txEnd = int(txStart), int(txEnd)
+                exonStarts = [int(start) for start in exonStarts.split(',')]
+                exonEnds = [int(end) for end in exonEnds.split(',')]
+                exons[(chrom,strand)].extend(zip(exonStarts, exonEnds)) # Track strandedness of exons
+                genics[chrom].append( (txStart, txEnd) )
+                transcript_info[chrom].append( ((geneID, transcriptID), txStart, txEnd) )
 
-    # Convert to arrays (array[0] is array of starts, array[1] array of ends)
-    exons = {chrom: numpy.sort(numpy.array(exon).T) for chrom,exon in exons.items()}
-    genics = {chrom: numpy.sort(numpy.array(genic).T) for chrom,genic in genics.items()}
+                intronStarts = [end + 1 for end in exonEnds[:-1]]
+                intronEnds = [start - 1 for start in  exonStarts[1:]]
+                all_introns[(chrom,strand)].append( ((geneID, transcriptID), (intronStarts, intronEnds)) )
 
-    # Merge regions that overlap
-    merged_exons = {chrom: merge_regions(exon) for chrom, exon in exons.items()}
-    merged_genics = {chrom: merge_regions(genic) for chrom, genic in genics.items()}
+                if geneID in gene_info:
+                    geneStart, geneEnd = gene_info[geneID]
+                    gene_info[geneID] = (min(geneStart, txStart), max(geneEnd, txEnd))
+                else:
+                    gene_info[geneID] = (txStart, txEnd)
 
-    # Intergenics are complements of all the genics
-    intergenics = {chrom: complement_regions(genic, chrom_lengths[chrom]) for chrom,genic in merged_genics.items()}
+        # Convert to arrays (array[0] is array of starts, array[1] array of ends)
+        exons = {chrom: numpy.sort(numpy.array(exon).T) for chrom,exon in exons.items()}
+        genics = {chrom: numpy.sort(numpy.array(genic).T) for chrom,genic in genics.items()}
 
-    # Shrink each intergenic to account for flanking regions
-    intergenics = {chrom: shrink_regions(intergenic, flank_size) for chrom, intergenic in intergenics.items()}
+        # Merge regions that overlap
+        merged_exons = {chrom: merge_regions(exon) for chrom, exon in exons.items()}
+        merged_genics = {chrom: merge_regions(genic) for chrom, genic in genics.items()}
 
-    # Find the flanking regions of each transcript (possibly empty...)
-    flanks = {chrom: flanking_regions(transcript_info[chrom], merged_genics[chrom], flank_size) for chrom in genics.keys()}
-    # Add flanking regions as "introns" to each gene
-    def add_flank(ID, starts, ends, chrom):
-        left, right = flanks[chrom][ID]
-        new =  (ID,
-                [left[0]] + starts + [right[0]],
-                [left[1]] + ends + [right[1]])
-        return new
-    all_introns = {(chrom,strand): [add_flank(ID, intronStarts, intronEnds, chrom)
-                                        for ID, intronStarts, intronEnds in introns]
-                                    for (chrom,strand), introns in all_introns.items()}
+        # Intergenics are complements of all the genics
+        intergenics = {chrom: complement_regions(genic, chrom_lengths[chrom]) for chrom,genic in merged_genics.items()}
 
-    # intronic regions are ones that between these merged exons that ARENT intergenic
-    # so combine exons and intergenics
-    # These regions are disjoint, so just need to sort them together
-    intergenics_or_exons = {(chrom,strand): numpy.concatenate((exon, intergenics[chrom]), axis=1) for (chrom,strand),exon in merged_exons.items()}
-    [intergenic_or_exon.sort() for intergenic_or_exon  in intergenics_or_exons.values()] # And sort them into the right order
-    # And merge them to combine adjacent regions
-    intergenics_or_exons = {(chrom,strand): merge_regions(intergenic_or_exon) for (chrom,strand),intergenic_or_exon in intergenics_or_exons.items()}
+        # Shrink each intergenic to account for flanking regions
+        intergenics = {chrom: shrink_regions(intergenic, self.flank_size) for chrom, intergenic in intergenics.items()}
 
-    # We define mintrons to be a region that is not intergenic and is not in an exon of THIS strand
-    # i.e. is in at least one gene on this strand and not in any exon of any gene of this strand
-    # (for min-introns, of which there might be several in a real intron since exons of other genes could break up the intron)
-    # Analogously, we should define the 'merged exons' above to be 'maxons' since they're max of all touching exons...
-    mintrons = {(chrom,strand): complement_regions(regions, chrom_lengths[chrom]) for (chrom,strand),regions in intergenics_or_exons.items()}
+        # Find the flanking regions of each transcript (possibly empty...)
+        flanks = {chrom: flanking_regions(transcript_info[chrom], merged_genics[chrom], self.flank_size) for chrom in genics.keys()}
+        # Add flanking regions as "introns" to each gene
+        def add_flank(ID, starts, ends, chrom):
+            left, right = flanks[chrom][ID]
+            return (ID, ([left[0]] + starts + [right[0]], [left[1]] + ends + [right[1]]))
+        all_introns = {(chrom,strand): [add_flank(ID, intronStarts, intronEnds, chrom)
+                                            for ID, (intronStarts, intronEnds) in introns]
+                                        for (chrom,strand), introns in all_introns.items()}
 
-    # Annotate the mintrons by the transcriptID + introns
-    mintron_annotations = {chrom: annotate_regions(mintrons[chrom], all_introns[chrom], gene_info) for chrom in mintrons}
+        # intronic regions are ones that between these merged exons that ARENT intergenic
+        # so combine exons and intergenics
+        # These regions are disjoint, so just need to sort them together
+        intergenics_or_exons = {(chrom,strand): numpy.concatenate((exon, intergenics[chrom]), axis=1) for (chrom,strand),exon in merged_exons.items()}
+        [intergenic_or_exon.sort() for intergenic_or_exon  in intergenics_or_exons.values()] # And sort them into the right order
+        # And merge them to combine adjacent regions
+        intergenics_or_exons = {(chrom,strand): merge_regions(intergenic_or_exon) for (chrom,strand),intergenic_or_exon in intergenics_or_exons.items()}
 
-    print(f"Loaded info on {sum( v.shape[1] for v in intergenics.values())} intergenic regions and {sum(v.shape[1] for v in mintrons.values())} mintrons")
+        # We define mintrons to be a region that is not intergenic and is not in an exon of THIS strand
+        # i.e. is in at least one gene on this strand and not in any exon of any gene of this strand
+        # (for min-introns, of which there might be several in a real intron since exons of other genes could break up the intron)
+        # Analogously, we should define the 'merged exons' above to be 'maxons' since they're max of all touching exons...
+        mintrons = {(chrom,strand): complement_regions(regions, chrom_lengths[chrom]) for (chrom,strand),regions in intergenics_or_exons.items()}
 
-    return merged_exons, mintrons, merged_genics, intergenics, mintron_annotations
+        # Annotate the mintrons by the transcriptID + introns
+        # and find the effective lengths of the introns
+        mintron_annotations, effective_lengths = annotate_regions(mintrons, all_introns, gene_info)
+
+        self.merged_exons = merged_exons
+        self.mintrons = mintrons
+        self.merged_genics = merged_genics
+        self.intergenics = intergenics
+        self.mintron_annotations = mintron_annotations
+        self.effective_transcript_lengths = effective_lengths
+        self.transcript_info = transcript_info
+
+        # Merge intron info across all chromosomes
+        self.intron_info = dict()
+        for  chrom_introns in all_introns.values():
+            self.intron_info.update(dict(chrom_introns))
+
+        print(f"Loaded info on {sum( v.shape[1] for v in intergenics.values())} intergenic regions and {sum(v.shape[1] for v in mintrons.values())} mintrons")
+
+def normalize_read_counts(read_counts, effective_lengths):
+    normalized_counts = dict()
+    transcript_level_counts = collections.Counter()
+    gene_level_counts = collections.Counter()
+    for chrom, chrom_read_counts in read_counts.items():
+        for intron, count in chrom_read_counts.items():
+            (gene_id, transcript_id), intron_num = intron
+            length = effective_lengths[gene_id, transcript_id]
+            norm_count = count / length * 1_000 # FPK (no M) - i.e. reads per 1000 effective bases
+            normalized_counts[intron] = norm_count
+            transcript_level_counts[gene_id, transcript_id] += norm_count
+            gene_level_counts[gene_id] += norm_count
+
+    # Compute the percentage of the intron reads going to this intron, among all introns of a transcript
+    percentages = collections.Counter()
+    for intron, count in normalized_counts.items():
+        transcript, intron_num = intron
+        percent = count / transcript_level_counts[transcript]
+        percentages[intron] = percent
+    return normalized_counts, percentages, gene_level_counts, transcript_level_counts
 
 def merge_regions(region_arrays):
     # Given region array, i.e. an numpy array such that
@@ -255,7 +308,7 @@ def complement_regions(region_array, total_region_length):
     return numpy.vstack([intron_starts, intron_ends])
 
 
-def annotate_regions(regions, introns, gene_info):
+def annotate_regions(all_regions, all_introns, gene_info):
     # Find the introns that contain in a regionn
     # `introns` is a tuple of (ID, intron_starts, intron_ends)
     # `regions` is a region array, see merge_regions.
@@ -263,35 +316,54 @@ def annotate_regions(regions, introns, gene_info):
     # AND completely contained in one of the introns
     # returns a list of lists for each region listing the introns it came from
     # as (transcriptID, intron_num) pairs
-    annotations = [[] for region in range(regions.shape[1])]
-    for ID, intron_starts, intron_ends in introns:
-        for intron_num,(start,end) in enumerate(zip(intron_starts, intron_ends)):
-            # Find the first region that starts after our start
-            first_after_start = numpy.searchsorted(regions[0], start, side="left") #left so we include when region start = our start,
-            # Find the first region that starts after our end
-            first_after_end = numpy.searchsorted(regions[0], end, side="right") # right so we exclude when region start = our end, want ones with NO overlap
 
-            if first_after_start == first_after_end:
-                # No regions overlap our intron
-                # technically not necessary as the next step will do nothing if these are equal (the range is empty)
-                continue
+    effective_lengths = collections.Counter()
+    all_annotations = dict()
 
-            # otherwise add our transcript to annotation of every region between first and last
-            [annotations[index].append((ID, intron_num)) for index in range(first_after_start, first_after_end)]
+    for chrom in all_regions.keys():
+        regions = all_regions[chrom]
+        introns = all_introns[chrom]
 
-    # now go through the annotations and remove those that come from all but the most recently started gene
-    # ie. if a gene is contained in another gene, the mintrons of the smaller gene should contribute only to the introns of the smaller gene
-    # For mintrons from genes with no overlapping genes, this does nothing
-    def remove_earlier_genes(annots):
-        def get_gene_start(annot):
-            (gene_id, transcript_id), intron_num = annot
-            start, end = gene_info[gene_id]
-            return start
-        (last_gene, _), _ = max(annots, key = get_gene_start, default = ((None, None), None))
-        new_annots = [((gene_id, transcript_id), intron_num) for (gene_id, transcript_id), intron_num in annots if gene_id == last_gene]
-        return new_annots
-    annotations = [remove_earlier_genes(annots) for annots in annotations]
-    return annotations
+        annotations = [[] for region in range(regions.shape[1])]
+        for ID, (intron_starts, intron_ends) in introns:
+            for intron_num,(start,end) in enumerate(zip(intron_starts, intron_ends)):
+                # Find the first region that starts after our start
+                first_after_start = numpy.searchsorted(regions[0], start, side="left") #left so we include when region start = our start,
+                # Find the first region that starts after our end
+                first_after_end = numpy.searchsorted(regions[0], end, side="right") # right so we exclude when region start = our end, want ones with NO overlap
+
+                if first_after_start == first_after_end:
+                    # No regions overlap our intron
+                    # technically not necessary as the next step will do nothing if these are equal (the range is empty)
+                    continue
+
+                # otherwise add our transcript to annotation of every region between first and last
+                [annotations[index].append((ID, intron_num)) for index in range(first_after_start, first_after_end)]
+
+        # now go through the annotations and remove those that come from all but the most recently started gene
+        # ie. if a gene is contained in another gene, the mintrons of the smaller gene should contribute only to the introns of the smaller gene
+        # For mintrons from genes with no overlapping genes, this does nothing
+        def remove_earlier_genes(annots):
+            def get_gene_start(annot):
+                (gene_id, transcript_id), intron_num = annot
+                start, end = gene_info[gene_id]
+                return start
+            (last_gene, _), _ = max(annots, key = get_gene_start, default = ((None, None), None))
+            new_annots = [((gene_id, transcript_id), intron_num) for (gene_id, transcript_id), intron_num in annots if gene_id == last_gene]
+            return new_annots
+        annotations = [remove_earlier_genes(annots) for annots in annotations]
+
+        # Compute the effective lengths of each intron
+        # by summing lengths of mintrons within it
+        for mintron, annots in zip(regions.T, annotations):
+            start, end = mintron
+            mintron_length =  end - start + 1
+            for ID, intron_num in annots:
+                effective_lengths[ID] += mintron_length
+
+        all_annotations[chrom] = annotations
+
+    return all_annotations, effective_lengths
 
 def shrink_regions(region_array, flank_size):
     # Reduce the size of each region in region_array by flank_size on each end
@@ -344,4 +416,4 @@ if __name__ == '__main__':
     bamfile = "/project/itmatlab/for_cris/Baby.Test_mouse_samples/data/expression/baby_genome.mm9/aligned/baby_sample1.bam"
 
     intron_quant = IntronQuantificationStep(geneinfo_file_name)
-    intron_quants, intergenic_quants = intron_quant.execute(bamfile, "no output directory used yet", forward_read_is_sense = False)
+    intron_quant.execute(bamfile, "", forward_read_is_sense = False)
