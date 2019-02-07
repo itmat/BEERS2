@@ -121,10 +121,12 @@ def load_gene_info(geneinfo_file_path, chrom_lengths, flank_size):
     # Gather exon boundaries from all annotations, sorted by their start
     # Collect exons by chromosome and strand, and intergenics just by chromosome
     make_deque = lambda: collections.deque()
+    make_dict = lambda: dict()
     exons = collections.defaultdict(make_deque)
     genics = collections.defaultdict(make_deque)
     all_introns = collections.defaultdict(make_deque)
     transcript_info = collections.defaultdict(make_deque)
+    gene_info = collections.defaultdict(make_dict)
     with open(geneinfo_file_path) as geneinfo_file:
         for line in geneinfo_file:
             if line.startswith("#"):
@@ -140,6 +142,12 @@ def load_gene_info(geneinfo_file_path, chrom_lengths, flank_size):
             intronStarts = [end + 1 for end in exonEnds[:-1]]
             intronEnds = [start - 1 for start in  exonStarts[1:]]
             all_introns[(chrom,strand)].append( ((geneID, transcriptID), intronStarts, intronEnds) )
+
+            if geneID in gene_info:
+                geneStart, geneEnd = gene_info[geneID]
+                gene_info[geneID] = (min(geneStart, txStart), max(geneEnd, txEnd))
+            else:
+                gene_info[geneID] = (txStart, txEnd)
 
     # Convert to arrays (array[0] is array of starts, array[1] array of ends)
     exons = {chrom: numpy.sort(numpy.array(exon).T) for chrom,exon in exons.items()}
@@ -183,7 +191,7 @@ def load_gene_info(geneinfo_file_path, chrom_lengths, flank_size):
     mintrons = {(chrom,strand): complement_regions(regions, chrom_lengths[chrom]) for (chrom,strand),regions in intergenics_or_exons.items()}
 
     # Annotate the mintrons by the transcriptID + introns
-    mintron_annotations = {chrom: annotate_regions(mintrons[chrom], all_introns[chrom]) for chrom in mintrons}
+    mintron_annotations = {chrom: annotate_regions(mintrons[chrom], all_introns[chrom], gene_info) for chrom in mintrons}
 
     print(f"Loaded info on {sum( v.shape[1] for v in intergenics.values())} intergenic regions and {sum(v.shape[1] for v in mintrons.values())} mintrons")
 
@@ -247,7 +255,7 @@ def complement_regions(region_array, total_region_length):
     return numpy.vstack([intron_starts, intron_ends])
 
 
-def annotate_regions(regions, introns):
+def annotate_regions(regions, introns, gene_info):
     # Find the introns that contain in a regionn
     # `introns` is a tuple of (ID, intron_starts, intron_ends)
     # `regions` is a region array, see merge_regions.
@@ -270,6 +278,19 @@ def annotate_regions(regions, introns):
 
             # otherwise add our transcript to annotation of every region between first and last
             [annotations[index].append((ID, intron_num)) for index in range(first_after_start, first_after_end)]
+
+    # now go through the annotations and remove those that come from all but the most recently started gene
+    # ie. if a gene is contained in another gene, the mintrons of the smaller gene should contribute only to the introns of the smaller gene
+    # For mintrons from genes with no overlapping genes, this does nothing
+    def remove_earlier_genes(annots):
+        def get_gene_start(annot):
+            (gene_id, transcript_id), intron_num = annot
+            start, end = gene_info[gene_id]
+            return start
+        (last_gene, _), _ = max(annots, key = get_gene_start, default = ((None, None), None))
+        new_annots = [((gene_id, transcript_id), intron_num) for (gene_id, transcript_id), intron_num in annots if gene_id == last_gene]
+        return new_annots
+    annotations = [remove_earlier_genes(annots) for annots in annotations]
     return annotations
 
 def shrink_regions(region_array, flank_size):
