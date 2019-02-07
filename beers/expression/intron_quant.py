@@ -1,33 +1,49 @@
 import collections
-import pysam
+import itertools
+
 import numpy
+import pysam
 
 class IntronQuantificationStep:
-    def __init__(self, geneinfo_file_path):
+    def __init__(self, geneinfo_file_path, flank_size = 1500):
         '''
         geneinfo_file_path is a path to a tab-separated file with the following fields:
         chrom  strand  txStart  txEnd  exonCount  exonStarts  exonEnds  transcriptID  geneID  geneSymbol  biotype
         '''
         self.geneinfo_file_path = geneinfo_file_path
+        self.flank_size = flank_size
 
-    def execute(self, aligned_file_path, output_directory):
+    def execute(self, aligned_file_path, output_directory, forward_read_is_sense):
         with pysam.AlignmentFile(aligned_file_path, "rb") as alignments:
 
             # Read in the gene alignment information
             chrom_lengths = dict(zip(alignments.references, alignments.lengths))
-            exons, mintrons, genics, intergenics, mintron_annotations = load_gene_info(self.geneinfo_file_path, chrom_lengths)
+            exons, mintrons, genics, intergenics, mintron_annotations = load_gene_info(self.geneinfo_file_path, chrom_lengths, self.flank_size)
 
             # (chrom, strand) -> {(transcriptID, intron_number) -> read_count}
             intron_read_counts = collections.defaultdict(lambda: collections.defaultdict(lambda:0))
             # chrom -> {intron -> read count}
             intergenic_read_counts = collections.defaultdict(lambda: collections.defaultdict(lambda:0))
 
+            unpaired_reads = dict()
+
             # Go through all reads, and compare
             skipped_chromosomes = []
             for read in alignments.fetch(until_eof=True):
-                # Use mapped, uniquely mapped reads only
-                if read.is_unmapped and read.get_tag("NH") == 1:
+                # Use only uniquely mapped reads with both pairs mapped
+                if read.is_unmapped or not read.is_proper_pair or not read.get_tag("NH") == 1:
                     continue
+
+                try:
+                    mate = unpaired_reads[read.query_name]
+                except KeyError:
+                    # mate not cached for processing, so cache this one
+                    unpaired_reads[read.query_name] = read
+                    continue
+
+                # Read is paired to 'mate', so we process both together now
+                # So remove the mate from the cache since we're done with it
+                del unpaired_reads[read.query_name]
 
                 chrom = read.reference_name
                 # Check annotations are available for that chromosome
@@ -37,7 +53,15 @@ class IntronQuantificationStep:
                         skipped_chromosomes.append(chrom)
                     continue
 
-                strand = "-" if read.is_reverse else "+"
+                # According to the SAM file specification, this CAN fail but I don't understand why it would
+                # so just throw this assert in to verify that it doesn't, at least for now
+                assert read.is_reverse != mate.is_reverse
+
+                # Figure out the fragment's strand - depends on whether the forward or reverse reads are 'sense'
+                if forward_read_is_sense:
+                    strand = "-" if (read.is_reverse and read.is_read1) or (not read.is_reverse and read.is_read2) else "+"
+                else:
+                    strand = "+" if (read.is_reverse and read.is_read1) or (not read.is_reverse and read.is_read2) else "-"
 
                 mintron_starts, mintron_ends = mintrons[(chrom, strand)]
                 intergenic_starts, intergenic_ends = intergenics[chrom]
@@ -46,12 +70,12 @@ class IntronQuantificationStep:
                 intergenics_touched = set()
 
                 # check what regions our blocks touch
-                for start,end in read.get_blocks():
+                for start,end in itertools.chain(read.get_blocks(), mate.get_blocks()):
                     # NOTE: pysam is working in 0-based, half-open coordinates! We are using 1-based
                     start = start+1
 
                     # We may intersect this mintron, depending on where its end lies
-                    # or this could be -1 since we start before all mintrons
+                    # or this could be -1 if we start before all mintrons
                     last_mintron_before = numpy.searchsorted(mintron_starts, start, side="right") - 1
 
                     # We definitely do not intersect this mintron, it starts after our end
@@ -90,7 +114,7 @@ class IntronQuantificationStep:
 
         return intron_read_counts, intergenic_read_counts
 
-def load_gene_info(geneinfo_file_path, chrom_lengths):
+def load_gene_info(geneinfo_file_path, chrom_lengths, flank_size):
     # Assumes that geneinfo_file is sorted by feature starts within a chromosome!!
     # and that the chromosomes in geneinfo_file are all present in chrom_lengths (i.e. in the bam file header)
 
@@ -100,6 +124,7 @@ def load_gene_info(geneinfo_file_path, chrom_lengths):
     exons = collections.defaultdict(make_deque)
     genics = collections.defaultdict(make_deque)
     all_introns = collections.defaultdict(make_deque)
+    transcript_info = collections.defaultdict(make_deque)
     with open(geneinfo_file_path) as geneinfo_file:
         for line in geneinfo_file:
             if line.startswith("#"):
@@ -110,10 +135,11 @@ def load_gene_info(geneinfo_file_path, chrom_lengths):
             exonEnds = [int(end) for end in exonEnds.split(',')]
             exons[(chrom,strand)].extend(zip(exonStarts, exonEnds)) # Track strandedness of exons
             genics[chrom].append( (txStart, txEnd) )
+            transcript_info[chrom].append( ((geneID, transcriptID), txStart, txEnd) )
 
             intronStarts = [end + 1 for end in exonEnds[:-1]]
             intronEnds = [start - 1 for start in  exonStarts[1:]]
-            all_introns[(chrom,strand)].append( (transcriptID, intronStarts, intronEnds) )
+            all_introns[(chrom,strand)].append( ((geneID, transcriptID), intronStarts, intronEnds) )
 
     # Convert to arrays (array[0] is array of starts, array[1] array of ends)
     exons = {chrom: numpy.sort(numpy.array(exon).T) for chrom,exon in exons.items()}
@@ -126,6 +152,22 @@ def load_gene_info(geneinfo_file_path, chrom_lengths):
     # Intergenics are complements of all the genics
     intergenics = {chrom: complement_regions(genic, chrom_lengths[chrom]) for chrom,genic in merged_genics.items()}
 
+    # Shrink each intergenic to account for flanking regions
+    intergenics = {chrom: shrink_regions(intergenic, flank_size) for chrom, intergenic in intergenics.items()}
+
+    # Find the flanking regions of each transcript (possibly empty...)
+    flanks = {chrom: flanking_regions(transcript_info[chrom], merged_genics[chrom], flank_size) for chrom in genics.keys()}
+    # Add flanking regions as "introns" to each gene
+    def add_flank(ID, starts, ends, chrom):
+        left, right = flanks[chrom][ID]
+        new =  (ID,
+                [left[0]] + starts + [right[0]],
+                [left[1]] + ends + [right[1]])
+        return new
+    all_introns = {(chrom,strand): [add_flank(ID, intronStarts, intronEnds, chrom)
+                                        for ID, intronStarts, intronEnds in introns]
+                                    for (chrom,strand), introns in all_introns.items()}
+
     # intronic regions are ones that between these merged exons that ARENT intergenic
     # so combine exons and intergenics
     # These regions are disjoint, so just need to sort them together
@@ -136,8 +178,8 @@ def load_gene_info(geneinfo_file_path, chrom_lengths):
 
     # We define mintrons to be a region that is not intergenic and is not in an exon of THIS strand
     # i.e. is in at least one gene on this strand and not in any exon of any gene of this strand
-    # (for mini-introns, of which there might be several in a real intron since exons of other genes could break up the intron)
-    # Analogously, we should define the 'exons' above to be 'maxons' since they're max of all touching exons...
+    # (for min-introns, of which there might be several in a real intron since exons of other genes could break up the intron)
+    # Analogously, we should define the 'merged exons' above to be 'maxons' since they're max of all touching exons...
     mintrons = {(chrom,strand): complement_regions(regions, chrom_lengths[chrom]) for (chrom,strand),regions in intergenics_or_exons.items()}
 
     # Annotate the mintrons by the transcriptID + introns
@@ -196,11 +238,11 @@ def complement_regions(region_array, total_region_length):
     else:
         if ends[-1] == total_region_length:
             # An intron before the exons but none after
-            intron_starts = ends[:-1] + 1
-            intron_ends = starts[1:] - 1
+            intron_starts = numpy.concatenate(([1], ends[:-1] + 1))
+            intron_ends = starts - 1
         else:
             # An intron both before and after the exons
-            intron_starts = numpy.concatenate(([0], ends)) + 1
+            intron_starts = numpy.concatenate(([1], ends + 1 ))
             intron_ends = numpy.concatenate((starts - 1, [total_region_length]))
     return numpy.vstack([intron_starts, intron_ends])
 
@@ -230,9 +272,55 @@ def annotate_regions(regions, introns):
             [annotations[index].append((ID, intron_num)) for index in range(first_after_start, first_after_end)]
     return annotations
 
+def shrink_regions(region_array, flank_size):
+    # Reduce the size of each region in region_array by flank_size on each end
+    # but keep at least 1 base in each region
+    starts, ends = region_array
+    new_starts = starts + flank_size
+    new_ends = ends - flank_size
+
+    # fix the parts where the region was less than 2*flank_size in length
+    middles = numpy.floor_divide(starts + ends, 2)
+    crossovers = new_starts > new_ends
+    new_starts[crossovers] = middles[crossovers]
+    new_ends[crossovers] = middles[crossovers]
+
+    return numpy.vstack((new_starts, new_ends))
+
+def flanking_regions(transcript_info, genics, flank_size):
+    # Find flanking regions around our transcript that are actually around the enclosing merged genic region
+    # I.e we take the region of +- flank size of our transcript
+    # and then remove the full merged genic region that our transcript lives in out of that
+    # and then we clip the flanking region away from other genic regions so that we don't overlap any flanks with eachother
+    # and return a dictionary of {transcriptID -> ((left_start, left_end), (right_start, right_end))}
+    # mapping transcript id's to left and right flanks
+    flanks = dict()
+    genic_starts, genic_ends = genics
+    for ID, start, end in transcript_info:
+        next_genic_region = numpy.searchsorted(genic_starts, start, side="right")
+        our_genic_region = next_genic_region - 1
+        if our_genic_region > 0:
+            # Flanking region on the left
+            previous_genic_region = our_genic_region - 1
+            mid = numpy.floor_divide(genic_ends[previous_genic_region] + genic_starts[our_genic_region], 2)
+            left_flank = (numpy.clip(mid, start - flank_size, genic_starts[our_genic_region] - 1), genic_starts[our_genic_region] - 1) # Restart..
+        else: # No regions before us
+            # Minimal flanking region on the left of 1 base
+            left_flank = (genic_starts[our_genic_region] - flank_size - 1, genic_starts[our_genic_region] - 1)
+
+        if next_genic_region < genics.shape[1]:
+            # Flanking region on the right
+            mid = numpy.floor_divide(genic_starts[next_genic_region] + genic_ends[our_genic_region], 2)
+            right_flank = (genic_ends[our_genic_region] + 1, numpy.clip(genic_ends[our_genic_region] + 1, end + flank_size, mid)) # Restart..
+        else: # No regions after us
+            right_flank = (genic_ends[our_genic_region] + 1 , genic_ends[our_genic_region] + 1 + flank_size)
+
+        flanks[ID] = (left_flank, right_flank)
+    return flanks
+
 if __name__ == '__main__':
     geneinfo_file_name = "/project/itmatlab/for_cris/Baby.Test_mouse_samples/resources/index_files/baby_genome.mm9/annotations"
     bamfile = "/project/itmatlab/for_cris/Baby.Test_mouse_samples/data/expression/baby_genome.mm9/aligned/baby_sample1.bam"
 
     intron_quant = IntronQuantificationStep(geneinfo_file_name)
-    intron_quants, intergenic_quants = intron_quant.execute(bamfile, "no output directory used yet")
+    intron_quants, intergenic_quants = intron_quant.execute(bamfile, "no output directory used yet", forward_read_is_sense = False)
