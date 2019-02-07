@@ -14,6 +14,9 @@ class Monitor:
     #Regular expression for parsion bjobs output (including header)
     lsf_bjobs_output_pattern = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
 
+    #Regex for recognizing and extracting lsf job IDs following submission.
+    lsf_bsub_output_pattern = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
+
     def __init__(self, output_directory_path, dispatcher_mode):
         """
         Initialize the monitor to track a specific set of jobs/processes running on

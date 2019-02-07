@@ -8,6 +8,11 @@ import math
 from io import StringIO
 from beers.constants import CONSTANTS
 from prettytable import PrettyTable
+#Imports required for main() method.
+import argparse
+import json
+from beers.sample import Sample
+from beers.utilities.expression_utils import ExpressionUtils
 
 
 Read = namedtuple('Read', ['position', 'description'])
@@ -16,7 +21,7 @@ A named tuple that possesses all the attributes of a variant
 type:  match (M), deletion (D), insertion (I)
 chromosome: chrN
 position: position on ref genome
-description: description of the variant (e.g., C, IAA, D5, etc.) 
+description: description of the variant (e.g., C, IAA, D5, etc.)
 """
 
 
@@ -294,6 +299,39 @@ class VariantsFinderStep:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
+    @staticmethod
+    def main():
+        """
+        Entry point into script. Allows script to be executed/submitted via the
+        command line.
+        """
+
+        parser = argparse.ArgumentParser(description='Command line wrapper around'
+                                                     ' the variant finder')
+        parser.add_argument('--log_directory_path')
+        parser.add_argument('--data_directory_path')
+        parser.add_argument('--config_parameters')
+        parser.add_argument('--sample')
+        parser.add_argument('--bam_filename')
+        parser.add_argument('--chr_ploidy_file_path')
+        parser.add_argument('--reference_genome_file_path')
+        args = parser.parse_args()
+
+        config_parameters = json.loads(args.config_parameters)
+        variants_finder = VariantsFinderStep(args.log_directory_path,
+                                             args.data_directory_path,
+                                             config_parameters)
+
+        sample = Sample.deserialize(args.sample)
+        reference_genome = ExpressionUtils.create_genome(args.reference_genome_file_path)
+        chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
+        variants_finder.execute(sample,
+                                args.bam_filename,
+                                chr_ploidy_data,
+                                reference_genome)
+
+if __name__ == "__main__":
+    sys.exit(VariantsFinderStep.main())
 
 class PositionInfo:
     """

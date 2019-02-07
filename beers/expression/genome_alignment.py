@@ -15,7 +15,7 @@ class GenomeAlignmentStep():
     star_bamfile_suffix = "Aligned.sortedByCoord.out.bam"
 
     #Regex for recognizing and extracting lsf job IDs following submission.
-    lsf_output_pattern = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
+    lsf_bsub_output_pattern = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
 
     def __init__(self, log_directory_path, data_directory_path, parameters = dict()):
         self.log_directory_path = log_directory_path
@@ -42,13 +42,16 @@ class GenomeAlignmentStep():
         #TODO: module load STAR-v2.6.0c
         assert 1 <= len(sample.input_file_paths) <= 2
 
+        job_id = ""
+
         # Check if they are already bam files and so we don't need to re-run the alignment
         if sample.input_file_paths[0].endswith("bam"):
             assert len(sample.input_file_paths) == 1
             print(f"sample{sample.sample_id} {sample.sample_name} is already aligned.")
+            job_id = "ALREADY_ALIGNED"
 
             # Give the path to the already-existing bam file
-            return sample.input_file_paths[0]
+            return sample.input_file_paths[0], job_id
 
         read_files = ' '.join(sample.input_file_paths)
 
@@ -80,8 +83,6 @@ class GenomeAlignmentStep():
                         f" -eo {stderr_log}"
                         f" {star_command}")
 
-        job_id = ""
-
         if mode == "serial" or mode == "parallel":
             print(f"Starting STAR on sample {sample.sample_name}.")
             result =  subprocess.run(star_command, shell=True, check=True)
@@ -91,7 +92,7 @@ class GenomeAlignmentStep():
             result = subprocess.run(bsub_command, shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
 
             #Extract job ID from LSF stdout
-            job_id = GenomeAlignmentStep.lsf_output_pattern.match(result.stdout).group("job_id")
+            job_id = GenomeAlignmentStep.lsf_bsub_output_pattern.match(result.stdout).group("job_id")
             print(f"\t{result.stdout.rstrip()}")
 
             print(f"Finished submitting STAR command to {mode} for sample {sample.sample_name}.")
@@ -108,6 +109,9 @@ class GenomeAlignmentStep():
         # indexing is necessary for the variant finding step
 
         job_id = ""
+        #If there are existing BAM files, BAI files will be made in the same
+        #directory. The BAI files will subsequently be copied to the output path.
+        out_file_path = os.path.join(self.data_directory_path, f"sample{sample.sample_id}", 'genome_alignment.Aligned.sortedByCoord.out.bam.bai')
 
         if mode == "serial" or mode == "parallel":
             print(f"Creating BAM index for sample {sample.sample_name}")
@@ -130,12 +134,12 @@ class GenomeAlignmentStep():
                             f" -J Index_Genome_BAM.sample{sample.sample_id}_{sample.sample_name}"
                             f" -oo {stdout_log}"
                             f" -eo {stderr_log}"
-                            f" python -m beers.expression.run_pysam_index {bam_file}")
-            print(bsub_command)
+                            f" 'python -m beers.expression.run_pysam_index {bam_file}; "
+                            f" cp -p {bam_file}.bai {out_file_path}'")
             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
 
             #Extract job ID from LSF stdout
-            job_id = GenomeAlignmentStep.lsf_output_pattern.match(result.stdout).group("job_id")
+            job_id = GenomeAlignmentStep.lsf_bsub_output_pattern.match(result.stdout).group("job_id")
             print(f"\t{result.stdout.rstrip()}")
 
             print(f"Finished submitting BAM index command to {mode} for sample {sample.sample_name}.")
