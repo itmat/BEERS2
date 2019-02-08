@@ -273,8 +273,8 @@ class ExpressionPipeline:
                                         f" python {variant_finder_path}"
                                         f" --log_directory_path {variants_finder.log_directory_path}"
                                         f" --data_directory_path {variants_finder.data_directory_path}"
-                                        f" --config_parameters {json.dumps(variant_finder_params)}"
-                                        f" --sample {resub_sample.serialize()}"
+                                        f" --config_parameters '{json.dumps(variant_finder_params)}'"
+                                        f" --sample '{repr(resub_sample)}'"
                                         f" --bam_filename {bam_filename}"
                                         f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
                                         f" --reference_genome_file_path {self.reference_genome_file_path}")
@@ -330,7 +330,7 @@ class ExpressionPipeline:
                                             f" --log_directory_path {variants_finder.log_directory_path}"
                                             f" --data_directory_path {variants_finder.data_directory_path}"
                                             f" --config_parameters '{json.dumps(variant_finder_params)}'"
-                                            f" --sample '{pend_sample.serialize()}'"
+                                            f" --sample '{repr(pend_sample)}'"
                                             f" --bam_filename {bam_filename}"
                                             f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
                                             f" --reference_genome_file_path {self.reference_genome_file_path}")

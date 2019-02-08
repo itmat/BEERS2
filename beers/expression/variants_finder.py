@@ -321,8 +321,7 @@ class VariantsFinderStep:
         variants_finder = VariantsFinderStep(args.log_directory_path,
                                              args.data_directory_path,
                                              config_parameters)
-
-        sample = Sample.deserialize(args.sample)
+        sample = eval(args.sample)
         reference_genome = ExpressionUtils.create_genome(args.reference_genome_file_path)
         chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
         variants_finder.execute(sample,
@@ -330,8 +329,6 @@ class VariantsFinderStep:
                                 chr_ploidy_data,
                                 reference_genome)
 
-if __name__ == "__main__":
-    sys.exit(VariantsFinderStep.main())
 
 class PositionInfo:
     """
@@ -464,3 +461,8 @@ class PositionInfo:
         s.write(f"\t{','.join(abundances)}")
         s.write(f"\tE={self.calculate_entropy()}\n")
         return s.getvalue()
+
+
+
+if __name__ == "__main__":
+    sys.exit(VariantsFinderStep.main())

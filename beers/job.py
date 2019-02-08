@@ -169,7 +169,7 @@ class Job:
                         else:
                             job_status = "FAILED"
                     elif self.step_name == "VariantsFinderStep":
-                        pass
+                        job_status = "COMPLETED"
                     else:
                         raise NotImplementedError()
                 else:

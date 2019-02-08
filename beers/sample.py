@@ -30,6 +30,24 @@ class Sample:
                f"input_file_paths: {self.input_file_paths},\n" \
                f"gender: {self.gender}, adapter sequences: {self.adapter_sequences}"
 
+    def __repr__(self):
+        """
+        Note, repr() is preferrable to serialize() for passing Sample objects as
+        command-line arguments, since most command-lines do not support tab
+        characters.
+        """
+        adapter_sequences_tuple = "\",\"".join([str(adapter_sequence) for adapter_sequence in self.adapter_sequences])
+        input_file_paths_tuple = "\",\"".join([str(input_file_path) for input_file_path in self.input_file_paths])
+        repr_string = (f'Sample(sample_id="{self.sample_id}", '
+                       f' sample_name="{self.sample_name}",'
+                       f' input_file_paths=["{input_file_paths_tuple}"],'
+                       f' adapter_sequences=["{adapter_sequences_tuple}"]')
+        if self.gender:
+            repr_string += f', gender="{self.gender}"'
+        repr_string += f')'
+
+        return repr_string
+
     def serialize(self):
         """
         Single tab delimited string containing the sample attributes.  The adapter sequences are separated by a
