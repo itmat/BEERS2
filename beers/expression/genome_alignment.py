@@ -116,6 +116,8 @@ class GenomeAlignmentStep():
         if mode == "serial" or mode == "parallel":
             print(f"Creating BAM index for sample {sample.sample_name}")
             pysam.index(bam_file)
+            if not os.path.isfile(out_file_path):
+                shutil.copyfile(f"{bam_file}.bai", out_file_path)
             print(f"Finished creating BAM index for sample {sample.sample_name}")
         elif mode == "lsf":
             print(f"Submitting BAM index command to {mode} for sample {sample.sample_name}.")

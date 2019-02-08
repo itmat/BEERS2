@@ -279,7 +279,6 @@ class ExpressionPipeline:
                                         f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
                                         f" --reference_genome_file_path {self.reference_genome_file_path}")
 
-                        print(f"\tBsub_command: {bsub_command}")
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
                         #Extract job ID from LSF stdout
@@ -335,7 +334,6 @@ class ExpressionPipeline:
                                             f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
                                             f" --reference_genome_file_path {self.reference_genome_file_path}")
 
-                            print(f"\tBsub_command: {bsub_command}")
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout

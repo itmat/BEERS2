@@ -165,9 +165,9 @@ class VariantsFinderStep:
             if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
                 continue
 
-            # Alignment Seqment reference_start is zero-based - so adding 1 to conform to convention.
+            # Alignment Segment reference_start is zero-based - so adding 1 to conform to convention.
             start = line.reference_start + 1
-            sequence = line.query_sequence
+            sequence = line.query_sequence.upper()
             cigar = line.cigarstring
             cigar, sequence = self.remove_clips(cigar, sequence)
             current_pos_in_genome = int(start)
@@ -201,8 +201,11 @@ class VariantsFinderStep:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        key = Read(location, sequence[loc_on_read - 1])
-                        reads[key] = reads.get(key, 0) + 1
+                        # Skip any read that contains an N or n in the sequence base
+                        base = sequence[loc_on_read - 1]
+                        if 'N' not in base:
+                            key = Read(location, base)
+                            reads[key] = reads.get(key, 0) + 1
                         loc_on_read += 1
                         current_pos_in_genome += 1
                     continue
@@ -223,8 +226,10 @@ class VariantsFinderStep:
                 if read_type == "I":
                     location = current_pos_in_genome
                     insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length]
-                    key = Read(location, f'I{insertion_sequence}')
-                    reads[key] = reads.get(key, 0) + 1
+                    # Skip any read that contains an N or n in the insertion sequence
+                    if 'N' not in insertion_sequence:
+                        key = Read(location, f'I{insertion_sequence}')
+                        reads[key] = reads.get(key, 0) + 1
                     loc_on_read += length
         return reads
 
@@ -341,6 +346,7 @@ class PositionInfo:
         self.chromosome = chromosome
         self.position = position
         self.reads = []
+        self.reference_base = None
         self.contains_reference_base = None
 
     def add_read(self, description, read_count):
@@ -394,6 +400,8 @@ class PositionInfo:
         :param min_abundance_threshold:  criterion for minimum abundance threshold
         :param reference_base:  the base of the reference genome at this position.
         """
+
+        self.reference_base = reference_base
 
         variants = []
 
@@ -458,7 +466,13 @@ class PositionInfo:
         for read in self.reads:
             s.write(f' | {read[0]}:{read[1]}')
         s.write(f"\tTOT={self.get_total_reads()}")
-        s.write(f"\t{','.join(abundances)}")
+        annotated_abundances = []
+        for read, abundance in zip(self.reads, abundances):
+            if  read[0] == self.reference_base:
+                annotated_abundances.append(f'r{abundance}')
+            else:
+                annotated_abundances.append(abundance)
+        s.write(f"\t{','.join(annotated_abundances)}")
         s.write(f"\tE={self.calculate_entropy()}\n")
         return s.getvalue()
 
