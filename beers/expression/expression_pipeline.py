@@ -250,8 +250,8 @@ class ExpressionPipeline:
                         # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
                         variants_finder = self.steps['VariantsFinderStep']
                         variant_finder_path = self.__step_paths['VariantsFinderStep']
-                        stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variant_Finder.bsub.%J.out")
-                        stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variant_Finder.bsub.%J.err")
+                        stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variants_Finder.bsub.%J.out")
+                        stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variants_Finder.bsub.%J.err")
 
                         #TODO: Modify code to maintain access to step parameters.
                         #      Need these parameters to instantiate these objects
@@ -314,8 +314,8 @@ class ExpressionPipeline:
                             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
                             variants_finder = self.steps['VariantsFinderStep']
                             variant_finder_path = self.__step_paths['VariantsFinderStep']
-                            stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variant_Finder.bsub.%J.out")
-                            stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variant_Finder.bsub.%J.err")
+                            stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variants_Finder.bsub.%J.out")
+                            stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variants_Finder.bsub.%J.err")
 
                             #Recreate parameter dictionary for VariantsFinderStep
                             variant_finder_params = {}

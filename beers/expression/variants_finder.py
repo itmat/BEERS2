@@ -272,7 +272,7 @@ class VariantsFinderStep:
         log_table.add_row(row_totals)
         with open(log_file_path, 'w') as log_file:
             log_file.write(log_table.get_string())
-            log_file.write('\n')
+            log_file.write('\nALL DONE!\n')
 
     def filter_chromosome_list(self, sample, chr_ploidy_data):
         """
