@@ -121,7 +121,7 @@ class Job:
         if self.system_id is None:
             job_status = "WAITING_FOR_DEPENDENCY"
         elif self.dispatcher_mode == "serial" or self.dispatcher_mode == "parallel":
-            pass
+            job_status = "COMPLETED"
         elif self.dispatcher_mode == "lsf":
 
             result = subprocess.run(' '.join([f"bjobs {self.system_id}"]), shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
