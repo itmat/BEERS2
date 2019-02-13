@@ -6,16 +6,16 @@ import numpy
 import pysam
 
 OUTPUT_INTRON_FILE_NAME = "intron_quantifications.txt"
-OUTPUT_INTRON_ANTISENSE_FILE_NAME = "intron_quantifications.txt"
+OUTPUT_INTRON_ANTISENSE_FILE_NAME = "intron_antisense_quantifications.txt"
 OUTPUT_INTERGENIC_FILE_NAME = "intergenic_quantifications.txt"
 
 
 class IntronQuantificationStep:
     def __init__(self, geneinfo_file_path, flank_size=1500):
-        '''
+        """
         geneinfo_file_path is a path to a tab-separated file with the following fields:
         chrom  strand  txStart  txEnd  exonCount  exonStarts  exonEnds  transcriptID  geneID  geneSymbol  biotype
-        '''
+        """
         self.info = None
         self.intron_normalized_antisense_counts = collections.Counter()
         self.intron_normalized_counts = collections.Counter()
@@ -23,13 +23,13 @@ class IntronQuantificationStep:
         self.transcript_intron_counts = collections.Counter()
         self.geneinfo_file_path = geneinfo_file_path
         self.flank_size = flank_size
+        self.intergenic_read_counts = collections.defaultdict(collections.Counter)
 
     def execute(self, aligned_file_path, output_directory, forward_read_is_sense):
         # (chrom, strand) -> {(transcriptID, intron_number) -> read_count}
         intron_read_counts = collections.Counter()
         intron_antisense_read_counts = collections.Counter()
         # chrom -> {intron -> read count}
-        intergenic_read_counts = collections.defaultdict(collections.Counter)
 
         with pysam.AlignmentFile(aligned_file_path, "rb") as alignments:
 
@@ -78,8 +78,8 @@ class IntronQuantificationStep:
                     strand = "+" if read1_reverse_aligned else "-"
                 antisense_strand = "-" if strand is "+" else "+"
 
-                mintron_starts, mintron_ends = self.info.mintron_extents_by_chrom[chrom,strand]
-                antisense_mintron_starts, antisense_mintron_ends = self.info.mintron_extents_by_chrom[chrom,antisense_strand]
+                mintron_starts, mintron_ends = self.info.mintron_extents_by_chrom[chrom, strand]
+                antisense_mintron_starts, antisense_mintron_ends = self.info.mintron_extents_by_chrom[chrom, antisense_strand]
                 intergenic_starts, intergenic_ends = self.info.intergenic_extents_by_chrom[chrom]
 
                 mintrons_touched = set()
@@ -131,24 +131,23 @@ class IntronQuantificationStep:
 
                 # Accumulate the reads
                 for mintron_index in mintrons_touched:
-                    for intron in self.info.mintrons_by_chrom[chrom,strand][mintron_index].primary_introns:
+                    for intron in self.info.mintrons_by_chrom[chrom, strand][mintron_index].primary_introns:
                         intron_read_counts[intron] += 1
 
                 for antisense_mintron_index in antisense_mintrons_touched:
-                    for intron in self.info.mintrons_by_chrom[chrom,antisense_strand][antisense_mintron_index].primary_antisense_introns:
+                    for intron in self.info.mintrons_by_chrom[chrom, antisense_strand][antisense_mintron_index].primary_antisense_introns:
                         intron_antisense_read_counts[intron] += 1
 
                 for intergenic in intergenics_touched:
-                    intergenic_read_counts[chrom][intergenic] += 1
+                    self.intergenic_read_counts[chrom][intergenic] += 1
 
-        self.intergenic_read_counts = intergenic_read_counts
 
         # Normalize reads by effective transcript lengths
         for intron, count in intron_read_counts.items():
             effective_count = count / intron.effective_length * 1000 # FPK (fragments per kilo-base)
             self.intron_normalized_counts[intron] = effective_count
-            #TODO: is this the right normalization factor for antisense reads?
-            # currently use the total length of all antisense mintrons, but this seems wrong....
+            # TODO: is this the right normalization factor for antisense reads?
+            #  currently use the total length of all antisense mintrons, but this seems wrong....
             antisense_count = intron_antisense_read_counts[intron]
             if antisense_count > 0:
                 self.intron_normalized_antisense_counts[intron] = antisense_count / intron.antisense_effective_length * 1000
@@ -187,7 +186,7 @@ class IntronQuantificationStep:
             self.transcript_intron_antisense_counts[intron.transcript] += count
 
         # Write out the results to output file
-        # SENSE INTRON OUTPTU
+        # SENSE INTRON OUTPUT
         output_file_path = os.path.join(output_directory, OUTPUT_INTRON_FILE_NAME)
         with open(output_file_path, "w") as output_file:
             output_file.write("#gene_id\ttranscript_id\tchr\tstrand\ttranscript_intron_reads_FPK\tintron_reads_FPK\n")
@@ -227,9 +226,9 @@ class IntronQuantificationStep:
                                              ','.join(intron_counts),
                                              ]) + '\n')
 
-        #TODO: do we need to normalize intergenic regions?
-        # Not clear that just dividing by their length is right since usually you have just
-        # bits and pieces expressed throughout
+        # TODO: do we need to normalize intergenic regions?
+        #   Not clear that just dividing by their length is right since usually you have just
+        #   bits and pieces expressed throughout
         output_intergenic_file_path = os.path.join(output_directory, OUTPUT_INTERGENIC_FILE_NAME)
         with open(output_intergenic_file_path, "w") as output_file:
             output_file.write("#chromosome\tintergenic_region_number\tstart\tend\treads_FPK\n")
@@ -238,7 +237,7 @@ class IntronQuantificationStep:
             for chrom in chroms_sorted:
                 intergenics = self.info.intergenics[chrom]
                 for i, intergenic in enumerate(intergenics):
-                    count = intergenic_read_counts[chrom][i]
+                    count = self.intergenic_read_counts[chrom][i]
 
                     output_file.write('\t'.join([chrom,
                                                  str(i),
@@ -247,7 +246,14 @@ class IntronQuantificationStep:
                                                  str(count),
                                                  ]) + '\n')
 
+
+##### "Plain old data" classes representing the elements inside a gene info file
+
 class Gene:
+    """Representation of a gene, including it's transcripts.
+
+    start, end coordinates indicate the min/max of the start/end coordinates of all its transcripts
+    """
     def __init__(self, info, gene_id, chrom, strand, start, end, transcripts=None):
         if transcripts is None:
             transcripts = []
@@ -267,6 +273,8 @@ class Gene:
 
 
 class Transcript:
+    """ Transcript of a gene, tracks its introns, exons
+    """
     def __init__(self, info, gene_id, transcript_id, chrom, strand, start, end, exons=None, introns=None):
         if introns is None:
             introns = []
@@ -292,6 +300,10 @@ class Transcript:
 
 
 class Region:
+    """ Any genomic span of a chromosome
+    strand = +,-, or . if not strand-specific region (eg: an intergenic region)
+    'comment' is any extra information to carry along, for the purposes of debugging/printing
+    """
     def __init__(self, info, chrom, strand, start, end, comment=None):
         self.info = info
         self.chrom = chrom
@@ -305,6 +317,8 @@ class Region:
 
 
 class TranscriptRegion(Region):
+    """ Region that is part of a transcript (eg: intron or exon)
+    """
     def __init__(self, info, gene_id, transcript_id, *args):
         self.gene_id = gene_id
         self.transcript_id = transcript_id
@@ -321,11 +335,13 @@ class TranscriptRegion(Region):
     gene = property(get_gene)
     transcript = property(get_transcript)
 
+
 class Intron(TranscriptRegion):
     def __init__(self, *args):
         TranscriptRegion.__init__(self, *args)
         self.mintrons = [] # List of all mintrons that this overlaps
         self.antisense_mintrons = [] # List of mintrons on the other strand that aren't sense for something else
+
 
 class Mintron(Region):
     def __init__(self, info, *args):
@@ -341,9 +357,20 @@ class Mintron(Region):
 
 
 class AnnotationInfo:
-    ''' Data structure containing all the information in a gene info file '''
+    """ Data structure containing all the information in a gene info file.
+
+     Stores genes, transcripts, intergenic regions, and exons both for easy access by ID and for quick lookup by
+     position, using sorted lists by start position, allowing binary search."""
 
     def __init__(self, geneinfo_file_path, chrom_lengths, flank_size=1500):
+        """
+        Load geneinfo file as a large datastructure containing all the information
+        geneinfo file is in the bed format with 1-based, inclusive coordinates for ranges
+        For example, an Ensembl gtf converted to a bed file with the provided script works.
+
+        :param geneinfo_file_path: file path to find the geneinfo file
+        :param chrom_lengths: dictionary of {chromosome -> chromosome lengths}, obtainable from header of a SAM/BAM file
+        """
         self.chrom_lengths = chrom_lengths
 
 
@@ -357,28 +384,28 @@ class AnnotationInfo:
             for line in geneinfo_file:
                 if line.startswith("#"):
                     continue
-                chrom, strand, txStart, txEnd, exonCount, exonStarts, exonEnds, transcript_id, gene_id, geneSymbol, biotype = line.split('\t')
-                txStart, txEnd = int(txStart), int(txEnd)
-                exonStarts = [int(start) for start in exonStarts.split(',')]
-                exonEnds = [int(end) for end in exonEnds.split(',')]
+                chrom, strand, tx_start, tx_end, exon_count, exon_starts, exon_ends, transcript_id, gene_id, *other = line.split('\t')
+                tx_start, tx_end = int(tx_start), int(tx_end)
+                exon_starts = [int(start) for start in exon_starts.split(',')]
+                exon_ends = [int(end) for end in exon_ends.split(',')]
                 exons = [TranscriptRegion(self, gene_id, transcript_id, chrom, strand, start, end, "exon") for
-                         start, end in zip(exonStarts, exonEnds)]
+                         start, end in zip(exon_starts, exon_ends)]
 
-                intronStarts = [end + 1 for end in exonEnds[:-1]]
-                intronEnds = [start - 1 for start in exonStarts[1:]]
+                intron_starts = [end + 1 for end in exon_ends[:-1]]
+                intron_ends = [start - 1 for start in exon_starts[1:]]
                 introns = [Intron(self, gene_id, transcript_id, chrom, strand, start, end, "intron") for
-                           start, end in zip(intronStarts, intronEnds)]
+                           start, end in zip(intron_starts, intron_ends)]
 
-                transcript = Transcript(self, gene_id, transcript_id, chrom, strand, txStart, txEnd, exons, introns)
+                transcript = Transcript(self, gene_id, transcript_id, chrom, strand, tx_start, tx_end, exons, introns)
                 self.transcripts[transcript_id] = transcript
                 self.transcripts_by_chrom[chrom, strand].append(transcript)
 
                 if gene_id in self.genes:
-                    transcript.gene.start = min(transcript.gene.start, txStart)
-                    transcript.gene.end = max(transcript.gene.end, txEnd)
+                    transcript.gene.start = min(transcript.gene.start, tx_start)
+                    transcript.gene.end = max(transcript.gene.end, tx_end)
                     transcript.gene.transcripts.append(transcript)
                 else:
-                    gene = Gene(self, gene_id, chrom, strand, txStart, txEnd, transcripts=[transcript])
+                    gene = Gene(self, gene_id, chrom, strand, tx_start, tx_end, transcripts=[transcript])
                     self.genes[gene_id] = gene
                     self.genes_by_chrom[chrom, strand][gene_id] = gene
                     self.genic_regions_by_chrom[chrom, strand].append(gene)
@@ -413,12 +440,12 @@ class AnnotationInfo:
         self.mintrons_by_chrom = self.complement_regions(self.intergenic_and_exonic, cls=Mintron)
 
         # The start,ends of the mintrons/intergenics as numpy arrays for fast lookup
-        self.mintron_extents_by_chrom = {(chrom,strand): (numpy.array([mintron.start for mintron in mintrons]),
+        self.mintron_extents_by_chrom = {(chrom, strand): (numpy.array([mintron.start for mintron in mintrons]),
                                                           numpy.array([mintron.end for mintron in mintrons]))
-                                            for (chrom,strand), mintrons in self.mintrons_by_chrom.items()}
+                                            for (chrom, strand), mintrons in self.mintrons_by_chrom.items()}
         self.intergenic_extents_by_chrom = {chrom: (numpy.array([intergenic.start for intergenic in intergenics]),
                                                               numpy.array([intergenic.end for intergenic in intergenics]))
-                                                for chrom,intergenics in self.intergenics.items()}
+                                                for chrom, intergenics in self.intergenics.items()}
 
         # Give mintrons their annotations
         for (chrom, strand), transcripts in self.transcripts_by_chrom.items():
@@ -523,6 +550,17 @@ class AnnotationInfo:
 
 
     def add_flanks(self, flank_size):
+        """
+        Add flanks to each genic region up to size flank_size on each end
+        These account for reads that go past the "ends" of the gene but should be thought of as belonging to that gene
+        rather than to intergenic regions.
+        Flanks are added as first/last introns to every transcript, so all transcripts will have at least two introns.
+        Sometimes there is no room for a flank to be added, in which case the flank is given start/stop coordinates
+        of 0,0.
+
+        :param flank_size: Size of flanks to add
+        :return: flanked_genics, dictionary of genic regions, sorted by start position with flanks added
+        """
         # Look through each gene, check if contained in other genes on either side
         # on sides not contained, add a flank of size flank_size
         # up to half the size of the gap until the next exon
@@ -598,7 +636,7 @@ class AnnotationInfo:
                     right_end = min(self.chrom_lengths[chrom], region.end + flank_size)
                 else:
                     next_region = genic_regions[index + 1]
-                    mid = (region.end + next_region.start) // 2  - 1
+                    mid = (region.end + next_region.start) // 2 - 1
                     right_end = min(mid, region.end + flank_size)
                 flanked_genics.append(Region(self, chrom, ".", left_start, right_end, comment="flanked genic"))
 
@@ -649,7 +687,6 @@ class AnnotationInfo:
                 strand = "."
 
             complements = collections.deque()
-            chrom_length = self.chrom_lengths[chrom]
             start = 1
             for region in regions:
                 if region.start == 1:
