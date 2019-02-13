@@ -2,6 +2,7 @@ import collections
 import itertools
 import os
 import argparse
+import json
 
 import numpy
 import pysam
@@ -12,21 +13,23 @@ OUTPUT_INTERGENIC_FILE_NAME = "intergenic_quantifications.txt"
 
 
 class IntronQuantificationStep:
-    def __init__(self, geneinfo_file_path, flank_size=1500):
-        """
-        geneinfo_file_path is a path to a tab-separated file with the following fields:
-        chrom  strand  txStart  txEnd  exonCount  exonStarts  exonEnds  transcriptID  geneID  geneSymbol  biotype
-        """
+    def __init__(self, log_directory_path, data_directory_path, parameters):
+        self.log_directory_path = log_directory_path
+        self.data_directory_path = data_directory_path
         self.info = None
         self.intron_normalized_antisense_counts = collections.Counter()
         self.intron_normalized_counts = collections.Counter()
         self.transcript_intron_antisense_counts = collections.Counter()
         self.transcript_intron_counts = collections.Counter()
-        self.geneinfo_file_path = geneinfo_file_path
-        self.flank_size = flank_size
+        self.flank_size = parameters["flank_size"]
         self.intergenic_read_counts = collections.defaultdict(collections.Counter)
+        self.forward_read_is_sense = parameters["forward_read_is_sense"]
 
-    def execute(self, aligned_file_path, output_directory, forward_read_is_sense):
+    def validate(self):
+        # TODO: do we need proper validation?
+        return True
+
+    def execute(self, aligned_file_path, output_directory, geneinfo_file_path):
         # (chrom, strand) -> {(transcriptID, intron_number) -> read_count}
         intron_read_counts = collections.Counter()
         intron_antisense_read_counts = collections.Counter()
@@ -37,7 +40,7 @@ class IntronQuantificationStep:
             chrom_lengths = dict(zip(alignments.references, alignments.lengths))
 
             #  Read in the annotation information
-            self.info = AnnotationInfo(self.geneinfo_file_path, chrom_lengths)
+            self.info = AnnotationInfo(geneinfo_file_path, chrom_lengths)
 
             unpaired_reads = dict()
 
@@ -73,7 +76,7 @@ class IntronQuantificationStep:
 
                 # Figure out the fragment's strand - depends on whether the forward or reverse reads are 'sense'
                 read1_reverse_aligned = (read.is_reverse and read.is_read1) or (not read.is_reverse and read.is_read2)
-                if forward_read_is_sense:
+                if self.forward_read_is_sense:
                     strand = "-" if read1_reverse_aligned else "+"
                 else:
                     strand = "+" if read1_reverse_aligned else "-"
@@ -247,6 +250,10 @@ class IntronQuantificationStep:
                                                  str(count),
                                                  ]) + '\n')
 
+    @staticmethod
+    def is_output_valid(job_arguments):
+        # TODO: check that the output file actually exists
+        return True
 
 ##### "Plain old data" classes representing the elements inside a gene info file
 
@@ -712,15 +719,20 @@ class AnnotationInfo:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument("--log_directory_path", help="directory to output logging files to", default=None)
+    parser.add_argument("--data_directory_path", help="data directory folder (unused)", default=None)
     parser.add_argument("-b", "--bam_file", help="BAM or SAM file of strand-specific genomic alignment")
     parser.add_argument("-i", "--info_file", help="Geneinfo file in BED format with 1-based, inclusive coordinates")
     parser.add_argument("-o", "--output_directory", help=f"Directory where to output files {OUTPUT_INTRON_FILE_NAME}, {OUTPUT_INTRON_ANTISENSE_FILE_NAME}, {OUTPUT_INTERGENIC_FILE_NAME}")
     parser.add_argument("--forward_read_is_sense", help="Set if forward read is sense. Default is False. Strand-specificity is assumed", action="store_const", const=True, default=False)
+    parser.add_argument("--parameters", help="jsonified config parameters", default='{}')
 
     args = parser.parse_args()
 
-    intron_quant = IntronQuantificationStep(args.info_file)
-    intron_quant.execute(args.bam_file, args.output_directory, args.forward_read_is_sense)
+    print("Starting Intron/Intergenic Quantification step")
+    parameters = json.loads(args.parameters)
+    intron_quant = IntronQuantificationStep(args.log_directory_path, args.data_directory_path, parameters=parameters)
+    intron_quant.execute(args.bam_file, args.output_directory, args.info_file)
 
 """
 Example:
