@@ -184,6 +184,14 @@ class Job:
                                 job_status = "FAILED"
                         else:
                             job_status = "FAILED"
+                    elif self.step_name == "IntronQuantificationStep":
+                        # TODO: do proper validation here
+                        from beers.expression.intron_quant import IntronQuantificationStep
+                        status = IntronQuantificationStep.is_output_valid({})
+                        if status:
+                            job_status = "COMPLETED"
+                        else:
+                            job_status = "FAILED"
                     else:
                         raise NotImplementedError()
                 else:
