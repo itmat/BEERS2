@@ -221,8 +221,8 @@ class ExpressionPipeline:
             else:
                 print(f"Computing Intron Quantifications in sample {sample_id}")
                 intron_quant = self.steps["IntronQuantificationStep"]
-                #TODO: the following is wrong:
-                intron_quant.execute(sample, geneinfo_file_path, bam_file)
+                output_directory = os.path.join(intron_quant.data_directory_path, f"sample{sample.sample_id}")
+                intron_quant.execute(bam_file, output_directory, self.annotation_file_path)
 
 
         #TODO: Create a generalized job submitter framework for the steps in
