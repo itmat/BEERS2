@@ -1,7 +1,6 @@
 import collections
 import itertools
 import os
-from copy import copy
 
 import numpy
 import pysam
