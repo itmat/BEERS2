@@ -8,6 +8,11 @@ import math
 from io import StringIO
 from beers.constants import CONSTANTS
 from prettytable import PrettyTable
+#Imports required for main() method.
+import argparse
+import json
+from beers.sample import Sample
+from beers.utilities.expression_utils import ExpressionUtils
 
 
 Read = namedtuple('Read', ['position', 'description'])
@@ -16,7 +21,7 @@ A named tuple that possesses all the attributes of a variant
 type:  match (M), deletion (D), insertion (I)
 chromosome: chrN
 position: position on ref genome
-description: description of the variant (e.g., C, IAA, D5, etc.) 
+description: description of the variant (e.g., C, IAA, D5, etc.)
 """
 
 
@@ -228,7 +233,7 @@ class VariantsFinderStep:
                     loc_on_read += length
         return reads
 
-    def execute(self, sample, chr_ploidy_data, reference_genome, chromosomes = None):
+    def execute(self, sample, alignment_file_path, chr_ploidy_data, reference_genome, chromosomes = None):
         """
         Entry point into variants_finder.  Iterates over the chromosomes in the list provided by the chr_ploidy_data
         keys to pick out variants.  Chromosomes that are not pertainent to the sample's gender are skipped.  If no
@@ -239,8 +244,6 @@ class VariantsFinderStep:
         :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
         debugging purposes.
         """
-        alignment_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}',
-                                           'genome_alignment.bam')
         variants_filename = CONSTANTS.VARIANTS_FILE_NAME
         variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}', variants_filename)
         log_file_path = os.path.join(self.log_directory_path, f'sample{sample.sample_id}', __class__.__name__ + ".log")
@@ -274,7 +277,7 @@ class VariantsFinderStep:
         log_table.add_row(row_totals)
         with open(log_file_path, 'w') as log_file:
             log_file.write(log_table.get_string())
-            log_file.write('\n')
+            log_file.write('\nALL DONE!\n')
 
     def filter_chromosome_list(self, sample, chr_ploidy_data):
         """
@@ -300,6 +303,36 @@ class VariantsFinderStep:
         with open(variants_file_path, 'a') as variants_file:
             for variant in variants:
                 variants_file.write(variant.__str__())
+
+    @staticmethod
+    def main():
+        """
+        Entry point into script. Allows script to be executed/submitted via the
+        command line.
+        """
+
+        parser = argparse.ArgumentParser(description='Command line wrapper around'
+                                                     ' the variant finder')
+        parser.add_argument('--log_directory_path')
+        parser.add_argument('--data_directory_path')
+        parser.add_argument('--config_parameters')
+        parser.add_argument('--sample')
+        parser.add_argument('--bam_filename')
+        parser.add_argument('--chr_ploidy_file_path')
+        parser.add_argument('--reference_genome_file_path')
+        args = parser.parse_args()
+
+        config_parameters = json.loads(args.config_parameters)
+        variants_finder = VariantsFinderStep(args.log_directory_path,
+                                             args.data_directory_path,
+                                             config_parameters)
+        sample = eval(args.sample)
+        reference_genome = ExpressionUtils.create_genome(args.reference_genome_file_path)
+        chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
+        variants_finder.execute(sample,
+                                args.bam_filename,
+                                chr_ploidy_data,
+                                reference_genome)
 
 
 class PositionInfo:
@@ -376,8 +409,11 @@ class PositionInfo:
         filtered_reads = [read for read in self.reads if read[1] > 1]
 
         # If only a single read remains, remove if it matches the reference base - there are no variants
-        if len(filtered_reads) == 1 and filtered_reads[0][0] == reference_base:
-            variants = []
+        if len(filtered_reads) == 1:
+            if filtered_reads[0][0] == reference_base:
+                variants = []
+            else:
+                variants = filtered_reads
 
         # If multiple reads remain, retain only the top 2 reads
         elif len(filtered_reads) > 1:
@@ -439,3 +475,8 @@ class PositionInfo:
         s.write(f"\t{','.join(annotated_abundances)}")
         s.write(f"\tE={self.calculate_entropy()}\n")
         return s.getvalue()
+
+
+
+if __name__ == "__main__":
+    sys.exit(VariantsFinderStep.main())

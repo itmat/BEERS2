@@ -6,7 +6,7 @@ import os
 import sys
 import traceback
 from datetime import datetime
-from beers.constants import CONSTANTS
+from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers.utilities.general_utils import GeneralUtils
 from beers.expression.expression_pipeline import ExpressionPipeline
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
@@ -58,9 +58,22 @@ class Controller:
         if not self.validate_samples():
             raise ControllerValidationException("Sample data is not valid.  Please consult the standard error file"
                                                 "for details.")
+        #TODO: Once a dispatcher is more integrated with the epxpression pipeline,
+        #we may want to move this check elsewhere.
+        dispatcher_mode = ""
+        if not args.dispatcher_mode:
+            if not self.controller_configuration.get('dispatcher_mode', None):
+                raise ControllerValidationException('No dispatcher_mode given either on the command line'
+                                                    ' or in the configuration file')
+            dispatcher_mode = self.controller_configuration['dispatcher_mode']
+        else:
+            dispatcher_mode = args.dispatcher_mode
+        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
+            raise ControllerValidationException(f'{dispatcher_mode} is not a supported mode.\n'
+                                                'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         self.assemble_input_samples()
-        ExpressionPipeline.main(self.configuration['expression_pipeline'], self.resources,
-                                os.path.join(self.output_directory_path, stage_name),
+        ExpressionPipeline.main(self.configuration['expression_pipeline'], dispatcher_mode,
+                                self.resources, os.path.join(self.output_directory_path,stage_name),
                                 self.input_samples)
 
     def run_library_prep_pipeline(self, args):
@@ -214,6 +227,9 @@ class Controller:
                 raise ControllerValidationException('No dispatcher_mode given either on the command line'
                                                     ' or in the configuration file')
             dispatcher_mode = self.controller_configuration['dispatcher_mode']
+        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
+            raise ControllerValidationException(f'{dispatcher_mode} is not a supported mode.\n'
+                                                'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         self.dispatcher = Dispatcher(self.run_id,
                                      dispatcher_mode,
                                      self.seed,
@@ -327,7 +343,7 @@ class Controller:
         valid = True
         input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
         self.input_samples = []
-        for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
+        for input_sample in self.configuration['expression_pipeline']["input"]["data"].values():
             for input_sample_file_path in [os.path.join(input_directory_path, filename)
                                            for filename in input_sample["filenames"]]:
                 if not os.path.exists(input_sample_file_path) or not os.path.isfile(input_sample_file_path):
@@ -364,8 +380,8 @@ class Controller:
         # make the addition to thousands of molecule packets after the fact.
         adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
         AdapterGenerator.generate_adapters(adapter_kit_file_path)
-        for input_sample in self.configuration['expression_pipeline']["input"]["data"]:
-            sample_name = os.path.splitext(input_sample["filenames"][0])[0]
+        for sample_name, input_sample in self.configuration['expression_pipeline']["input"]["data"].items():
+            #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
             input_sample_file_paths = [os.path.join(input_directory_path, filename)
                                        for filename in input_sample["filenames"]]
             gender = input_sample.get("gender", None)

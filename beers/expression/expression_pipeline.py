@@ -1,12 +1,19 @@
 import sys
 import os
 import importlib
-from beers.constants import CONSTANTS
+import time
+from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
+from beers.job_monitor import Monitor
 from beers.utilities.expression_utils import ExpressionUtils
+#To enable export of config parameter dictionaries to command line
+import json
+import subprocess
+import inspect
 
 
 class ExpressionPipeline:
-    def __init__(self, configuration, resources, output_directory_path, input_samples):
+    def __init__(self, configuration, dispatcher_mode, resources, output_directory_path, input_samples):
+        self.dispatcher_mode = dispatcher_mode
         self.samples = input_samples
         self.output_directory_path = output_directory_path
         log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -14,6 +21,9 @@ class ExpressionPipeline:
         self.create_intermediate_data_subdirectories(data_directory_path, log_directory_path)
         self.log_file_path = os.path.join(log_directory_path, "expression_pipeline.log")
         self.steps = {}
+        #Track pathes of scripts for each step. This is needed when running the
+        #steps from the command line, as we do when submitting to lsf.
+        self.__step_paths = {}
         for step in configuration['steps']:
             if "step_name" not in step:
                 raise ExpressionPipelineValidationException("Every step in the configuration must have an associated"
@@ -23,7 +33,8 @@ class ExpressionPipeline:
             module = importlib.import_module(f'.{module_name}', package="beers.expression")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
-        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path =\
+            self.__step_paths[step_name] = inspect.getfile(module)
+        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, resources_index_files_directory_path =\
             self.validate_and_gather_resources(resources)
         if not valid:
             raise ExpressionPipelineValidationException("The resources data is not completely valid."
@@ -32,6 +43,10 @@ class ExpressionPipeline:
         self.chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(chr_ploidy_file_path)
         self.beagle_file_path = beagle_file_path
         self.annotation_file_path = annotation_file_path
+        self.star_file_path = star_file_path
+        self.chr_ploidy_file_path = chr_ploidy_file_path
+        self.reference_genome_file_path = reference_genome_file_path
+        self.resources_index_files_directory_path = resources_index_files_directory_path
 
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
@@ -121,14 +136,32 @@ class ExpressionPipeline:
                     print(f"The beagle file path, {beagle_file_path}, must exist as an executable jar file.",
                           file=sys.stderr)
                     valid = False
-        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path
+
+            star_filenames = [filename for filename in os.listdir(third_party_software_directory_path)
+                                if "STAR" in filename]
+
+            if not star_filenames:
+                print(f"No file is the third party software directory can be identified as the STAR program",
+                      file=sys.stderr)
+                valid = False
+            else:
+                star_file_path = os.path.join(third_party_software_directory_path, star_filenames[0])
+                if not (os.path.exists(star_file_path) and os.path.isfile(star_file_path)):
+                    print(f"The star file path, {star_file_path}, must exist as an executable",
+                          file=sys.stderr)
+                    valid = False
+
+        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, resources_index_files_directory_path
 
     def validate(self):
         valid = True
         reference_genome_chromosomes = self.reference_genome.keys()
         ploidy_chromosomes = set(self.chr_ploidy_data.keys())
         if not ploidy_chromosomes.issubset(reference_genome_chromosomes):
-            print("The chromosome ploidy has chromosomes not found in the reference genome file", file=sys.stderr)
+            missing_chromosomes = ' '.join(chrom for chrom in ploidy_chromosomes.difference(reference_genome_chromosomes))
+            reference_chroms = ' '.join(chrom for chrom in reference_genome_chromosomes.keys())
+            print(f"The chromosome ploidy has chromosomes `{missing_chromosomes}` not found in the reference genome file", file=sys.stderr)
+            print(f"The reference genome has chromosomes {reference_chroms}", file=sys.stderr)
             valid = False
         if not all([step.validate() for step in self.steps.values()]):
             valid = False
@@ -137,15 +170,178 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
+        expression_pipeline_monitor = Monitor(self.output_directory_path, self.dispatcher_mode)
+
+        genome_alignment = self.steps['GenomeAlignmentStep']
+
+        print(f"{self.star_file_path}\t{self.dispatcher_mode}")
+
+        bam_files = {}
         for sample in self.samples:
-            print(f"Processing sample{sample.sample_id} ({sample.sample_name})...")
+            (bam_file, system_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
+                                                             self.star_file_path, self.dispatcher_mode)
+            bam_files[sample.sample_id] = bam_file
+            expression_pipeline_monitor.submit_new_job(f"GenomeAlignment.{sample.sample_id}",
+                                                       sample, 'GenomeAlignmentStep',
+                                                       self.output_directory_path, system_id)
+            #TODO: This is a hack to handle the cases where the bam files were
+            #      already present, or the script was run in serial/multicore mode.
+            #      Need to change this to something more legit.
+            if system_id == "ALREADY_ALIGNED":
+                expression_pipeline_monitor.mark_job_completed(f"GenomeAlignment.{sample.sample_id}")
 
+        for sample in self.samples:
+            expression_pipeline_monitor.submit_new_job(f"GenomeBamIndex.{sample.sample_id}",
+                                                       sample, 'GenomeBamIndexStep',
+                                                       self.output_directory_path, system_id=None,
+                                                       dependency_list=[f"GenomeAlignment.{sample.sample_id}"])
+
+        for sample_id, bam_file in bam_files.items():
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
-            genome_alignment = self.steps['GenomeAlignmentStep']
-            genome_alignment.execute(sample, self.reference_genome)
-
             variants_finder = self.steps['VariantsFinderStep']
-            variants_finder.execute(sample, self.chr_ploidy_data, self.reference_genome)
+            sample = expression_pipeline_monitor.get_sample(sample_id)
+
+            if self.dispatcher_mode == "lsf":
+                expression_pipeline_monitor.submit_new_job(f"VariantsFinder.{sample_id}",
+                                                           sample, 'VariantsFinderStep',
+                                                           self.output_directory_path, system_id=None,
+                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
+            else:
+                print(f"Processing variants in sample {sample_id}...")
+                variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome)
+
+
+        #TODO: Create a generalized job submitter framework for the steps in
+        #      this pipeline. Given a sample object , and the step name, we should
+        #      be able to call a single function which will perform the step-
+        #      specific code to launch each job and return a system id (or
+        #      perhaps even handles queuing to the job monitor itself). This will
+        #      cut down on the code redundancy between the rest of the script and
+        #      the loop below.
+        #Wait here until all of the preceding steps have finished. Submit any
+        #jobs that were waiting on dependencies to complete and resubmit any
+        #failed jobs.
+        print(f'Waiting until all samples finish processing before running Beagle.')
+        while not expression_pipeline_monitor.is_processing_complete():
+            #Check for jobs requiring resubmission
+            resubmission_jobs = expression_pipeline_monitor.resubmission_list.copy()
+            if resubmission_jobs:
+                print(f"Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.")
+                for resub_job_id, resub_job in resubmission_jobs.items():
+                    resub_sample = expression_pipeline_monitor.get_sample(resub_job.sample_id)
+
+                    """
+                    #Generate bam file name from sample info using same rules as the
+                    #execute code from genome_alignment.
+                    bam_filename = os.path.join(genome_alignment.data_directory_path,
+                                                f"sample{resub_sample.sample_id}",
+                                                f"genome_alignment.{genome_alignment.star_bamfile_suffix}")
+                    """
+                    bam_filename = bam_files[resub_job.sample_id]
+
+                    if resub_job.step_name == "GenomeAlignmentStep":
+                        (bam_file, system_id) = genome_alignment.execute(resub_sample,
+                                                                         self.resources_index_files_directory_path,
+                                                                         self.star_file_path, self.dispatcher_mode)
+                    elif resub_job.step_name == "GenomeBamIndexStep":
+                        system_id = genome_alignment.index(resub_sample, bam_filename, self.dispatcher_mode)
+                    elif resub_job.step_name == "VariantsFinderStep":
+                        print(f"Submitting variant finder command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
+                        # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
+                        variants_finder = self.steps['VariantsFinderStep']
+                        variant_finder_path = self.__step_paths['VariantsFinderStep']
+                        stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variants_Finder.bsub.%J.out")
+                        stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variants_Finder.bsub.%J.err")
+
+                        #TODO: Modify code to maintain access to step parameters.
+                        #      Need these parameters to instantiate these objects
+                        #      inside the main methods (like the variant_finder.py
+                        #      script below). If I store this somewhere, it means
+                        #      I won't have to manually recreate it below (which
+                        #      we'll need to update here in the code every time we
+                        #      update the config file).
+
+                        #Recreate parameter dictionary for VariantsFinderStep
+                        variant_finder_params = {}
+                        variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
+                        variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
+
+                        bsub_command = (f"bsub"
+                                        f" -J Variant_Finder.sample{resub_sample.sample_id}_{resub_sample.sample_name}"
+                                        f" -oo {stdout_log}"
+                                        f" -eo {stderr_log}"
+                                        f" python {variant_finder_path}"
+                                        f" --log_directory_path {variants_finder.log_directory_path}"
+                                        f" --data_directory_path {variants_finder.data_directory_path}"
+                                        f" --config_parameters '{json.dumps(variant_finder_params)}'"
+                                        f" --sample '{repr(resub_sample)}'"
+                                        f" --bam_filename {bam_filename}"
+                                        f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
+                                        f" --reference_genome_file_path {self.reference_genome_file_path}")
+
+                        result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
+                        print(f"\t{result.stdout.rstrip()}")
+                        #Extract job ID from LSF stdout
+                        system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+
+                        print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
+                    expression_pipeline_monitor.resubmit_job(resub_job_id, system_id)
+            #Check if pending jobs have satisfied their dependencies
+            pending_jobs = expression_pipeline_monitor.pending_list.copy()
+            if pending_jobs:
+                print(f"Check {len(pending_jobs)} pending jobs for satisfied dependencies:")
+                for pend_job_id, pend_job in pending_jobs.items():
+                    if expression_pipeline_monitor.are_dependencies_satisfied(pend_job_id):
+                        pend_sample = expression_pipeline_monitor.get_sample(pend_job.sample_id)
+                        """
+                        #Generate bam file name from sample info using same rules as the
+                        #execute code from genome_alignment.
+                        bam_filename = os.path.join(genome_alignment.data_directory_path,
+                                                    f"sample{pend_sample.sample_id}",
+                                                    f"genome_alignment.{genome_alignment.star_bamfile_suffix}")
+                        """
+                        bam_filename = bam_files[pend_job.sample_id]
+
+                        if pend_job.step_name == "GenomeAlignmentStep":
+                            (bam_file, system_id) = genome_alignment.execute(pend_sample,
+                                                                             self.resources_index_files_directory_path,
+                                                                             self.star_file_path, self.dispatcher_mode)
+                        elif pend_job.step_name == "GenomeBamIndexStep":
+                            system_id = genome_alignment.index(pend_sample, bam_filename, self.dispatcher_mode)
+                        elif pend_job.step_name == "VariantsFinderStep":
+                            print(f"Submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
+                            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
+                            variants_finder = self.steps['VariantsFinderStep']
+                            variant_finder_path = self.__step_paths['VariantsFinderStep']
+                            stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variants_Finder.bsub.%J.out")
+                            stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variants_Finder.bsub.%J.err")
+
+                            #Recreate parameter dictionary for VariantsFinderStep
+                            variant_finder_params = {}
+                            variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
+                            variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
+
+                            bsub_command = (f"bsub"
+                                            f" -J Variant_Finder.sample{pend_sample.sample_id}_{pend_sample.sample_name}"
+                                            f" -oo {stdout_log}"
+                                            f" -eo {stderr_log}"
+                                            f" python {variant_finder_path}"
+                                            f" --log_directory_path {variants_finder.log_directory_path}"
+                                            f" --data_directory_path {variants_finder.data_directory_path}"
+                                            f" --config_parameters '{json.dumps(variant_finder_params)}'"
+                                            f" --sample '{repr(pend_sample)}'"
+                                            f" --bam_filename {bam_filename}"
+                                            f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
+                                            f" --reference_genome_file_path {self.reference_genome_file_path}")
+
+                            result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
+                            print(f"\t{result.stdout.rstrip()}")
+                            #Extract job ID from LSF stdout
+                            system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+
+                            print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
+                        expression_pipeline_monitor.submit_pending_job(pend_job_id, system_id)
+            time.sleep(60)
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
@@ -179,8 +375,8 @@ class ExpressionPipeline:
         print("Execution of the Expression Pipeline Ended")
 
     @staticmethod
-    def main(configuration, resources, output_directory_path, input_samples):
-        pipeline = ExpressionPipeline(configuration, resources, output_directory_path, input_samples)
+    def main(configuration, dispatcher_mode, resources, output_directory_path, input_samples):
+        pipeline = ExpressionPipeline(configuration, dispatcher_mode, resources, output_directory_path, input_samples)
         if not pipeline.validate():
             raise ExpressionPipelineValidationException("Expression Pipeline Validation Failed.  "
                                               "Consult the standard error file for details.")
