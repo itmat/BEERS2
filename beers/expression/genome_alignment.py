@@ -141,8 +141,7 @@ class GenomeAlignmentStep():
                             f" -J Index_Genome_BAM.sample{sample.sample_id}_{sample.sample_name}"
                             f" -oo {stdout_log}"
                             f" -eo {stderr_log}"
-                            f" 'python -m beers.expression.run_pysam_index {bam_file}; "
-                            + copy_command)
+                            f" 'python -m beers.expression.run_pysam_index {bam_file}; {copy_command}'")
             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
 
             #Extract job ID from LSF stdout
