@@ -21,3 +21,5 @@ subject to change by the user.
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONSTANTS = Constants(ROOT_DIR, "variants.txt", "beagle.vcf.vcf.gz", "male", "female",
                       "audit.txt", 100, 'data', 'logs', 'stdout', 'stderr', [1, 2])
+
+SUPPORTED_DISPATCHER_MODES = ['multicore', 'lsf', 'serial']

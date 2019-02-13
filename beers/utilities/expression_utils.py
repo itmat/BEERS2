@@ -61,7 +61,7 @@ class ExpressionUtils:
                     if not chr_match:
                         raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
                     chr = chr_match.group(1)
-                    genome[chr] = seq.decode("ascii").rstrip()
+                    genome[chr] = seq.decode("ascii").rstrip().upper()
         else:
             with open(genome_file_path, 'r') as reference_genome_file:
                 with open(genome_file_path, 'r') as genome_file:
@@ -70,7 +70,7 @@ class ExpressionUtils:
                         if not chr_match:
                             raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
                         chr = chr_match.group(1)
-                        genome[chr] = seq.rstrip()
+                        genome[chr] = seq.rstrip().upper()
         return genome
 
     @staticmethod

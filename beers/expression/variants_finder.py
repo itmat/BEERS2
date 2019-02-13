@@ -8,6 +8,11 @@ import math
 from io import StringIO
 from beers.constants import CONSTANTS
 from prettytable import PrettyTable
+#Imports required for main() method.
+import argparse
+import json
+from beers.sample import Sample
+from beers.utilities.expression_utils import ExpressionUtils
 
 
 Read = namedtuple('Read', ['position', 'description'])
@@ -16,7 +21,7 @@ A named tuple that possesses all the attributes of a variant
 type:  match (M), deletion (D), insertion (I)
 chromosome: chrN
 position: position on ref genome
-description: description of the variant (e.g., C, IAA, D5, etc.) 
+description: description of the variant (e.g., C, IAA, D5, etc.)
 """
 
 
@@ -160,9 +165,9 @@ class VariantsFinderStep:
             if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
                 continue
 
-            # Alignment Seqment reference_start is zero-based - so adding 1 to conform to convention.
+            # Alignment Segment reference_start is zero-based - so adding 1 to conform to convention.
             start = line.reference_start + 1
-            sequence = line.query_sequence
+            sequence = line.query_sequence.upper()
             cigar = line.cigarstring
             cigar, sequence = self.remove_clips(cigar, sequence)
             current_pos_in_genome = int(start)
@@ -196,8 +201,11 @@ class VariantsFinderStep:
                     stop = current_pos_in_genome + length
                     while current_pos_in_genome < stop:
                         location = current_pos_in_genome
-                        key = Read(location, sequence[loc_on_read - 1])
-                        reads[key] = reads.get(key, 0) + 1
+                        # Skip any read that contains an N or n in the sequence base
+                        base = sequence[loc_on_read - 1]
+                        if 'N' not in base:
+                            key = Read(location, base)
+                            reads[key] = reads.get(key, 0) + 1
                         loc_on_read += 1
                         current_pos_in_genome += 1
                     continue
@@ -218,8 +226,10 @@ class VariantsFinderStep:
                 if read_type == "I":
                     location = current_pos_in_genome
                     insertion_sequence = sequence[loc_on_read - 1: loc_on_read - 1 + length]
-                    key = Read(location, f'I{insertion_sequence}')
-                    reads[key] = reads.get(key, 0) + 1
+                    # Skip any read that contains an N or n in the insertion sequence
+                    if 'N' not in insertion_sequence:
+                        key = Read(location, f'I{insertion_sequence}')
+                        reads[key] = reads.get(key, 0) + 1
                     loc_on_read += length
         return reads
 
@@ -267,7 +277,7 @@ class VariantsFinderStep:
         log_table.add_row(row_totals)
         with open(log_file_path, 'w') as log_file:
             log_file.write(log_table.get_string())
-            log_file.write('\n')
+            log_file.write('\nALL DONE!\n')
 
     def filter_chromosome_list(self, sample, chr_ploidy_data):
         """
@@ -294,6 +304,36 @@ class VariantsFinderStep:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
+    @staticmethod
+    def main():
+        """
+        Entry point into script. Allows script to be executed/submitted via the
+        command line.
+        """
+
+        parser = argparse.ArgumentParser(description='Command line wrapper around'
+                                                     ' the variant finder')
+        parser.add_argument('--log_directory_path')
+        parser.add_argument('--data_directory_path')
+        parser.add_argument('--config_parameters')
+        parser.add_argument('--sample')
+        parser.add_argument('--bam_filename')
+        parser.add_argument('--chr_ploidy_file_path')
+        parser.add_argument('--reference_genome_file_path')
+        args = parser.parse_args()
+
+        config_parameters = json.loads(args.config_parameters)
+        variants_finder = VariantsFinderStep(args.log_directory_path,
+                                             args.data_directory_path,
+                                             config_parameters)
+        sample = eval(args.sample)
+        reference_genome = ExpressionUtils.create_genome(args.reference_genome_file_path)
+        chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
+        variants_finder.execute(sample,
+                                args.bam_filename,
+                                chr_ploidy_data,
+                                reference_genome)
+
 
 class PositionInfo:
     """
@@ -306,6 +346,7 @@ class PositionInfo:
         self.chromosome = chromosome
         self.position = position
         self.reads = []
+        self.reference_base = None
         self.contains_reference_base = None
 
     def add_read(self, description, read_count):
@@ -359,6 +400,8 @@ class PositionInfo:
         :param min_abundance_threshold:  criterion for minimum abundance threshold
         :param reference_base:  the base of the reference genome at this position.
         """
+
+        self.reference_base = reference_base
 
         variants = []
 
@@ -423,6 +466,17 @@ class PositionInfo:
         for read in self.reads:
             s.write(f' | {read[0]}:{read[1]}')
         s.write(f"\tTOT={self.get_total_reads()}")
-        s.write(f"\t{','.join(abundances)}")
+        annotated_abundances = []
+        for read, abundance in zip(self.reads, abundances):
+            if  read[0] == self.reference_base:
+                annotated_abundances.append(f'r{abundance}')
+            else:
+                annotated_abundances.append(abundance)
+        s.write(f"\t{','.join(annotated_abundances)}")
         s.write(f"\tE={self.calculate_entropy()}\n")
         return s.getvalue()
+
+
+
+if __name__ == "__main__":
+    sys.exit(VariantsFinderStep.main())
