@@ -1,6 +1,7 @@
 import collections
 import itertools
 import os
+import argparse
 
 import numpy
 import pysam
@@ -710,8 +711,18 @@ class AnnotationInfo:
 
 
 if __name__ == '__main__':
-    geneinfo_file_name = "/Users/tgbrooks/BEERS2.0/data/baby_genome.mm9/annotations"
-    bamfile = "/Users/tgbrooks/BEERS2.0/data/baby_sample1.bam"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--bam_file", help="BAM or SAM file of strand-specific genomic alignment")
+    parser.add_argument("-i", "--info_file", help="Geneinfo file in BED format with 1-based, inclusive coordinates")
+    parser.add_argument("-o", "--output_directory", help=f"Directory where to output files {OUTPUT_INTRON_FILE_NAME}, {OUTPUT_INTRON_ANTISENSE_FILE_NAME}, {OUTPUT_INTERGENIC_FILE_NAME}")
+    parser.add_argument("--forward_read_is_sense", help="Set if forward read is sense. Default is False. Strand-specificity is assumed", action="store_const", const=True, default=False)
 
-    intron_quant = IntronQuantificationStep(geneinfo_file_name)
-    intron_quant.execute(bamfile, "", forward_read_is_sense = False)
+    args = parser.parse_args()
+
+    intron_quant = IntronQuantificationStep(args.info_file)
+    intron_quant.execute(args.bam_file, args.output_directory, args.forward_read_is_sense)
+
+"""
+Example:
+python intron_quant.py -b "/Users/tgbrooks/BEERS2.0/data/baby_sample1.bam" -i "/Users/tgbrooks/BEERS2.0/data/baby_genome.mm9/annotations" -o .
+"""
