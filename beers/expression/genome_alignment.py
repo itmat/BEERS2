@@ -129,12 +129,20 @@ class GenomeAlignmentStep():
             stdout_log = os.path.join(self.log_directory_path, f"sample{sample.sample_id}", "Index_Genome_BAM.bsub.%J.out")
             stderr_log = os.path.join(self.log_directory_path, f"sample{sample.sample_id}", "Index_Genome_BAM.bsub.%J.err")
 
+            # TODO: no need to copy this file at all, except that we are currently using it's {out_file_path}
+            #       to determine if the job was successful. In the future, we should check it anywhere and not need a copy
+            if f"{bam_file}.bai" != out_file_path:
+                # Need to copy the output file to the expected location
+                # for the case the reads were already aligned (a bam file given in the config)
+                copy_command = f"cp -p {bam_file}.bai {out_file_path}"
+            else:
+                copy_command = '' # no need to copy, it's already the right file
             bsub_command = (f"bsub"
                             f" -J Index_Genome_BAM.sample{sample.sample_id}_{sample.sample_name}"
                             f" -oo {stdout_log}"
                             f" -eo {stderr_log}"
                             f" 'python -m beers.expression.run_pysam_index {bam_file}; "
-                            f" cp -p {bam_file}.bai {out_file_path}'")
+                            + copy_command)
             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
 
             #Extract job ID from LSF stdout
