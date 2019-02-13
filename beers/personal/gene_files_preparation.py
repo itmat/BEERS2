@@ -14,7 +14,8 @@ class GeneFilesPreparation:
     def __init__(self,
                  genome_fasta_filename,
                  geneinfo_filename,
-                 genes_fasta_filename):
+                 genes_fasta_filename,
+                 gene_postfix=''):
         """
         The object is constructed with 2 input file sources (genome fasta, gene info) and 1 output file
         source (relevant gene info, genes fasta).  Additionally another output file, named like the genome
@@ -31,6 +32,8 @@ class GeneFilesPreparation:
         self.geneinfo_filename = geneinfo_filename
         self.geneinfo_edited_filename = os.path.splitext(geneinfo_filename)[0] + "_edited.txt"
         self.genes_fasta_filename = genes_fasta_filename
+
+        self.gene_postfix = gene_postfix
 
         # Holds unique listing of exon locations
         self.exon_location_list = set()
@@ -143,9 +146,11 @@ class GeneFilesPreparation:
 
             # Iterate over each line in the file
             for line in geneinfo_file:
+                if line.startswith("#"): #Comment line
+                    continue
 
                 # Collect all the field values for the line read following newline removal.
-                (chromosome, strand, start, end, exon_count, exon_starts, exon_ends, name) = \
+                (chromosome, strand, start, end, exon_count, exon_starts, exon_ends, name, *other) = \
                     line.rstrip('\n').split('\t')
 
                 # Remove any trailing commas in the exon starts and exon ends fields and split
@@ -240,8 +245,11 @@ class GeneFilesPreparation:
                 # Iterate over the gene info file
                 for line in geneinfo_file:
 
+                    if line.startswith("#"): # Comment line
+                        continue
+
                     # Collect all the field values for the line read following newline removal.
-                    (chromosome, strand, start, end, exon_count, exon_starts, exon_ends, name) =\
+                    (chromosome, strand, start, end, exon_count, exon_starts, exon_ends, name, *other) =\
                         line.rstrip('\n').split('\t')
 
                     # Remove trailing commas in the exon starts and exon ends fields and split
@@ -270,6 +278,8 @@ class GeneFilesPreparation:
                         # TODO determine if this substitution is still needed.
                         gene_name = re.sub(r'\([^(]+$', '', gene_name)
 
+                        gene_name = gene_name + self.gene_postfix
+
                         # Write the 1st line of the fasta entry - gene location string
                         genes_fasta_file.write(f'>{gene_name}:{chromosome}:{start}-{end}_{strand}\n')
 
@@ -286,11 +296,13 @@ class GeneFilesPreparation:
         parser.add_argument('-f', '--genome_fasta_filename')
         parser.add_argument('-i', '--geneinfo_filename')
         parser.add_argument('-g', '--genes_fasta_filename')
+        parser.add_argument('-p', '--gene_postfix', default='')
 
         args = parser.parse_args()
         file_prep = GeneFilesPreparation(args.genome_fasta_filename,
                                          args.geneinfo_filename,
-                                         args.genes_fasta_filename)
+                                         args.genes_fasta_filename,
+                                         args.gene_postfix)
         file_prep.prepare_gene_files()
 
 
