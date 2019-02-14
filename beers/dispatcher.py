@@ -76,7 +76,7 @@ class Dispatcher:
         :return: The absolute file paths to the input packets
         """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        stage_process = f"./run_{self.stage_name}.py"
+        stage_process = f"{CONSTANTS.ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
             command = f"{stage_process} " \
                       f"-s {self.seed} " \
@@ -109,7 +109,7 @@ class Dispatcher:
         :param packet_file_paths:  The absolute file paths to the input packets
         """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        stage_process = f"./run_{self.stage_name}.py"
+        stage_process = f"{CONSTANTS.ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
             stdout_file_path, stderr_file_path, packet_id = self.get_stdout_and_stderr_subdirectories(packet_file_path)
             command = f"bsub -o {stdout_file_path} -e {stderr_file_path} " \
