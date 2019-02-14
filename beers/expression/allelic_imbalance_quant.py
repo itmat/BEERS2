@@ -5,10 +5,11 @@ import os
 import collections
 
 
+OUTPUT_ALLELIC_IMBALANCE_FILE_NAME = "allelic_imbalance_quantifications.txt"
+
 class AllelicImbalanceQuantificationStep:
     """
-    This class contains scripts to output quantification of transcripts from genomic features such as
-    transcript, gene, intronic region, intergenic region.
+    This class contains scripts to output quantification of allelic imbalance
     """
 
     def __init__(self,
@@ -16,8 +17,8 @@ class AllelicImbalanceQuantificationStep:
                 aligned_filename_root,
                 output_directory):
         """
-        The object is constructed with 
-        (i) an input file source for gene info 
+        The object is constructed with
+        (i) an input file source for gene info
         (ii) Root of the aligned filenames (alignment to transcriptome of each parent with suffixes '_1','_2'.)
         There is one output file with quantification information on the allelic imbalance of genes.
 
@@ -42,7 +43,7 @@ class AllelicImbalanceQuantificationStep:
 
 
         # Create allelic imbalance distribution file and ensure that it doesn't currently exist
-        self.allele_imbalance_dist_filename = os.path.join(output_directory, aligned_file_root + '_allele_imbalance_dist.txt')
+        self.allele_imbalance_dist_filename = os.path.join(output_directory, OUTPUT_ALLELIC_IMBALANCE_FILE_NAME)
         try:
             os.remove(self.allele_imbalance_dist_filename)
         except OSError:
@@ -58,7 +59,7 @@ class AllelicImbalanceQuantificationStep:
 
     def create_transcript_gene_map(self):
         """
-        Create dictionary to map transcript id to gene id using geneinfo file 
+        Create dictionary to map transcript id to gene id using geneinfo file
         Map '*' to '*' to account for unmapped reads in aligned_file
         Create entries with suffix '_1' and '_2' for each transcript
         """
@@ -73,7 +74,7 @@ class AllelicImbalanceQuantificationStep:
 
 
     def read_info(self, in_aligned_filename):
-        """ 
+        """
         Create dictionary which maps a read id in SAM file to a dictionary with two keys 'transcript_id' and 'nM'.
         The value associated with 'transcript_id' is a list of all transcripts the read aligned to.
         The value associated with 'nM' is the corresponding edit distance information for each alignment.
@@ -81,7 +82,7 @@ class AllelicImbalanceQuantificationStep:
         """
 
         read_info_map = collections.defaultdict(dict)
-      
+
         # The NH tag in the SAM file tells us how many locations this read is aligned to.
         # This pattern extracts that number.
         num_hits_pattern = re.compile('(NH:i:)(\d+)')
@@ -96,7 +97,7 @@ class AllelicImbalanceQuantificationStep:
                     continue
 
 
-                # read forward and reverse read 
+                # read forward and reverse read
                 forward = line
                 reverse = next(infile)
 
@@ -105,7 +106,7 @@ class AllelicImbalanceQuantificationStep:
 
                 # Parse the fields for the reverse read into an array
                 rev_fields = reverse.rstrip('\n').split('\t')
-                
+
                 # Obtain the number of hits from the NH tag
                 num_hits_match = re.search(num_hits_pattern, forward)
                 num_hits = int(num_hits_match.group(2))
@@ -119,7 +120,7 @@ class AllelicImbalanceQuantificationStep:
                     read_info_map[fwd_fields[0]]['transcript_id'] = [ '*' ]
                     read_info_map[fwd_fields[0]]['nM'] = [ 200 ]
                     continue
-                # Get transcript_id for mapped reads 
+                # Get transcript_id for mapped reads
                 elif fwd_transcript_id == rev_transcript_id:
                     transcript_id = fwd_transcript_id
                 else:
@@ -130,7 +131,7 @@ class AllelicImbalanceQuantificationStep:
                 #  but just in case.
                 if not self.transcript_gene_map.get(transcript_id):
                     continue
-                
+
                 # Obtain the edit distance information for the forward read
                 fwd_nM_match = re.search(num_mismatches_pattern, forward)
                 fwd_nM_count = int(fwd_nM_match.group(2))
@@ -162,7 +163,7 @@ class AllelicImbalanceQuantificationStep:
                     fwd_fields = forward.rstrip('\n').split('\t')
                     rev_fields = reverse.rstrip('\n').split('\t')
 
-                    
+
                     multiple_hit_transcript_id = fwd_fields[2].split(':')[0]
 
                     # Obtain edit distance information for forward read
@@ -198,7 +199,7 @@ class AllelicImbalanceQuantificationStep:
         read_ids = [ i for i in read_info_1.keys() ]
 
         for read in read_ids:
-            # Transcripts to which the read mapped for each parent 
+            # Transcripts to which the read mapped for each parent
             transcript_1 = read_info_1[read]['transcript_id']
             transcript_2 = read_info_2[read]['transcript_id']
 
@@ -207,23 +208,23 @@ class AllelicImbalanceQuantificationStep:
                 continue
             # The read mapped to atleast one transcript in each parent
             elif set(transcript_1) != {'*'} and set(transcript_2) != {'*'}:
-                # Get the genes in parent 1 to which the read mapped  
+                # Get the genes in parent 1 to which the read mapped
                 gene_1 = [ self.transcript_gene_map[i] for i in transcript_1 ]
                 nM_count_1 = read_info_1[read]['nM']
 
-                # Get the genes in parent 2 to which the read mapped  
-                gene_2 = [ self.transcript_gene_map[i] for i in transcript_2 ] 
+                # Get the genes in parent 2 to which the read mapped
+                gene_2 = [ self.transcript_gene_map[i] for i in transcript_2 ]
                 nM_count_2 = read_info_2[read]['nM']
-                   
+
                 # Amongst the genes to which the read mapped,
-                # there is exactly one gene in common between parent 1 and 2.               
+                # there is exactly one gene in common between parent 1 and 2.
                 if len(set(gene_1) & set(gene_2)) == 1:
-                    # Find the edit distance of alignments to that gene in parent 1 
+                    # Find the edit distance of alignments to that gene in parent 1
                     gene_id = list(set(gene_1) & set(gene_2))[0]
                     indices_1 = [i for i, x in enumerate(gene_1) if x == gene_id ]
                     min_nM_1 = min([nM_count_1[i] for i in indices_1 ])
 
-                    # Find the edit distance of alignments to that gene in parent 2 
+                    # Find the edit distance of alignments to that gene in parent 2
                     indices_2 = [i for i, x in enumerate(gene_2) if x == gene_id ]
                     min_nM_2 = min([nM_count_2[i] for i in indices_2 ])
 
@@ -233,11 +234,11 @@ class AllelicImbalanceQuantificationStep:
                         self.gene_final_count[gene_id]['1'] += 0.5
                         self.gene_final_count[gene_id]['2'] += 0.5
                     # Minimum edit distance for the mapping to the gene is less in parent 1.
-                    # So increment count of allele of gene corresponding to parent 1. 
+                    # So increment count of allele of gene corresponding to parent 1.
                     elif min_nM_1 < min_nM_2:
                         self.gene_final_count[gene_id]['1'] += 1
                     # Minimum edit distance for the mapping to the gene is less in parent 2.
-                    # So increment count of allele of gene corresponding to parent 2. 
+                    # So increment count of allele of gene corresponding to parent 2.
                     else:
                         self.gene_final_count[gene_id]['2'] += 1
             # The read is a non-mapper for the parent 1 transcriptome
@@ -248,7 +249,7 @@ class AllelicImbalanceQuantificationStep:
             elif set(transcript_2) == {'*'}:
                 if len(set(gene_1)) == 1:
                     self.gene_final_count[gene_1[0]]['1'] += 1
-                    
+
         self.gene_final_count = collections.OrderedDict(sorted(self.gene_final_count.items()))
 
 
@@ -270,7 +271,10 @@ class AllelicImbalanceQuantificationStep:
 
 
 
-
+    @staticmethod
+    def is_output_valid(job_arguments):
+        # TODO
+        return True
 
     @staticmethod
     def main():

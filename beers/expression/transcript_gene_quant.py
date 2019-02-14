@@ -5,10 +5,12 @@ import os
 import collections
 
 
+OUTPUT_TRANSCRIPT_FILE_NAME = "transcript_quantifications.txt"
+OUTPUT_GENE_FILE_NAME = "gene_quantifications.txt"
+
 class TranscriptGeneQuantificationStep:
     """
-    This class contains scripts to output quantification of transcripts from genomic features such as
-    transcript, gene, intronic region, intergenic region.
+    This class contains scripts to output quantification of transcripts and genes.
     """
 
     def __init__(self,
@@ -41,14 +43,14 @@ class TranscriptGeneQuantificationStep:
         aligned_file = os.path.basename(aligned_filename)
 
         # Create transcript distribution file and ensure that it doesn't currently exist
-        self.transcript_dist_filename = os.path.join(output_directory, aligned_file.split('.')[0] + '_transcript_dist.txt')
+        self.transcript_dist_filename = os.path.join(output_directory, OUTPUT_TRANSCRIPT_FILE_NAME)
         try:
             os.remove(self.transcript_dist_filename)
         except OSError:
             pass
 
         # Create gene distribution file and ensure that it doesn't currently exist
-        self.gene_dist_filename = os.path.join(output_directory, aligned_file.split('.')[0] + '_gene_dist.txt')
+        self.gene_dist_filename = os.path.join(output_directory, OUTPUT_GENE_FILE_NAME)
         try:
             os.remove(self.gene_dist_filename)
         except OSError:
@@ -66,10 +68,10 @@ class TranscriptGeneQuantificationStep:
 
 
     def create_transcript_gene_map(self):
-        # Create dictionary to map transcript id to gene id using geneinfo file 
+        # Create dictionary to map transcript id to gene id using geneinfo file
         # Map '*' to '*' to account for unmapped reads in aligned_file
         # Create entries with suffix '_1' and '_2' for each transcript
-        
+
         self.transcript_gene_map['*'] = '*'
 
         with open(self.geneinfo_filename, 'r') as geneinfo_file:
@@ -287,6 +289,11 @@ class TranscriptGeneQuantificationStep:
             for key, value in gene_count.items():
                 gene_dist_file.write(str(key) + '\t' + str(round(value,3)) + '\n')
 
+
+    @staticmethod
+    def is_output_valid(job_arguments):
+        # TODO
+        return True
 
 
     @staticmethod
