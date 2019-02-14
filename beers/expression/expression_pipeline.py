@@ -10,6 +10,8 @@ import json
 import subprocess
 import inspect
 
+import beers.expression.transcriptomes as transcriptomes
+
 
 class ExpressionPipeline:
     def __init__(self, configuration, dispatcher_mode, resources, output_directory_path, input_samples):
@@ -18,6 +20,8 @@ class ExpressionPipeline:
         self.output_directory_path = output_directory_path
         log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
         data_directory_path = os.path.join(output_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
+        self.data_directory_path = data_directory_path
+        self.log_directory_path = log_directory_path
         self.create_intermediate_data_subdirectories(data_directory_path, log_directory_path)
         self.log_file_path = os.path.join(log_directory_path, "expression_pipeline.log")
         self.steps = {}
@@ -439,6 +443,8 @@ class ExpressionPipeline:
 
                 annotation_updater = self.steps['UpdateAnnotationForGenomeStep']
                 annotation_updater.execute(sample, suffix, self.annotation_file_path)
+
+        transcriptomes.prep_transcriptomes(self.samples, self.data_directory_path, self.log_directory_path, self.star_file_path, self.dispatcher_mode)
 
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
