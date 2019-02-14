@@ -5,7 +5,7 @@ import os
 import collections
 
 
-class Quantify:
+class TranscriptGeneQuantificationStep:
     """
     This class contains scripts to output quantification of transcripts from genomic features such as
     transcript, gene, intronic region, intergenic region.
@@ -54,19 +54,6 @@ class Quantify:
         except OSError:
             pass
 
-        # Create intronic region distribution file and ensure that it doesn't currently exist
-        self.intron_dist_filename =  os.path.join(output_directory, aligned_file.split('.')[0] + '_intron_dist.txt')
-        try:
-            os.remove(self.intron_dist_filename)
-        except OSError:
-            pass
-
-        # Create intergenic region distribution file and ensure that it doesn't currently exist
-        self.intergenic_dist_filename =  os.path.join(output_directory, aligned_file.split('.')[0] + '_intergenic_dist.txt')
-        try:
-            os.remove(self.intergenic_dist_filename)
-        except OSError:
-            pass
 
         # Dictionaries to keep track of length of transcript, number of uniquely mapped reads to transcript,
         # and final count of reads mapped to transcript
@@ -75,6 +62,22 @@ class Quantify:
         self.transcript_length_map = collections.defaultdict(int)
         self.transcript_umap_count = collections.defaultdict(int)
         self.transcript_final_count = collections.defaultdict(int)
+        self.transcript_gene_map = collections.defaultdict(str)
+
+
+    def create_transcript_gene_map(self):
+        # Create dictionary to map transcript id to gene id using geneinfo file 
+        # Map '*' to '*' to account for unmapped reads in aligned_file
+        # Create entries with suffix '_1' and '_2' for each transcript
+        
+        self.transcript_gene_map['*'] = '*'
+
+        with open(self.geneinfo_filename, 'r') as geneinfo_file:
+            next(geneinfo_file)
+            for line in geneinfo_file:
+                fields = line.strip('\n').split('\t')
+                self.transcript_gene_map[fields[7]] = fields[8]
+
 
 
 
@@ -139,7 +142,7 @@ class Quantify:
                     self.transcript_umap_count[transcript_id] += 1
 
 
-    def quantify(self):
+    def quantify_transcript(self):
         # The NH tag in the reads file (SAM file) tells us how many locations this read is aligned to.  This
         # pattern extracts that number.
         num_hits_pattern = re.compile('(NH:i:)(\d+)')
@@ -299,15 +302,15 @@ class Quantify:
         parser.add_argument('-o', '--output_directory')
         args = parser.parse_args()
 
-        features_quant = Quantify(args.geneinfo_filename, args.aligned_filename, args.output_directory)
-        features_quant.quantify()
+        features_quant = TranscriptGeneQuantificationStep(args.geneinfo_filename, args.aligned_filename, args.output_directory)
+        features_quant.quantify_transcript()
         features_quant.make_transcript_dist_file()
         features_quant.make_gene_dist_file()
 
 
 
 if __name__ == "__main__":
-    sys.exit(Quantify.main())
+    sys.exit(TrnascriptGeneQuantificationStep.main())
 
 # Example command
 # python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_Aligned'
