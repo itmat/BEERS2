@@ -317,7 +317,7 @@ class TranscriptGeneQuantificationStep:
 
 
 if __name__ == "__main__":
-    sys.exit(TrnascriptGeneQuantificationStep.main())
+    sys.exit(TranscriptGeneQuantificationStep.main())
 
 # Example command
 # python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_Aligned'
