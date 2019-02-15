@@ -291,7 +291,7 @@ class TranscriptGeneQuantificationStep:
                 gene_dist_file.write(str(key) + '\t' + str(round(value,3)) + '\n')
 
         # Create dictionary with key gene_id and values isoforms and their psi values
-        for transcript_id in transcript_final_count.keys():
+        for transcript_id in self.transcript_final_count.keys():
             gene_id = self.transcript_gene_map[transcript_id]
             self.psi_value_map[gene_id].append(transcript_id + ':' \
                  + str(self.transcript_final_count[transcript_id]/self.gene_count[gene_id]))
