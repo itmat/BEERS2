@@ -142,7 +142,7 @@ class Monitor:
                                    'jobs. To move a job from the pending to the running list, use\n',
                                    'the submit_pending_job() function\n')
         else:
-            if system_id:
+            if system_id is not None:
                 self.running_list[job_id] = submitted_job
             else:
                 self.pending_list[job_id] = submitted_job
