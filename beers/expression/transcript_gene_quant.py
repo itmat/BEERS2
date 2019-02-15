@@ -265,6 +265,7 @@ class TranscriptGeneQuantificationStep:
     def make_transcript_dist_file(self):
         # Write the transcript quantification information to transcript quant filename
         with open(self.transcript_dist_filename, 'w') as transcript_dist_file:
+            transcript_dist_file.write('transcript_id' + '\t' + 'cnt' + '\n')
             for key, value in self.transcript_final_count.items():
                 transcript_dist_file.write(str(key) + '\t' + str(round(value, 3)) + '\n')
 
@@ -286,6 +287,7 @@ class TranscriptGeneQuantificationStep:
         gene_count = collections.OrderedDict(sorted(gene_count.items()))
         # Write gene quantification information to gene quant filename
         with open(self.gene_dist_filename, 'w') as gene_dist_file:
+            gene_dist_file.write('gene_id' + '\t' + 'cnt' + '\n')
             for key, value in gene_count.items():
                 gene_dist_file.write(str(key) + '\t' + str(round(value,3)) + '\n')
 
