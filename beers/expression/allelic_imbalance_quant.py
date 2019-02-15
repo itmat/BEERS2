@@ -300,4 +300,4 @@ if __name__ == "__main__":
     sys.exit(AllelicImbalanceQuantificationStep.main())
 
 # Example command
-# python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_Aligned'
+# python allelic_imbalance_quant.py -g 'geneinfo_file.txt' -r 'Aligned.out' -o 'sampleA'

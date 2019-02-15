@@ -320,4 +320,4 @@ if __name__ == "__main__":
     sys.exit(TranscriptGeneQuantificationStep.main())
 
 # Example command
-# python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_Aligned'
+# python transcript_gene_quant.py -g 'geneinfo_file.txt' -r 'Aligned.out.sam' -o 'sampleA'
