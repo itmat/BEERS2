@@ -334,6 +334,44 @@ class VariantsFinderStep:
                                 chr_ploidy_data,
                                 reference_genome)
 
+    @staticmethod
+    def is_output_valid(job_attributes):
+        """
+        Check if output of VariantsFinder for a specific job/execution is
+        correctly formed and valid, given a job's data directory, log directory,
+        and sample id.
+
+        Parameters
+        ----------
+        job_attributes : dict
+            A job's data_directory, log_directory, and sample_id.
+
+        Returns
+        -------
+        boolean
+            True  - VariantsFinder output files were created and are well formed.
+            False - VariantsFinder output files do not exist or are missing data.
+        """
+        data_directory = job_attributes['data_directory']
+        log_directory = job_attributes['log_directory']
+        sample_id = job_attributes['sample_id']
+
+        valid_output = False
+
+        variants_outfile_path = os.path.join(data_directory, f"sample{sample_id}", "variants.txt")
+        variants_logfile_path = os.path.join(log_directory, f"sample{sample_id}", "VariantsFinderStep.log")
+        if os.path.isfile(variants_outfile_path) and \
+           os.path.isfile(variants_logfile_path):
+            #Read last line in variants_finder log file
+            line = ""
+            with open(variants_logfile_path, "r") as variants_log_file:
+                for line in variants_log_file:
+                    line = line.rstrip()
+            if line == "ALL DONE!":
+                valid_output = True
+
+        return valid_output
+
 
 class PositionInfo:
     """

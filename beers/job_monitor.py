@@ -90,8 +90,8 @@ class Monitor:
         #in the process list rollowing resubmission.
         del self.running_list[job_id]
 
-    def submit_new_job(self, job_id, sample, step_name, output_directory_path,
-                       system_id=None, dependency_list=None):
+    def submit_new_job(self, job_id, sample, step_name, job_attributes,
+                       output_directory_path, system_id=None, dependency_list=None):
         """
         Create a Job given the list of job attributes and add it to the running
         list if it has a system_id. If it has no system_id or has dependencies,
@@ -106,6 +106,10 @@ class Monitor:
             of samples stored in the Monitor if it's not already there.
         step_name : string
             Name of the step in the pipeline associated with monitored job.
+        job_attributes : dict
+            Dictionary of attribute names and values specific to the job and this
+            step. This stores information the various is_output_valid() methods
+            need to find and test output files / parameters.
         output_directory_path : string
             Path to data directory where job/process output is being stored.
         system_id : string
@@ -120,7 +124,7 @@ class Monitor:
             job will wait until all those on the dependency list have completed).
             If the job has no dependencies, this should be "None" or empty.
         """
-        submitted_job = Job(job_id, sample.sample_id, step_name,
+        submitted_job = Job(job_id, sample.sample_id, step_name, job_attributes,
                             output_directory_path, self.dispatcher_mode,
                             system_id, dependency_list)
         #TODO: Condsider whether to add a check to see if both a system_id and
