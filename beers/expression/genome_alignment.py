@@ -149,5 +149,7 @@ class GenomeAlignmentStep():
             print(f"\t{result.stdout.rstrip()}")
 
             print(f"Finished submitting BAM index command to {mode} for sample {sample.sample_name}.")
+        else:
+            raise NotImplementedError("dispatcher mode must be serial, parallel, or lsf")
 
         return job_id

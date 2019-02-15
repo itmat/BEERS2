@@ -188,17 +188,22 @@ class ExpressionPipeline:
             expression_pipeline_monitor.submit_new_job(f"GenomeAlignment.{sample.sample_id}",
                                                        sample, 'GenomeAlignmentStep',
                                                        self.output_directory_path, system_id)
-            #TODO: This is a hack to handle the cases where the bam files were
-            #      already present, or the script was run in serial/multicore mode.
-            #      Need to change this to something more legit.
-            if system_id == "ALREADY_ALIGNED":
+                #TODO: This is a hack to handle the cases where the bam files were
+                #      already present, or the script was run in serial/multicore mode.
+                #      Need to change this to something more legit.
+            if system_id == "ALREADY_ALIGNED" or self.dispatcher_mode != "lsf":
                 expression_pipeline_monitor.mark_job_completed(f"GenomeAlignment.{sample.sample_id}")
 
         for sample in self.samples:
-            expression_pipeline_monitor.submit_new_job(f"GenomeBamIndex.{sample.sample_id}",
-                                                       sample, 'GenomeBamIndexStep',
-                                                       self.output_directory_path, system_id=None,
-                                                       dependency_list=[f"GenomeAlignment.{sample.sample_id}"])
+            if self.dispatcher_mode == "lsf":
+                expression_pipeline_monitor.submit_new_job(f"GenomeBamIndex.{sample.sample_id}",
+                                                           sample, 'GenomeBamIndexStep',
+                                                           self.output_directory_path, system_id=None,
+                                                           dependency_list=[f"GenomeAlignment.{sample.sample_id}"])
+            else:
+                print(f"Running Bam Index creating in sample {sample.sample_id}")
+                bam_filename = bam_files[sample.sample_id]
+                genome_alignment.index(sample, bam_filename, self.dispatcher_mode)
 
         for sample_id, bam_file in bam_files.items():
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
