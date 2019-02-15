@@ -294,7 +294,7 @@ class TranscriptGeneQuantificationStep:
         for transcript_id in self.transcript_final_count.keys():
             gene_id = self.transcript_gene_map[transcript_id]
             self.psi_value_map[gene_id].append(transcript_id + ':' \
-                 + str(self.transcript_final_count[transcript_id]/self.gene_count[gene_id]))
+                 + str(self.transcript_final_count[transcript_id]/gene_count[gene_id]))
 
         # Write psi value information for each gene
         with open(self.psi_value_dist_filename, 'w') as psi_value_dist_file:
