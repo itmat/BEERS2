@@ -289,6 +289,7 @@ class TranscriptGeneQuantificationStep:
             gene_dist_file.write('gene_id' + '\t' + 'cnt' + '\n')
             for key, value in gene_count.items():
                 gene_dist_file.write(str(key) + '\t' + str(round(value,3)) + '\n')
+
         # Create dictionary with key gene_id and values isoforms and their psi values
         for transcript_id in transcript_final_count.keys():
             gene_id = self.transcript_gene_map[transcript_id]
@@ -297,6 +298,7 @@ class TranscriptGeneQuantificationStep:
 
         # Write psi value information for each gene
         with open(self.psi_value_dist_filename, 'w') as psi_value_dist_file:
+            psi_value_dist_file.write('gene_id' + '\t' + 'isoform_psi_value' + '\n')
             for gene_id in self.psi_value_map.keys():
                 psi_value_dist_file.write(str(gene_id) + '\t' + ','.join(self.psi_value_map[gene_id]) + '\n')
                  
