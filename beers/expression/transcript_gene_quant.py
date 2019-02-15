@@ -15,8 +15,8 @@ class TranscriptGeneQuantificationStep:
 
     def __init__(self,
                 geneinfo_filename,
-                aligned_filename,
-                output_directory):
+                sample_directory,
+                align_filename):
         """
         The object is constructed with 2 input file sources (gene info, alignment to transcriptome).
         There are 4 output files, one each for quantification  of the genomic features: transcript, gene,
@@ -27,30 +27,30 @@ class TranscriptGeneQuantificationStep:
         '_intron_dist' - intronic region, '_intergenic_dist' - intergenic region.
         :param geneinfo_filename: input information about the genes - fields are (chromosome, strand, start,
         end, exon count, exon starts, exon ends, gene name)
-        :param aligned_filename: input information about the alignments to the transcriptome created using
+        :param align_filename: input information about the alignments to the transcriptome created using
         gene_files_preparation.py
         """
 
         self.geneinfo_filename = geneinfo_filename
-        self.aligned_filename = aligned_filename
-        self.output_directory = output_directory
+        self.align_filename = align_filename
+        self.sample_directory = sample_directory
         # Create output director for the feature quantified files
         try:
-            os.mkdir(self.output_directory)
+            os.mkdir(self.sample_directory)
         except OSError:
             pass
 
-        aligned_file = os.path.basename(aligned_filename)
+        align_file = os.path.basename(align_filename)
 
         # Create transcript distribution file and ensure that it doesn't currently exist
-        self.transcript_dist_filename = os.path.join(output_directory, OUTPUT_TRANSCRIPT_FILE_NAME)
+        self.transcript_dist_filename = os.path.join(sample_directory, OUTPUT_TRANSCRIPT_FILE_NAME)
         try:
             os.remove(self.transcript_dist_filename)
         except OSError:
             pass
 
         # Create gene distribution file and ensure that it doesn't currently exist
-        self.gene_dist_filename = os.path.join(output_directory, OUTPUT_GENE_FILE_NAME)
+        self.gene_dist_filename = os.path.join(sample_directory, OUTPUT_GENE_FILE_NAME)
         try:
             os.remove(self.gene_dist_filename)
         except OSError:
@@ -69,7 +69,7 @@ class TranscriptGeneQuantificationStep:
 
     def create_transcript_gene_map(self):
         # Create dictionary to map transcript id to gene id using geneinfo file
-        # Map '*' to '*' to account for unmapped reads in aligned_file
+        # Map '*' to '*' to account for unmapped reads in align_file
         # Create entries with suffix '_1' and '_2' for each transcript
 
         self.transcript_gene_map['*'] = '*'
@@ -122,15 +122,15 @@ class TranscriptGeneQuantificationStep:
         and relates it to the transcript's gene info ID
         """
 
-        with open(self.aligned_filename, 'r') as aligned_file:
-            for line in aligned_file:
+        with open(self.align_filename, 'r') as align_file:
+            for line in align_file:
 
                 # Skip the SAM file header
                 if line.startswith('@'):
                     continue
 
                 # Skip the reverse read
-                aligned_file.readline()
+                align_file.readline()
 
                 # Gather line's field into a list
                 fields = line.rstrip('\n').split('\t')
@@ -153,10 +153,10 @@ class TranscriptGeneQuantificationStep:
         self.transcript_umap()
 
         # Open file for reading and start a line counter
-        with open(self.aligned_filename, 'r') as aligned_file:
+        with open(self.align_filename, 'r') as align_file:
             line_count = 0
 
-            for line in aligned_file:
+            for line in align_file:
 
                 # Skip the SAM file header which gives the names of all contigs (contigs are the things we
                 # are aligning the reads to, usually chromosomes but in this case transcripts).
@@ -164,7 +164,7 @@ class TranscriptGeneQuantificationStep:
                     continue
 
                 # Skip the reverse read we are counting fragments not reads.
-                aligned_file.readline()
+                align_file.readline()
 
                 # First usable line - bump the counter and report every 100000 line.
                 line_count += 1
@@ -210,10 +210,10 @@ class TranscriptGeneQuantificationStep:
 
                     # This and the next line read the next aignment for the current read as we have multiple hits here.
                     # (i.e., same read but aligning to a different transform)
-                    line = aligned_file.readline()
+                    line = align_file.readline()
 
                     # Don't forget we skip over the reverse read we don't need it.
-                    aligned_file.readline()
+                    align_file.readline()
 
                     # Parse the line's fields into an array
                     multiple_hit_fields = line.rstrip('\n').split('\t')
@@ -305,14 +305,14 @@ class TranscriptGeneQuantificationStep:
 
         parser = argparse.ArgumentParser(description='Quantifier')
         parser.add_argument('-g', '--geneinfo_filename')
-        parser.add_argument('-r', '--aligned_filename')
-        parser.add_argument('-o', '--output_directory')
+        parser.add_argument('-d', '--sample_directory')
+        parser.add_argument('-r', '--align_filename')
         args = parser.parse_args()
 
-        features_quant = TranscriptGeneQuantificationStep(args.geneinfo_filename, args.aligned_filename, args.output_directory)
-        features_quant.quantify_transcript()
-        features_quant.make_transcript_dist_file()
-        features_quant.make_gene_dist_file()
+        transcript_gene_quant = TranscriptGeneQuantificationStep(args.geneinfo_filename, args.sample_directory, args.align_filename)
+        transcript_gene_quant.quantify_transcript()
+        transcript_gene_quant.make_transcript_dist_file()
+        transcript_gene_quant.make_gene_dist_file()
 
 
 
