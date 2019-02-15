@@ -7,6 +7,7 @@ import collections
 
 OUTPUT_TRANSCRIPT_FILE_NAME = "transcript_quantifications.txt"
 OUTPUT_GENE_FILE_NAME = "gene_quantifications.txt"
+OUTPUT_PSI_VALUE_FILE_NAME = "psi_value_quantifications.txt"
 
 class TranscriptGeneQuantificationStep:
     """
@@ -57,6 +58,14 @@ class TranscriptGeneQuantificationStep:
             pass
 
 
+        # Create gene distribution file and ensure that it doesn't currently exist
+        self.psi_value_dist_filename = os.path.join(sample_directory, OUTPUT_PSI_VALUE_FILE_NAME)
+        try:
+            os.remove(self.psi_value_dist_filename)
+        except OSError:
+            pass
+
+
         # Dictionaries to keep track of length of transcript, number of uniquely mapped reads to transcript,
         # and final count of reads mapped to transcript
         # This procedure does not map all gene info keys used.  Consequently we need to insure that
@@ -65,15 +74,11 @@ class TranscriptGeneQuantificationStep:
         self.transcript_umap_count = collections.defaultdict(int)
         self.transcript_final_count = collections.defaultdict(int)
         self.transcript_gene_map = collections.defaultdict(str)
+        self.psi_value_map = collections.defaultdict(list)
 
 
     def create_transcript_gene_map(self):
         # Create dictionary to map transcript id to gene id using geneinfo file
-        # Map '*' to '*' to account for unmapped reads in align_file
-        # Create entries with suffix '_1' and '_2' for each transcript
-
-        self.transcript_gene_map['*'] = '*'
-
         with open(self.geneinfo_filename, 'r') as geneinfo_file:
             next(geneinfo_file)
             for line in geneinfo_file:
@@ -262,34 +267,41 @@ class TranscriptGeneQuantificationStep:
 
 
 
-    def make_transcript_dist_file(self):
+    def make_transcript_gene_dist_file(self):
         # Write the transcript quantification information to transcript quant filename
         with open(self.transcript_dist_filename, 'w') as transcript_dist_file:
             transcript_dist_file.write('transcript_id' + '\t' + 'cnt' + '\n')
             for key, value in self.transcript_final_count.items():
                 transcript_dist_file.write(str(key) + '\t' + str(round(value, 3)) + '\n')
 
-    def make_gene_dist_file(self):
         # Transcript : parent gene dictionary
-        transcript_gene_map = collections.defaultdict(str)
-        with open(self.geneinfo_filename, 'r') as geneinfo_file:
-            for line in geneinfo_file:
-                if line.startswith('#'):
-                    continue
-                fields = line.rstrip('\n').split('\t')
-                transcript_gene_map[fields[7]] = fields[8]
+        self.create_transcript_gene_map()
 
         # Add the transcript counts to parent gene to get gene count
         gene_count = collections.defaultdict(float)
         for key, value in self.transcript_final_count.items():
-            gene_count[transcript_gene_map[key]] += value
+            gene_count[self.transcript_gene_map[key]] += value
 
         gene_count = collections.OrderedDict(sorted(gene_count.items()))
+        
         # Write gene quantification information to gene quant filename
         with open(self.gene_dist_filename, 'w') as gene_dist_file:
             gene_dist_file.write('gene_id' + '\t' + 'cnt' + '\n')
             for key, value in gene_count.items():
                 gene_dist_file.write(str(key) + '\t' + str(round(value,3)) + '\n')
+        # Create dictionary with key gene_id and values isoforms and their psi values
+        for transcript_id in transcript_final_count.keys():
+            gene_id = self.transcript_gene_map[transcript_id]
+            self.psi_value_map[gene_id].append(transcript_id + ':' \
+                 + str(self.transcript_final_count[transcript_id]/self.gene_count[gene_id]))
+
+        # Write psi value information for each gene
+        with open(self.psi_value_dist_filename, 'w') as psi_value_dist_file:
+            for gene_id in self.psi_value_map.keys():
+                psi_value_dist_file.write(str(gene_id) + '\t' + ','.join(self.psi_value_map[gene_id]) + '\n')
+                 
+
+
 
 
     @staticmethod
@@ -313,9 +325,7 @@ class TranscriptGeneQuantificationStep:
 
         transcript_gene_quant = TranscriptGeneQuantificationStep(args.geneinfo_filename, args.sample_directory, args.align_filename)
         transcript_gene_quant.quantify_transcript()
-        transcript_gene_quant.make_transcript_dist_file()
-        transcript_gene_quant.make_gene_dist_file()
-
+        transcript_gene_quant.make_transcript_gene_dist_file()
 
 
 if __name__ == "__main__":

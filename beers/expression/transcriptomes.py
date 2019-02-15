@@ -103,8 +103,7 @@ if __name__ == '__main__':
 
     transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir, align_file_prefix + align_filename)
     transcript_gene_quant.quantify_transcript()
-    transcript_gene_quant.make_transcript_dist_file()
-    transcript_gene_quant.make_gene_dist_file()
+    transcript_gene_quant.make_transcript_gene_dist_file()
 
     allelic_imbalance_quant = AllelicImbalanceQuantificationStep(geneinfo_filename, sample_dir, align_filename)
     allelic_imbalance_quant.quantify_allelic_imbalance()
