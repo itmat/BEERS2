@@ -13,6 +13,8 @@ import argparse
 import time
 
 from beers.personal.gene_files_preparation import GeneFilesPreparation
+from beers.expression.transcript_gene_quant import TranscriptGeneQuantificationStep
+from beers.expression.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
 
 def done_file_name(data_directory, sample_id):
     return os.path.join(data_directory, f"sample{sample_id}", "transcriptome_prep_done.txt")
@@ -93,6 +95,21 @@ if __name__ == '__main__':
         align_file_prefix = os.path.join(sample_dir, f"{i}_")
         command = f"{star_file_path} --runThreadN 4 --genomeDir {transcriptome_dir}  --readFilesIn {fastq_files} --readFilesCommand zcat --outFileNamePrefix {align_file_prefix} --outSAMunmapped Within"
         subprocess.run(command, shell=True, check=True)
+
+    # Run transcript/gene/allelic_imbalance quantification scripts
+    geneinfo_filename = os.path.join(sample_dir, f"updated_annotation_1.txt")
+    align_file_prefix = os.path.join(sample_dir, f"{1}_")
+    align_filename = "Aligned.out.sam"
+
+    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir, align_file_prefix + align_filename)
+    transcript_gene_quant.quantify_transcript()
+    transcript_gene_quant.make_transcript_dist_file()
+    transcript_gene_quant.make_gene_dist_file()
+
+    allelic_imbalance_quant = AllelicImbalanceQuantificationStep(geneinfo_filename, sample_dir, align_filename)
+    allelic_imbalance_quant.quantify_allelic_imbalance()
+    allelic_imbalance_quant.make_allele_imbalance_dist_file()
+
 
     # Output to DONE file
     with open(done_file_name(data_directory, sample_id), "w") as done_file:

@@ -14,36 +14,29 @@ class AllelicImbalanceQuantificationStep:
 
     def __init__(self,
                 geneinfo_filename,
-                aligned_filename_root,
-                output_directory):
+                sample_directory,
+                align_filename):
         """
         The object is constructed with
         (i) an input file source for gene info
         (ii) Root of the aligned filenames (alignment to transcriptome of each parent with suffixes '_1','_2'.)
         There is one output file with quantification information on the allelic imbalance of genes.
 
-        The output file is prefixed with the name of the aligned files and is appended with '_allele_imbalance_dist'
+        The output file is called 'allelic_imbalance_quantifications.txt'
         :param geneinfo_filename: input information about the genes - fields are (chromosome, strand, start,
         end, exon count, exon starts, exon ends, gene name)
-        :param aligned_filename_root: input information about the alignments to the two transcriptomes, one for each parent,
+        :param align_filename_root: input information about the alignments to the two transcriptomes, one for each parent,
         created using gene_files_preparation.py
         """
 
         self.geneinfo_filename = geneinfo_filename
-        self.aligned_filename_1 = aligned_filename_root + '_1.sam'
-        self.aligned_filename_2 = aligned_filename_root + '_2.sam'
-        self.output_directory = output_directory
-        # Create output directory for the allelic imbalance quantification file
-        try:
-            os.mkdir(self.output_directory)
-        except OSError:
-            pass
+        self.sample_directory = sample_directory
 
-        aligned_file_root = os.path.basename(aligned_filename_root)
-
+        self.align_filename_1 = os.path.join(self.sample_directory, '1_' + align_filename)
+        self.align_filename_2 = os.path.join(self.sample_directory, '2_' + align_filename)
 
         # Create allelic imbalance distribution file and ensure that it doesn't currently exist
-        self.allele_imbalance_dist_filename = os.path.join(output_directory, OUTPUT_ALLELIC_IMBALANCE_FILE_NAME)
+        self.allele_imbalance_dist_filename = os.path.join(sample_directory, OUTPUT_ALLELIC_IMBALANCE_FILE_NAME)
         try:
             os.remove(self.allele_imbalance_dist_filename)
         except OSError:
@@ -60,7 +53,7 @@ class AllelicImbalanceQuantificationStep:
     def create_transcript_gene_map(self):
         """
         Create dictionary to map transcript id to gene id using geneinfo file
-        Map '*' to '*' to account for unmapped reads in aligned_file
+        Map '*' to '*' to account for unmapped reads in align_file
         Create entries with suffix '_1' and '_2' for each transcript
         """
 
@@ -73,7 +66,7 @@ class AllelicImbalanceQuantificationStep:
                 self.transcript_gene_map[fields[7]] = fields[8]
 
 
-    def read_info(self, in_aligned_filename):
+    def read_info(self, in_align_filename):
         """
         Create dictionary which maps a read id in SAM file to a dictionary with two keys 'transcript_id' and 'nM'.
         The value associated with 'transcript_id' is a list of all transcripts the read aligned to.
@@ -91,7 +84,7 @@ class AllelicImbalanceQuantificationStep:
         # This pattern extracts that number.
         num_mismatches_pattern = re.compile('(nM:i:)(\d+)')
 
-        with open(in_aligned_filename, 'r') as infile:
+        with open(in_align_filename, 'r') as infile:
             for line in infile:
                 if line.startswith('@'):
                     continue
@@ -193,8 +186,8 @@ class AllelicImbalanceQuantificationStep:
         self.create_transcript_gene_map()
 
         # Create read info dictionaries for each parent
-        read_info_1 = self.read_info(self.aligned_filename_1)
-        read_info_2 = self.read_info(self.aligned_filename_2)
+        read_info_1 = self.read_info(self.align_filename_1)
+        read_info_2 = self.read_info(self.align_filename_2)
 
         read_ids = [ i for i in read_info_1.keys() ]
 
@@ -285,14 +278,13 @@ class AllelicImbalanceQuantificationStep:
 
         parser = argparse.ArgumentParser(description='Quantifier')
         parser.add_argument('-g', '--geneinfo_filename')
-        parser.add_argument('-r', '--aligned_filename_root')
-        parser.add_argument('-o', '--output_directory')
+        parser.add_argument('-d', '--sample_directory')
+        parser.add_argument('-r', '--align_filename')
         args = parser.parse_args()
 
-        features_quant = AllelicImbalanceQuantificationStep(args.geneinfo_filename, args.aligned_filename_root, args.output_directory)
-
-        features_quant.quantify_allelic_imbalance()
-        features_quant.make_allele_imbalance_dist_file()
+        allelic_imbalance_quant = AllelicImbalanceQuantificationStep(args.geneinfo_filename, args.sample_directory, args.align_filename)
+        allelic_imbalance_quant.quantify_allelic_imbalance()
+        allelic_imbalance_quant.make_allele_imbalance_dist_file()
 
 
 
@@ -300,4 +292,4 @@ if __name__ == "__main__":
     sys.exit(AllelicImbalanceQuantificationStep.main())
 
 # Example command
-# python quantify.py -g 'geneinfo_file.txt' -r '1_Aligned.out.sam' -o '1_Aligned'
+# python allelic_imbalance_quant.py -g 'geneinfo_file.txt' -d 'sampleA' -r 'Aligned.out'
