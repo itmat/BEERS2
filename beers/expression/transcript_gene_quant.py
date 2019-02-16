@@ -33,8 +33,8 @@ class TranscriptGeneQuantificationStep:
         """
 
         self.geneinfo_filename = geneinfo_filename
-        self.align_filename = align_filename
         self.sample_directory = sample_directory
+        self.align_filename = align_filename
         # Create output director for the feature quantified files
         try:
             os.mkdir(self.sample_directory)
@@ -293,8 +293,11 @@ class TranscriptGeneQuantificationStep:
         # Create dictionary with key gene_id and values isoforms and their psi values
         for transcript_id in self.transcript_final_count.keys():
             gene_id = self.transcript_gene_map[transcript_id]
-            self.psi_value_map[gene_id].append(transcript_id + ':' \
-                 + str(self.transcript_final_count[transcript_id]/gene_count[gene_id]))
+            if gene_count[gene_id]:
+                self.psi_value_map[gene_id].append(transcript_id + ':' \
+                    + str(self.transcript_final_count[transcript_id]/gene_count[gene_id]))
+            else:
+                self.psi_value_map[gene_id].append(transcript_id + ':' + str(0))
 
         # Write psi value information for each gene
         with open(self.psi_value_dist_filename, 'w') as psi_value_dist_file:
