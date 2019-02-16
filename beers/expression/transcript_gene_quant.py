@@ -35,7 +35,7 @@ class TranscriptGeneQuantificationStep:
         self.geneinfo_filename = geneinfo_filename
         self.sample_directory = sample_directory
         self.align_filename = align_filename
-        # Create output director for the feature quantified files
+        # Create output directory for the feature quantified files
         try:
             os.mkdir(self.sample_directory)
         except OSError:
