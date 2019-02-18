@@ -1,0 +1,211 @@
+import os
+import numpy
+
+from beers.molecule_packet import MoleculePacket
+from beers.molecule import Molecule
+from beers.sample import Sample
+
+class MoleculeMaker:
+    def __init__(self, sample, sample_directory):
+        self.sample = sample
+
+        intron_quant_file_path = os.path.join(sample_directory, "intron_quantifications.txt")
+        self.transcript_intron_quants, self.intron_quants = self.load_intron_quants(intron_quant_file_path)
+
+        gene_quant_file_path = os.path.join(sample_directory, "gene_quantifications.txt")
+        self.genes, self.gene_quants = self.load_gene_quants(gene_quant_file_path)
+        self.gene_probabilities = self.gene_quants / numpy.sum(self.gene_quants)
+
+        self.transcriptomes = [self.load_transcriptome(os.path.join(sample_directory, f"transcriptome_{i}.fa"))
+                                    for i in [1,2]]
+
+        self.annotations = [self.load_annotation(os.path.join(sample_directory, f"updated_annotation_{i}.txt"))
+                                    for i in [1,2]]
+
+        self.genomes = [self.load_genome(os.path.join(sample_directory, f"custom_genome_{i}.fa"))
+                                    for i in [1,2]]
+
+        isoform_quant_file_path = os.path.join(sample_directory, "isoform_psi_value_quantifications.txt")
+        self.isoform_quants = self.load_isoform_quants(isoform_quant_file_path)
+
+        allelic_quant_file_path = os.path.join(sample_directory, "allelic_imbalance_quantifications.txt")
+        self.allelic_quant = self.load_allelic_quants(allelic_quant_file_path)
+
+    def load_annotation(self, file_path):
+        transcripts = dict()
+        with open(file_path) as annotation_file:
+            for line in annotation_file:
+                if line.startswith("#"):
+                    continue # Comment/header line
+
+                chrom, strand, tx_start, tx_end, exon_count, exon_starts, exon_ends, transcript_id, gene_id, gene_sybmol, *other \
+                        = line.split("\t")
+
+                transcripts[transcript_id] = (chrom, strand, int(tx_start), int(tx_end),
+                                                [int(start) for start in exon_starts.split(",")],
+                                                [int(end) for end in exon_ends.split(",")])
+        return transcripts
+
+
+    def load_transcriptome(self, file_path):
+        ''' Read in a fasta file and load is a dictionary id -> sequence
+        assumed one-line for the whole contig '''
+        transcripts = dict()
+        with open(file_path) as transcriptome_file:
+            while True:
+                line = transcriptome_file.readline()
+                if not line:
+                    break
+
+                assert line[0] == ">"
+                transcript_id, chrom, region = line[1:].strip().split(":")
+                sequence = transcriptome_file.readline().strip()
+                transcripts[transcript_id] = sequence
+        return transcripts
+
+    def load_genome(self, file_path):
+        ''' Read in a fasta file and load is a dictionary id -> sequence '''
+        genome = dict()
+        with open(file_path) as transcriptome_file:
+            while True:
+                line = transcriptome_file.readline()
+                if not line:
+                    break
+
+                assert line[0] == ">"
+                contig = line[1:].strip()
+                sequence = transcriptome_file.readline().strip()
+                genome[contig] = sequence
+        return genome
+
+    def load_intron_quants(self, file_path):
+        ''' Load an intron quantification file as two dictionaries,
+        (transcript ID -> sum FPK of all introns in transcript) and
+        (transcript ID -> list of FPKs of each intron in transcript)
+        '''
+        transcript_intron_quants = dict() # Dictionary transcript -> FPK for all introns in the transcript, combined
+        intron_quants = dict() # Dictioanry transcript -> array of FPKs for each intron in the transcript
+
+        with open(file_path) as intron_quants_file:
+            for line in intron_quants_file:
+
+                if line.startswith("#"):
+                    continue # Comment/header line
+
+                gene, transcript, chrom, strand, transcript_intron_reads_FPK, intron_reads_FPK = line.strip().split("\t")
+
+                transcript_intron_quants[transcript] = float(transcript_intron_reads_FPK)
+                intron_quants[transcript] = [float(quant) for quant in intron_reads_FPK.split(",")]
+
+        return transcript_intron_quants, intron_quants
+
+    def load_gene_quants(self, file_path):
+        ''' Read in a gene quantification file as two lists of gene IDs and of their read quantifications '''
+        genes = []
+        gene_quants = []
+
+        with open(file_path) as gene_quant_file:
+            for line in gene_quant_file:
+                if line.startswith("#"):
+                    continue # Comment/header line
+
+                gene, quant = line.strip().split("\t")
+
+                genes.append(gene)
+                gene_quants.append(float(quant))
+
+        return genes, numpy.array(gene_quants)
+
+    def load_isoform_quants(self, file_path):
+        ''' Reads an isoform quant file into a dictionary gene -> (list of transcript IDs, list of psi values) '''
+        isoform_quants = dict()
+
+        with open(file_path) as isoform_quant_file:
+            for line in isoform_quant_file:
+
+                if line.startswith("#"):
+                    continue # Comment/header line
+
+                gene, entries = line.strip().split("\t")
+                isoforms = [entry.split(":") for entry in entries.split(",")]
+                isoforms = [(isoform, float(psi)) for isoform, psi in isoforms]
+                isoform_list = [isoform for isoform, psi in isoforms]
+                psi_list = [psi for isoform, psi in isoforms]
+
+                isoform_quants[gene] = (isoform_list, psi_list)
+
+        return isoform_quants
+
+    def load_allelic_quants(self, file_path):
+        ''' Reads allelic quantification file into a dictionary: gene_id -> (allele 1 probability, allele 2 probability) '''
+
+        allelic_quant = dict()
+
+        with open(file_path) as allele_quant_file:
+            for line in allele_quant_file:
+                if line.startswith("#"):
+                    continue # Comment/header line
+
+                gene, allele1, allele2 = line.split("\t")
+                allele1 = float(allele1)
+                allele2 = float(allele2)
+
+                allelic_quant[gene] = (allele1, allele2)
+        return allelic_quant
+
+    def make_molecule(self):
+        gene = numpy.random.choice(self.genes, p=self.gene_probabilities)
+
+        transcripts, psis = self.isoform_quants[gene]
+        transcript = numpy.random.choice(transcripts, p=psis)
+
+        allele_number = numpy.random.choice([1,2], p=self.allelic_quant[gene])
+
+        #sequence = self.transcriptomes[allele_number - 1][transcript]
+        chrom,strand,tx_start,tx_end,starts,ends= self.annotations[allele_number - 1][transcript]
+
+        # TODO: use intron/gene quantifications to get this p
+        pre_mRNA = numpy.random.uniform() < 0.1
+        if pre_mRNA:
+            starts = [tx_start]
+            ends = [tx_end]
+        gaps = [end - start - 1 for start,end in zip(starts[1:],ends[:-1])]
+        cigar = ''.join( f"{next_start - last_end + 1}M{gap}N" for next_start,last_end,gap in zip(starts[:-1],ends[:-1],gaps)) \
+                    + f"{ends[-1] - starts[-1] + 1}M"
+        transcript_id = transcript + ("_pre_mRNA" if pre_mRNA else "")
+
+        chrom_sequence = self.genomes[allele_number - 1][chrom]
+        sequence = ''.join( chrom_sequence[start-1:end] for start,end in zip(starts, ends) )
+
+
+        return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
+                            source_start=starts[0], source_cigar = cigar, transcript_id=transcript_id)
+
+    def make_packet(self, N=100):
+        molecules = [self.make_molecule() for i in range(N)]
+        #TODO: make a new packet ID
+        return MoleculePacket("packet0", self.sample, molecules)
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Molecule Maker")
+    parser.add_argument("sample", help="sample object (as output by repr() in single quotes)")
+    parser.add_argument("sample_directory", help="directory in which sample results go")
+
+    args = parser.parse_args()
+
+    # Remove single quotes and eval the sample
+    sample_object = eval(args.sample.strip("'"))
+
+    print("Starting to make molecules...")
+    mm = MoleculeMaker(sample_object, args.sample_directory)
+    packet = mm.make_packet()
+
+    import pickle
+    print("Writing packet out to molecule_packet.pickle")
+    with open(os.path.join(args.sample_directory, "molecule_packet.pickle")) as out_file:
+        pickle.dump(packet, out_file)
+
+''' Example:
+python molecule_maker.py 'Sample(1, "Sample 1", "/", ["ACGT", "CGCA"], gender="male")' data/_run1/sample1/
+'''

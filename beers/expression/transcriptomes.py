@@ -17,6 +17,7 @@ from beers.personal.gene_files_preparation import GeneFilesPreparation
 from beers.expression.transcript_gene_quant import TranscriptGeneQuantificationStep
 from beers.expression.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
 from beers.expression.molecule_maker import MoleculeMaker
+from beers.sample import Sample
 
 def done_file_name(data_directory, sample_id):
     return os.path.join(data_directory, f"sample{sample_id}", "transcriptome_prep_done.txt")
@@ -99,10 +100,10 @@ if __name__ == '__main__':
         subprocess.run(command, shell=True, check=True)
 
     # Run transcript/gene/allelic_imbalance quantification scripts
-    align_file_prefix = os.path.join(sample_dir, f"{1}_")
-    align_filename = "Aligned.out.sam"
+    align_filename = os.path.join(sample_dir, "1_Aligned.out.sam")
+    geneinfo_filename = os.path.join(sample_dir, "updated_annotation_1.txt")
 
-    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir, align_file_prefix + align_filename)
+    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir, align_filename)
     transcript_gene_quant.quantify_transcript()
     transcript_gene_quant.make_transcript_gene_dist_file()
 
@@ -112,10 +113,11 @@ if __name__ == '__main__':
 
     # Run Molecule maker to generate a packet
     # TODO: what sample object can we use?
-    molecule_maker = MoleculeMaker(sample, sample_directory)
+    sample = Sample(sample_id, "sample{sample_id}", [sample_dir], ["unkown", "unknown"])
+    molecule_maker = MoleculeMaker(sample, sample_dir)
     packet = molecule_maker.make_packet()
 
-    with open(os.path.join(args.sample_directory, "molecule_packet.pickle")) as out_file:
+    with open(os.path.join(sample_dir, "molecule_packet.pickle"), "wb") as out_file:
         pickle.dump(packet, out_file)
 
     # Output to DONE file

@@ -247,7 +247,7 @@ class AllelicImbalanceQuantificationStep:
                 if len(set(genes_1)) == 1:
                     self.gene_final_count[genes_1[0]]['1'] += 1
 
-        self.gene_final_count = collections.OrderedDict(sorted(self.gene_final_count.items()))
+        #self.gene_final_count = collections.OrderedDict(sorted(self.gene_final_count.items()))
 
 
     def make_allele_imbalance_dist_file(self):
@@ -273,9 +273,12 @@ class AllelicImbalanceQuantificationStep:
         with open(self.allele_imbalance_dist_filename, 'w') as allele_imbalance_dist_file:
             allele_imbalance_dist_file.write('#gene_id' + '\t' + '_1' + '\t' + '_2' + '\n')
             #for key, value in list(self.gene_final_count.items()):
-            for gene_id in list(self.transcript_gene_map.values()):
+            for gene_id in sorted(set(self.transcript_gene_map.values())):
                 if gene_id in exclusive_genes:
                     allele_imbalance_dist_file.write(str(gene_id) + '\t' + str(1.0) + '\t' + str(0.0) + '\n')
+                    continue
+
+                if gene_id == "*":
                     continue
 
                 read_count_1 = self.gene_final_count[gene_id]['1']

@@ -270,7 +270,7 @@ class TranscriptGeneQuantificationStep:
     def make_transcript_gene_dist_file(self):
         # Write the transcript quantification information to transcript quant filename
         with open(self.transcript_dist_filename, 'w') as transcript_dist_file:
-            transcript_dist_file.write('transcript_id' + '\t' + 'cnt' + '\n')
+            transcript_dist_file.write('#transcript_id' + '\t' + 'cnt' + '\n')
             for key, value in self.transcript_final_count.items():
                 transcript_dist_file.write(str(key) + '\t' + str(round(value, 3)) + '\n')
 
@@ -286,7 +286,7 @@ class TranscriptGeneQuantificationStep:
         
         # Write gene quantification information to gene quant filename
         with open(self.gene_dist_filename, 'w') as gene_dist_file:
-            gene_dist_file.write('gene_id' + '\t' + 'cnt' + '\n')
+            gene_dist_file.write('#gene_id' + '\t' + 'cnt' + '\n')
             for key, value in gene_count.items():
                 gene_dist_file.write(str(key) + '\t' + str(round(value,3)) + '\n')
 
@@ -301,7 +301,7 @@ class TranscriptGeneQuantificationStep:
 
         # Write psi value information for each gene
         with open(self.psi_value_dist_filename, 'w') as psi_value_dist_file:
-            psi_value_dist_file.write('gene_id' + '\t' + 'isoform_psi_value' + '\n')
+            psi_value_dist_file.write('#gene_id' + '\t' + 'isoform_psi_value' + '\n')
             for gene_id in self.psi_value_map.keys():
                 psi_value_dist_file.write(str(gene_id) + '\t' + ','.join(self.psi_value_map[gene_id]) + '\n')
                  
