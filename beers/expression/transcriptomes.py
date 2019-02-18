@@ -97,7 +97,6 @@ if __name__ == '__main__':
         subprocess.run(command, shell=True, check=True)
 
     # Run transcript/gene/allelic_imbalance quantification scripts
-    geneinfo_filename = os.path.join(sample_dir, f"updated_annotation_1.txt")
     align_file_prefix = os.path.join(sample_dir, f"{1}_")
     align_filename = "Aligned.out.sam"
 
@@ -105,7 +104,7 @@ if __name__ == '__main__':
     transcript_gene_quant.quantify_transcript()
     transcript_gene_quant.make_transcript_gene_dist_file()
 
-    allelic_imbalance_quant = AllelicImbalanceQuantificationStep(geneinfo_filename, sample_dir, align_filename)
+    allelic_imbalance_quant = AllelicImbalanceQuantificationStep(sample_dir)
     allelic_imbalance_quant.quantify_allelic_imbalance()
     allelic_imbalance_quant.make_allele_imbalance_dist_file()
 
