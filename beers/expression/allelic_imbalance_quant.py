@@ -259,8 +259,8 @@ class AllelicImbalanceQuantificationStep:
                 if gene_read_count == 0:
                     allele_imbalance_dist_file.write(str(key) + '\t' + str(0.5) + '\t' + str(0.5) + '\n')
                 else:
-                    allele_imbalance_dist_file.write(str(key) + '\t' + str(round(value['1']/gene_read_count,3)) + '\t' +\
-                        str(round(value['2']/gene_read_count, 3)) + '\n')
+                    allele_imbalance_dist_file.write(str(key) + '\t' + str(value['1']/gene_read_count) + '\t' +\
+                        str(value['2']/gene_read_count) + '\n')
 
 
 
