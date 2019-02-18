@@ -250,7 +250,7 @@ class TranscriptGeneQuantificationStep:
                 if total_fpk == 0:
                     num_keys = len(ensids.keys())
                     for key in ensids.keys():
-                        self.transcript_final_count[key] += 1/num_keys
+                        self.transcript_final_count[key] += 1000.0/(num_keys * self.transcript_length_map[key])
 
                 # In this case there are uniquely mapping reads to the isforms.  In this case we're going to mete out
                 #  the count for this read proportionally to how the unique mapping reads are distributed among
@@ -261,7 +261,7 @@ class TranscriptGeneQuantificationStep:
                         psi = fpk[key] / total_fpk
 
                         # Increment by psi, the psi values for this read should add to one.
-                        self.transcript_final_count[key] += psi
+                        self.transcript_final_count[key] += 1000.0*psi/self.transcript_length_map[key]
 
         self.transcript_final_count = collections.OrderedDict(sorted(self.transcript_final_count.items()))
 
