@@ -11,10 +11,12 @@ import subprocess
 import os
 import argparse
 import time
+import pickle
 
 from beers.personal.gene_files_preparation import GeneFilesPreparation
 from beers.expression.transcript_gene_quant import TranscriptGeneQuantificationStep
 from beers.expression.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
+from beers.expression.molecule_maker import MoleculeMaker
 
 def done_file_name(data_directory, sample_id):
     return os.path.join(data_directory, f"sample{sample_id}", "transcriptome_prep_done.txt")
@@ -109,6 +111,13 @@ if __name__ == '__main__':
     allelic_imbalance_quant.quantify_allelic_imbalance()
     allelic_imbalance_quant.make_allele_imbalance_dist_file()
 
+    # Run Molecule maker to generate a packet
+    # TODO: what sample object can we use?
+    molecule_maker = MoleculeMaker(sample, sample_directory)
+    packet = molecule_maker.make_packet()
+
+    with open(os.path.join(args.sample_directory, "molecule_packet.pickle")) as out_file:
+        pickle.dump(packet, out_file)
 
     # Output to DONE file
     with open(done_file_name(data_directory, sample_id), "w") as done_file:
