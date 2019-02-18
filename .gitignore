@@ -9,4 +9,6 @@ resources/index_files/
 venv*
 beers.egg-info
 config/*_config.json
+Log.out
 
+*.swp
