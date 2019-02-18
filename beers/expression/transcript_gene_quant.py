@@ -7,7 +7,7 @@ import collections
 
 OUTPUT_TRANSCRIPT_FILE_NAME = "transcript_quantifications.txt"
 OUTPUT_GENE_FILE_NAME = "gene_quantifications.txt"
-OUTPUT_PSI_VALUE_FILE_NAME = "psi_value_quantifications.txt"
+OUTPUT_PSI_VALUE_FILE_NAME = "isoform_psi_value_quantifications.txt"
 
 class TranscriptGeneQuantificationStep:
     """
@@ -305,9 +305,6 @@ class TranscriptGeneQuantificationStep:
             for gene_id in self.psi_value_map.keys():
                 psi_value_dist_file.write(str(gene_id) + '\t' + ','.join(self.psi_value_map[gene_id]) + '\n')
                  
-
-
-
 
     @staticmethod
     def is_output_valid(job_arguments):
