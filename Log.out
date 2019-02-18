@@ -1,0 +1,875 @@
+STAR version=STAR_2.5.2a
+STAR compilation time,server,dir=Fri Jun 3 16:19:08 EDT 2016 node001:/opt/rpmbuild/BUILD/STAR-2.5.2a/source
+##### DEFAULT parameters:
+versionSTAR                       20201
+versionGenome                     20101   20200   
+parametersFiles                   -   
+sysShell                          -
+runMode                           alignReads
+runThreadN                        1
+runDirPerm                        User_RWX
+runRNGseed                        777
+genomeDir                         ./GenomeDir/
+genomeLoad                        NoSharedMemory
+genomeFastaFiles                  -   
+genomeSAindexNbases               14
+genomeChrBinNbits                 18
+genomeSAsparseD                   1
+genomeSuffixLengthMax             18446744073709551615
+readFilesIn                       Read1   Read2   
+readFilesCommand                  -   
+readMatesLengthsIn                NotEqual
+readMapNumber                     18446744073709551615
+readNameSeparator                 /   
+inputBAMfile                      -
+bamRemoveDuplicatesType           -
+bamRemoveDuplicatesMate2basesN    0
+limitGenomeGenerateRAM            31000000000
+limitIObufferSize                 150000000
+limitOutSAMoneReadBytes           100000
+limitOutSJcollapsed               1000000
+limitOutSJoneRead                 1000
+limitBAMsortRAM                   0
+limitSjdbInsertNsj                1000000
+outFileNamePrefix                 ./
+outTmpDir                         -
+outTmpKeep                        None
+outStd                            Log
+outReadsUnmapped                  None
+outQSconversionAdd                0
+outMultimapperOrder               Old_2.4
+outSAMtype                        SAM   
+outSAMmode                        Full
+outSAMstrandField                 None
+outSAMattributes                  Standard   
+outSAMunmapped                    None   
+outSAMorder                       Paired
+outSAMprimaryFlag                 OneBestScore
+outSAMreadID                      Standard
+outSAMmapqUnique                  255
+outSAMflagOR                      0
+outSAMflagAND                     65535
+outSAMattrRGline                  -   
+outSAMheaderHD                    -   
+outSAMheaderPG                    -   
+outSAMheaderCommentFile           -
+outBAMcompression                 1
+outBAMsortingThreadN              0
+outSAMfilter                      None   
+outSAMmultNmax                    18446744073709551615
+outSAMattrIHstart                 1
+outSJfilterReads                  All
+outSJfilterCountUniqueMin         3   1   1   1   
+outSJfilterCountTotalMin          3   1   1   1   
+outSJfilterOverhangMin            30   12   12   12   
+outSJfilterDistToOtherSJmin       10   0   5   10   
+outSJfilterIntronMaxVsReadN       50000   100000   200000   
+outWigType                        None   
+outWigStrand                      Stranded   
+outWigReferencesPrefix            -
+outWigNorm                        RPM   
+outFilterType                     Normal
+outFilterMultimapNmax             10
+outFilterMultimapScoreRange       1
+outFilterScoreMin                 0
+outFilterScoreMinOverLread        0.66
+outFilterMatchNmin                0
+outFilterMatchNminOverLread       0.66
+outFilterMismatchNmax             10
+outFilterMismatchNoverLmax        0.3
+outFilterMismatchNoverReadLmax    1
+outFilterIntronMotifs             None
+clip5pNbases                      0   
+clip3pNbases                      0   
+clip3pAfterAdapterNbases          0   
+clip3pAdapterSeq                  -   
+clip3pAdapterMMp                  0.1   
+winBinNbits                       16
+winAnchorDistNbins                9
+winFlankNbins                     4
+winAnchorMultimapNmax             50
+winReadCoverageRelativeMin        0.5
+winReadCoverageBasesMin           0
+scoreGap                          0
+scoreGapNoncan                    -8
+scoreGapGCAG                      -4
+scoreGapATAC                      -8
+scoreStitchSJshift                1
+scoreGenomicLengthLog2scale       -0.25
+scoreDelBase                      -2
+scoreDelOpen                      -2
+scoreInsOpen                      -2
+scoreInsBase                      -2
+seedSearchLmax                    0
+seedSearchStartLmax               50
+seedSearchStartLmaxOverLread      1
+seedPerReadNmax                   1000
+seedPerWindowNmax                 50
+seedNoneLociPerWindow             10
+seedMultimapNmax                  10000
+alignIntronMin                    21
+alignIntronMax                    0
+alignMatesGapMax                  0
+alignTranscriptsPerReadNmax       10000
+alignSJoverhangMin                5
+alignSJDBoverhangMin              3
+alignSJstitchMismatchNmax         0   -1   0   0   
+alignSplicedMateMapLmin           0
+alignSplicedMateMapLminOverLmate    0.66
+alignWindowsPerReadNmax           10000
+alignTranscriptsPerWindowNmax     100
+alignEndsType                     Local
+alignSoftClipAtReferenceEnds      Yes
+alignEndsProtrude                 0   ConcordantPair   
+chimSegmentMin                    0
+chimScoreMin                      0
+chimScoreDropMax                  20
+chimScoreSeparation               10
+chimScoreJunctionNonGTAG          -1
+chimJunctionOverhangMin           20
+chimOutType                       SeparateSAMold
+chimFilter                        banGenomicN   
+chimSegmentReadGapMax             0
+sjdbFileChrStartEnd               -   
+sjdbGTFfile                       -
+sjdbGTFchrPrefix                  -
+sjdbGTFfeatureExon                exon
+sjdbGTFtagExonParentTranscript    transcript_id
+sjdbGTFtagExonParentGene          gene_id
+sjdbOverhang                      100
+sjdbScore                         2
+sjdbInsertSave                    Basic
+quantMode                         -   
+quantTranscriptomeBAMcompression    1
+quantTranscriptomeBan             IndelSoftclipSingleend
+twopass1readsN                    18446744073709551615
+twopassMode                       None
+##### Command Line:
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/resources/third_party_software/STAR --runThreadN 4 --runMode genomeGenerate --genomeDir /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2 --genomeFastaFiles /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa
+##### Initial USER parameters from Command Line:
+###### All USER parameters from Command Line:
+runThreadN                    4     ~RE-DEFINED
+runMode                       genomeGenerate     ~RE-DEFINED
+genomeDir                     /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2     ~RE-DEFINED
+genomeFastaFiles              /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa        ~RE-DEFINED
+##### Finished reading parameters from all sources
+
+##### Final user re-defined parameters-----------------:
+runMode                           genomeGenerate
+runThreadN                        4
+genomeDir                         /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2
+genomeFastaFiles                  /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa   
+
+-------------------------------
+##### Final effective command line:
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/resources/third_party_software/STAR   --runMode genomeGenerate   --runThreadN 4   --genomeDir /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2   --genomeFastaFiles /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa   
+
+##### Final parameters after user input--------------------------------:
+versionSTAR                       20201
+versionGenome                     20101   20200   
+parametersFiles                   -   
+sysShell                          -
+runMode                           genomeGenerate
+runThreadN                        4
+runDirPerm                        User_RWX
+runRNGseed                        777
+genomeDir                         /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2
+genomeLoad                        NoSharedMemory
+genomeFastaFiles                  /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa   
+genomeSAindexNbases               14
+genomeChrBinNbits                 18
+genomeSAsparseD                   1
+genomeSuffixLengthMax             18446744073709551615
+readFilesIn                       Read1   Read2   
+readFilesCommand                  -   
+readMatesLengthsIn                NotEqual
+readMapNumber                     18446744073709551615
+readNameSeparator                 /   
+inputBAMfile                      -
+bamRemoveDuplicatesType           -
+bamRemoveDuplicatesMate2basesN    0
+limitGenomeGenerateRAM            31000000000
+limitIObufferSize                 150000000
+limitOutSAMoneReadBytes           100000
+limitOutSJcollapsed               1000000
+limitOutSJoneRead                 1000
+limitBAMsortRAM                   0
+limitSjdbInsertNsj                1000000
+outFileNamePrefix                 ./
+outTmpDir                         -
+outTmpKeep                        None
+outStd                            Log
+outReadsUnmapped                  None
+outQSconversionAdd                0
+outMultimapperOrder               Old_2.4
+outSAMtype                        SAM   
+outSAMmode                        Full
+outSAMstrandField                 None
+outSAMattributes                  Standard   
+outSAMunmapped                    None   
+outSAMorder                       Paired
+outSAMprimaryFlag                 OneBestScore
+outSAMreadID                      Standard
+outSAMmapqUnique                  255
+outSAMflagOR                      0
+outSAMflagAND                     65535
+outSAMattrRGline                  -   
+outSAMheaderHD                    -   
+outSAMheaderPG                    -   
+outSAMheaderCommentFile           -
+outBAMcompression                 1
+outBAMsortingThreadN              0
+outSAMfilter                      None   
+outSAMmultNmax                    18446744073709551615
+outSAMattrIHstart                 1
+outSJfilterReads                  All
+outSJfilterCountUniqueMin         3   1   1   1   
+outSJfilterCountTotalMin          3   1   1   1   
+outSJfilterOverhangMin            30   12   12   12   
+outSJfilterDistToOtherSJmin       10   0   5   10   
+outSJfilterIntronMaxVsReadN       50000   100000   200000   
+outWigType                        None   
+outWigStrand                      Stranded   
+outWigReferencesPrefix            -
+outWigNorm                        RPM   
+outFilterType                     Normal
+outFilterMultimapNmax             10
+outFilterMultimapScoreRange       1
+outFilterScoreMin                 0
+outFilterScoreMinOverLread        0.66
+outFilterMatchNmin                0
+outFilterMatchNminOverLread       0.66
+outFilterMismatchNmax             10
+outFilterMismatchNoverLmax        0.3
+outFilterMismatchNoverReadLmax    1
+outFilterIntronMotifs             None
+clip5pNbases                      0   
+clip3pNbases                      0   
+clip3pAfterAdapterNbases          0   
+clip3pAdapterSeq                  -   
+clip3pAdapterMMp                  0.1   
+winBinNbits                       16
+winAnchorDistNbins                9
+winFlankNbins                     4
+winAnchorMultimapNmax             50
+winReadCoverageRelativeMin        0.5
+winReadCoverageBasesMin           0
+scoreGap                          0
+scoreGapNoncan                    -8
+scoreGapGCAG                      -4
+scoreGapATAC                      -8
+scoreStitchSJshift                1
+scoreGenomicLengthLog2scale       -0.25
+scoreDelBase                      -2
+scoreDelOpen                      -2
+scoreInsOpen                      -2
+scoreInsBase                      -2
+seedSearchLmax                    0
+seedSearchStartLmax               50
+seedSearchStartLmaxOverLread      1
+seedPerReadNmax                   1000
+seedPerWindowNmax                 50
+seedNoneLociPerWindow             10
+seedMultimapNmax                  10000
+alignIntronMin                    21
+alignIntronMax                    0
+alignMatesGapMax                  0
+alignTranscriptsPerReadNmax       10000
+alignSJoverhangMin                5
+alignSJDBoverhangMin              3
+alignSJstitchMismatchNmax         0   -1   0   0   
+alignSplicedMateMapLmin           0
+alignSplicedMateMapLminOverLmate    0.66
+alignWindowsPerReadNmax           10000
+alignTranscriptsPerWindowNmax     100
+alignEndsType                     Local
+alignSoftClipAtReferenceEnds      Yes
+alignEndsProtrude                 0   ConcordantPair   
+chimSegmentMin                    0
+chimScoreMin                      0
+chimScoreDropMax                  20
+chimScoreSeparation               10
+chimScoreJunctionNonGTAG          -1
+chimJunctionOverhangMin           20
+chimOutType                       SeparateSAMold
+chimFilter                        banGenomicN   
+chimSegmentReadGapMax             0
+sjdbFileChrStartEnd               -   
+sjdbGTFfile                       -
+sjdbGTFchrPrefix                  -
+sjdbGTFfeatureExon                exon
+sjdbGTFtagExonParentTranscript    transcript_id
+sjdbGTFtagExonParentGene          gene_id
+sjdbOverhang                      100
+sjdbScore                         2
+sjdbInsertSave                    Basic
+quantMode                         -   
+quantTranscriptomeBAMcompression    1
+quantTranscriptomeBan             IndelSoftclipSingleend
+twopass1readsN                    18446744073709551615
+twopassMode                       None
+----------------------------------------
+
+Finished loading and checking parameters
+Feb 15 19:09:41 ... starting to generate Genome files
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 0  "ENSMUST00000164963:chr1:11946-26929_-" chrStart: 0
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 1  "ENSMUST00000114410:chr1:12093-26973_-" chrStart: 262144
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 2  "ENSMUST00000161608:chr1:12098-26369_-" chrStart: 524288
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 3  "ENSMUST00000163061:chr1:12917-75801_-" chrStart: 786432
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 4  "ENSMUST00000159826:chr1:13425-26893_-" chrStart: 1048576
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 5  "ENSMUST00000160614:chr1:13537-20292_-" chrStart: 1310720
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 6  "ENSMUST00000163006:chr1:13565-18947_-" chrStart: 1572864
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 7  "ENSMUST00000068000:chr1:16899-26897_-" chrStart: 1835008
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 8  "ENSMUST00000189298:chr1:18003-19826_-" chrStart: 2097152
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 9  "ENSMUST00000162410:chr1:20411-26924_-" chrStart: 2359296
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 10  "ENSMUST00000160130:chr1:20447-26924_-" chrStart: 2621440
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 11  "ENSMUST00000027202:chr1:52816-82744_+" chrStart: 2883584
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 12  "ENSMUST00000190746:chr1:79561-82743_+" chrStart: 3145728
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 13  "ENSMUST00000001027:chr1:86776-163260_+" chrStart: 3407872
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 14  "ENSMUST00000160168:chr1:86809-127724_+" chrStart: 3670016
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 15  "ENSMUST00000161549:chr1:169977-171856_+" chrStart: 3932160
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 16  "ENSMUST00000040999:chr1:169983-257549_+" chrStart: 4194304
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 17  "ENSMUST00000159014:chr1:169985-178952_+" chrStart: 4456448
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 18  "ENSMUST00000162011:chr1:170033-195971_+" chrStart: 4718592
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 19  "ENSMUST00000160815:chr1:226473-229096_+" chrStart: 4980736
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 20  "ENSMUST00000158650:chr1:211830-211937_-" chrStart: 5242880
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 21  "ENSMUST00000040442:chr1:267251-325451_+" chrStart: 5505024
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 22  "ENSMUST00000161833:chr1:267286-317236_+" chrStart: 5767168
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 23  "ENSMUST00000159240:chr1:267305-272264_+" chrStart: 6029312
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 24  "ENSMUST00000189059:chr1:268072-270216_+" chrStart: 6291456
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 25  "ENSMUST00000161926:chr1:297460-302015_+" chrStart: 6553600
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 26  "ENSMUST00000161126:chr1:310971-372510_-" chrStart: 6815744
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 27  "ENSMUST00000114366:chr1:335180-437113_+" chrStart: 7077888
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 28  "ENSMUST00000194925:chr1:440366-442988_-" chrStart: 7340032
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 29  "ENSMUST00000050552:chr1:449752-464223_+" chrStart: 7602176
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 30  "ENSMUST00000188898:chr1:449978-459858_+" chrStart: 7864320
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 31  "ENSMUST00000188630:chr1:449986-462341_+" chrStart: 8126464
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 32  "ENSMUST00000186949:chr1:450324-461985_+" chrStart: 8388608
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 33  "ENSMUST00000156931:chr1:467059-480937_-" chrStart: 8650752
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 34  "ENSMUST00000139787:chr1:468870-469729_-" chrStart: 8912896
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 35  "ENSMUST00000141570:chr1:468870-470305_-" chrStart: 9175040
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 36  "ENSMUST00000123580:chr1:468870-473637_-" chrStart: 9437184
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 37  "ENSMUST00000034868:chr1:468870-480937_-" chrStart: 9699328
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 38  "ENSMUST00000148330:chr1:468870-480937_-" chrStart: 9961472
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 39  "ENSMUST00000151338:chr1:468870-480937_-" chrStart: 10223616
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 40  "ENSMUST00000129303:chr1:469186-470693_-" chrStart: 10485760
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 41  "ENSMUST00000186552:chr1:471460-477269_-" chrStart: 10747904
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 42  "ENSMUST00000135380:chr1:471485-478129_-" chrStart: 11010048
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 43  "ENSMUST00000129577:chr1:473015-480937_-" chrStart: 11272192
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 44  "ENSMUST00000131051:chr1:473782-474298_-" chrStart: 11534336
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 45  "ENSMUST00000147258:chr1:478497-480937_-" chrStart: 11796480
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 46  "ENSMUST00000117069:chr1:487865-502300_-" chrStart: 12058624
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 47  "ENSMUST00000114348:chr1:487865-502305_-" chrStart: 12320768
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 48  "ENSMUST00000081677:chr1:487868-502357_-" chrStart: 12582912
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 49  "ENSMUST00000186242:chr1:487891-489056_-" chrStart: 12845056
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 50  "ENSMUST00000114345:chr1:490658-502240_-" chrStart: 13107200
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 51  "ENSMUST00000190048:chr1:491286-502310_-" chrStart: 13369344
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 52  "ENSMUST00000185990:chr1:491290-502353_-" chrStart: 13631488
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 53  "ENSMUST00000124550:chr1:495047-502047_-" chrStart: 13893632
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 54  "ENSMUST00000188896:chr1:495701-497839_-" chrStart: 14155776
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 55  "ENSMUST00000087521:chr1:502022-520327_+" chrStart: 14417920
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 56  "ENSMUST00000114337:chr1:502138-538689_+" chrStart: 14680064
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 57  "ENSMUST00000129759:chr1:502499-507378_+" chrStart: 14942208
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 58  "ENSMUST00000151272:chr1:502600-504921_+" chrStart: 15204352
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 59  "ENSMUST00000171597:chr1:504502-519137_+" chrStart: 15466496
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 60  "ENSMUST00000140723:chr1:506038-514671_+" chrStart: 15728640
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 61  "ENSMUST00000185578:chr1:510275-513059_+" chrStart: 15990784
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 62  "ENSMUST00000188295:chr1:514556-518255_+" chrStart: 16252928
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 63  "ENSMUST00000027198:chr1:519642-561982_-" chrStart: 16515072
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 64  "ENSMUST00000114325:chr1:521075-558289_-" chrStart: 16777216
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 65  "ENSMUST00000151723:chr1:537184-538322_-" chrStart: 17039360
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 66  "ENSMUST00000190695:chr1:540571-561798_-" chrStart: 17301504
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 67  "ENSMUST00000191206:chr1:557219-561828_-" chrStart: 17563648
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 68  "ENSMUST00000179823:chr1:523388-523494_-" chrStart: 17825792
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 69  "ENSMUST00000160947:chr1:562021-569489_+" chrStart: 18087936
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 70  "ENSMUST00000129740:chr1:562025-574403_+" chrStart: 18350080
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 71  "ENSMUST00000139825:chr1:562028-580103_+" chrStart: 18612224
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 72  "ENSMUST00000161600:chr1:579679-643202_-" chrStart: 18874368
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 73  "ENSMUST00000097724:chr1:583898-643145_-" chrStart: 19136512
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 74  "ENSMUST00000187717:chr1:584620-622833_-" chrStart: 19398656
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 75  "ENSMUST00000038372:chr1:585960-643070_-" chrStart: 19660800
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 76  "ENSMUST00000161000:chr1:609066-643154_-" chrStart: 19922944
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 77  "ENSMUST00000160546:chr1:614212-643143_-" chrStart: 20185088
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 78  "ENSMUST00000159980:chr1:614239-643156_-" chrStart: 20447232
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 79  "ENSMUST00000191472:chr1:619310-622099_-" chrStart: 20709376
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 80  "ENSMUST00000159185:chr1:622483-643176_-" chrStart: 20971520
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 81  "ENSMUST00000027193:chr1:643263-652843_+" chrStart: 21233664
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 82  "ENSMUST00000191562:chr1:682093-682444_-" chrStart: 21495808
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 83  "ENSMUST00000186270:chr1:687254-694223_+" chrStart: 21757952
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 84  "ENSMUST00000081455:chr1:703567-704118_+" chrStart: 22020096
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 85  "ENSMUST00000188772:chr1:703782-752868_-" chrStart: 22282240
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 86  "ENSMUST00000191565:chr1:714999-749321_-" chrStart: 22544384
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 87  "ENSMUST00000055313:chr1:714999-752832_-" chrStart: 22806528
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 88  "ENSMUST00000191252:chr1:715242-749321_-" chrStart: 23068672
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 89  "ENSMUST00000185953:chr1:723774-752839_-" chrStart: 23330816
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 90  "ENSMUST00000188839:chr1:733075-747929_-" chrStart: 23592960
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 91  "ENSMUST00000185352:chr1:709520-712710_+" chrStart: 23855104
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 92  "ENSMUST00000188643:chr1:711824-711953_+" chrStart: 24117248
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 93  "ENSMUST00000190385:chr1:759188-760865_+" chrStart: 24379392
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 94  "ENSMUST00000149874:chr1:768387-770765_+" chrStart: 24641536
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 95  "ENSMUST00000140940:chr1:768387-811222_+" chrStart: 24903680
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 96  "ENSMUST00000164900:chr1:768389-788125_+" chrStart: 25165824
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 97  "ENSMUST00000156870:chr1:768395-771182_+" chrStart: 25427968
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 98  "ENSMUST00000124567:chr1:768413-770768_+" chrStart: 25690112
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 99  "ENSMUST00000097723:chr1:768423-774433_+" chrStart: 25952256
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 100  "ENSMUST00000097722:chr1:768430-810857_+" chrStart: 26214400
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 101  "ENSMUST00000114313:chr1:768439-815779_+" chrStart: 26476544
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 102  "ENSMUST00000114309:chr1:770173-790106_+" chrStart: 26738688
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 103  "ENSMUST00000123553:chr1:770181-779949_+" chrStart: 27000832
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 104  "ENSMUST00000069333:chr1:770196-812052_+" chrStart: 27262976
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 105  "ENSMUST00000189858:chr1:770765-774441_+" chrStart: 27525120
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 106  "ENSMUST00000123032:chr1:787431-809332_+" chrStart: 27787264
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 107  "ENSMUST00000191399:chr1:842104-842554_+" chrStart: 28049408
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 108  "ENSMUST00000027189:chr1:852269-904398_+" chrStart: 28311552
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 109  "ENSMUST00000191201:chr1:852372-903649_+" chrStart: 28573696
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 110  "ENSMUST00000165549:chr1:859397-903903_+" chrStart: 28835840
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 111  "ENSMUST00000190213:chr1:859548-903649_+" chrStart: 29097984
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 112  "ENSMUST00000194726:chr1:854678-858518_+" chrStart: 29360128
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 113  "ENSMUST00000188624:chr1:906980-949687_-" chrStart: 29622272
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 114  "ENSMUST00000172685:chr1:960567-964107_-" chrStart: 29884416
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 115  "ENSMUST00000174359:chr1:976791-978592_-" chrStart: 30146560
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 116  "ENSMUST00000028283:chr2:23195-26803_-" chrStart: 30408704
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 117  "ENSMUST00000119000:chr2:77908-78602_-" chrStart: 30670848
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 118  "ENSMUST00000114045:chr2:198024-212319_-" chrStart: 30932992
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 119  "ENSMUST00000102900:chr2:198024-220500_-" chrStart: 31195136
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 120  "ENSMUST00000140392:chr2:244149-248132_-" chrStart: 31457280
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 121  "ENSMUST00000129554:chr2:244446-247694_-" chrStart: 31719424
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 122  "ENSMUST00000137904:chr2:244510-254946_-" chrStart: 31981568
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 123  "ENSMUST00000047632:chr2:245956-258400_-" chrStart: 32243712
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 124  "ENSMUST00000114043:chr2:246293-258371_-" chrStart: 32505856
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 125  "ENSMUST00000142131:chr2:248196-258311_-" chrStart: 32768000
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 126  "ENSMUST00000127691:chr2:254615-255289_-" chrStart: 33030144
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 127  "ENSMUST00000102899:chr2:260783-266200_-" chrStart: 33292288
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 128  "ENSMUST00000015920:chr2:261109-266092_-" chrStart: 33554432
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 129  "ENSMUST00000139815:chr2:263632-266101_-" chrStart: 33816576
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 130  "ENSMUST00000102898:chr2:266287-268841_+" chrStart: 34078720
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 131  "ENSMUST00000136269:chr2:266340-268580_+" chrStart: 34340864
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 132  "ENSMUST00000137376:chr2:266344-268841_+" chrStart: 34603008
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 133  "ENSMUST00000143678:chr2:266529-268841_+" chrStart: 34865152
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 134  "ENSMUST00000129673:chr2:267715-268841_+" chrStart: 35127296
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 135  "ENSMUST00000147143:chr2:268142-268841_+" chrStart: 35389440
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 136  "ENSMUST00000149339:chr2:268194-268735_+" chrStart: 35651584
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 137  "ENSMUST00000083324:chr2:266784-266857_+" chrStart: 35913728
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 138  "ENSMUST00000082895:chr2:267741-267814_+" chrStart: 36175872
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 139  "ENSMUST00000083361:chr2:268053-268123_+" chrStart: 36438016
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 140  "ENSMUST00000142967:chr2:268904-270282_-" chrStart: 36700160
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 141  "ENSMUST00000183520:chr2:268906-271823_-" chrStart: 36962304
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 142  "ENSMUST00000167661:chr2:268906-271991_-" chrStart: 37224448
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 143  "ENSMUST00000015934:chr2:268906-272053_-" chrStart: 37486592
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 144  "ENSMUST00000129822:chr2:269100-271843_-" chrStart: 37748736
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 145  "ENSMUST00000147110:chr2:269100-271868_-" chrStart: 38010880
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 146  "ENSMUST00000150776:chr2:269754-271834_-" chrStart: 38273024
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 147  "ENSMUST00000128665:chr2:269998-271015_-" chrStart: 38535168
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 148  "ENSMUST00000129682:chr2:270381-271855_-" chrStart: 38797312
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 149  "ENSMUST00000133513:chr2:270980-271868_-" chrStart: 39059456
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 150  "ENSMUST00000015017:chr2:271890-275708_+" chrStart: 39321600
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 151  "ENSMUST00000126947:chr2:271904-275697_+" chrStart: 39583744
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 152  "ENSMUST00000125408:chr2:272192-275344_+" chrStart: 39845888
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 153  "ENSMUST00000135506:chr2:272192-275691_+" chrStart: 40108032
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 154  "ENSMUST00000157066:chr2:272336-275478_+" chrStart: 40370176
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 155  "ENSMUST00000143098:chr2:272951-275360_+" chrStart: 40632320
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 156  "ENSMUST00000015011:chr2:275565-289453_-" chrStart: 40894464
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 157  "ENSMUST00000153641:chr2:277487-288908_-" chrStart: 41156608
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 158  "ENSMUST00000154651:chr2:280495-289306_-" chrStart: 41418752
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 159  "ENSMUST00000153771:chr2:289572-298677_+" chrStart: 41680896
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 160  "ENSMUST00000055406:chr2:289594-309021_+" chrStart: 41943040
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 161  "ENSMUST00000064244:chr2:309088-319913_-" chrStart: 42205184
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 162  "ENSMUST00000114020:chr2:309091-319913_-" chrStart: 42467328
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 163  "ENSMUST00000123126:chr2:309851-312113_-" chrStart: 42729472
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 164  "ENSMUST00000145546:chr2:309953-311209_-" chrStart: 42991616
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 165  "ENSMUST00000136710:chr2:310066-319806_-" chrStart: 43253760
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 166  "ENSMUST00000139635:chr2:310526-311844_-" chrStart: 43515904
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 167  "ENSMUST00000135752:chr2:311858-319805_-" chrStart: 43778048
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 168  "ENSMUST00000128130:chr2:313563-315793_-" chrStart: 44040192
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 169  "ENSMUST00000128401:chr2:318406-319851_-" chrStart: 44302336
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 170  "ENSMUST00000014996:chr2:328943-354107_+" chrStart: 44564480
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 171  "ENSMUST00000102891:chr2:329020-365155_+" chrStart: 44826624
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 172  "ENSMUST00000147216:chr2:362098-364972_+" chrStart: 45088768
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 173  "ENSMUST00000114005:chr2:365453-372376_+" chrStart: 45350912
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 174  "ENSMUST00000114004:chr2:365453-372951_+" chrStart: 45613056
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 175  "ENSMUST00000114006:chr2:365453-376636_+" chrStart: 45875200
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 176  "ENSMUST00000114007:chr2:365453-376636_+" chrStart: 46137344
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 177  "ENSMUST00000133126:chr2:365540-373948_+" chrStart: 46399488
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 178  "ENSMUST00000133807:chr2:365609-371430_+" chrStart: 46661632
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 179  "ENSMUST00000114003:chr2:366120-375845_+" chrStart: 46923776
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 180  "ENSMUST00000145290:chr2:371110-372962_+" chrStart: 47185920
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 181  "ENSMUST00000102890:chr2:376910-383456_-" chrStart: 47448064
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 182  "ENSMUST00000145742:chr2:376910-383469_-" chrStart: 47710208
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 183  "ENSMUST00000129835:chr2:376910-383493_-" chrStart: 47972352
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 184  "ENSMUST00000045702:chr2:376910-383545_-" chrStart: 48234496
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 185  "ENSMUST00000135725:chr2:379615-381538_-" chrStart: 48496640
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 186  "ENSMUST00000153388:chr2:381635-383538_-" chrStart: 48758784
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 187  "ENSMUST00000119562:chr2:390227-391104_+" chrStart: 49020928
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 188  "ENSMUST00000149378:chr2:392832-396400_+" chrStart: 49283072
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 189  "ENSMUST00000009358:chr2:417183-427726_-" chrStart: 49545216
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 190  "ENSMUST00000163967:chr2:417185-423415_-" chrStart: 49807360
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 191  "ENSMUST00000091233:chr2:434926-464528_+" chrStart: 50069504
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 192  "ENSMUST00000169787:chr2:452843-464522_+" chrStart: 50331648
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 193  "ENSMUST00000143246:chr2:453590-454205_+" chrStart: 50593792
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 194  "ENSMUST00000130600:chr2:459333-462953_+" chrStart: 50855936
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 195  "ENSMUST00000139633:chr2:460210-464528_+" chrStart: 51118080
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 196  "ENSMUST00000151224:chr2:465927-498038_-" chrStart: 51380224
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 197  "ENSMUST00000150024:chr2:500445-518250_-" chrStart: 51642368
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 198  "ENSMUST00000000910:chr2:520780-538747_+" chrStart: 51904512
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 199  "ENSMUST00000155290:chr2:532640-532919_+" chrStart: 52166656
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 200  "ENSMUST00000091224:chr2:543940-588244_-" chrStart: 52428800
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 201  "ENSMUST00000102886:chr2:543940-602811_-" chrStart: 52690944
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 202  "ENSMUST00000142136:chr2:544744-547807_-" chrStart: 52953088
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 203  "ENSMUST00000156434:chr2:544929-565484_-" chrStart: 53215232
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 204  "ENSMUST00000127805:chr2:552255-574531_-" chrStart: 53477376
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 205  "ENSMUST00000147089:chr2:566603-571179_-" chrStart: 53739520
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 206  "ENSMUST00000144448:chr2:566639-580739_-" chrStart: 54001664
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 207  "ENSMUST00000149733:chr2:597014-602393_-" chrStart: 54263808
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 208  "ENSMUST00000139312:chr2:597032-603882_-" chrStart: 54525952
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 209  "ENSMUST00000129975:chr2:599831-602959_-" chrStart: 54788096
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 210  "ENSMUST00000170435:chr2:544929-590257_+" chrStart: 55050240
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 211  "ENSMUST00000185188:chr2:617649-782457_-" chrStart: 55312384
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 212  "ENSMUST00000056176:chr2:617649-782578_-" chrStart: 55574528
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 213  "ENSMUST00000149758:chr2:624000-632886_-" chrStart: 55836672
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 214  "ENSMUST00000148067:chr2:624464-634424_-" chrStart: 56098816
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 215  "ENSMUST00000146843:chr2:625126-627343_-" chrStart: 56360960
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 216  "ENSMUST00000135584:chr2:625126-627420_-" chrStart: 56623104
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 217  "ENSMUST00000132642:chr2:657570-700025_-" chrStart: 56885248
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 218  "ENSMUST00000156020:chr2:682249-686842_+" chrStart: 57147392
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 219  "ENSMUST00000102409:chr2:757397-757496_+" chrStart: 57409536
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 220  "ENSMUST00000209765:chr2:797869-799766_+" chrStart: 57671680
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 221  "ENSMUST00000209262:chr2:798048-798649_+" chrStart: 57933824
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 222  "ENSMUST00000028282:chr2:801124-830943_-" chrStart: 58195968
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 223  "ENSMUST00000077737:chr2:801124-831231_-" chrStart: 58458112
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 224  "ENSMUST00000113941:chr2:801145-831218_-" chrStart: 58720256
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 225  "ENSMUST00000164296:chr2:803389-819661_-" chrStart: 58982400
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 226  "ENSMUST00000138693:chr2:804815-831199_-" chrStart: 59244544
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 227  "ENSMUST00000154316:chr2:804815-863207_-" chrStart: 59506688
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 228  "ENSMUST00000130932:chr2:808541-831198_-" chrStart: 59768832
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 229  "ENSMUST00000147736:chr2:819076-831152_-" chrStart: 60030976
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 230  "ENSMUST00000144758:chr2:819437-820127_-" chrStart: 60293120
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 231  "ENSMUST00000126059:chr2:819544-830726_-" chrStart: 60555264
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 232  "ENSMUST00000183455:chr2:806094-806175_-" chrStart: 60817408
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 233  "ENSMUST00000144315:chr2:870702-876198_+" chrStart: 61079552
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 234  "ENSMUST00000113952:chr2:870702-892080_+" chrStart: 61341696
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 235  "ENSMUST00000140396:chr2:875306-890588_+" chrStart: 61603840
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 236  "ENSMUST00000125088:chr2:883317-888900_+" chrStart: 61865984
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 237  "ENSMUST00000116888:chr2:895350-895475_-" chrStart: 62128128
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 238  "ENSMUST00000142511:chr2:895971-898907_+" chrStart: 62390272
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 239  "ENSMUST00000132898:chr2:895974-898730_+" chrStart: 62652416
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 240  "ENSMUST00000181021:chr3:3025-8518_-" chrStart: 62914560
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 241  "ENSMUST00000181406:chr3:4546-7404_+" chrStart: 63176704
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 242  "ENSMUST00000180555:chr3:4558-7404_+" chrStart: 63438848
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 243  "ENSMUST00000181134:chr3:10736-15218_+" chrStart: 63700992
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 244  "ENSMUST00000181550:chr3:10749-29361_+" chrStart: 63963136
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 245  "ENSMUST00000180582:chr3:11235-29918_+" chrStart: 64225280
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 246  "ENSMUST00000181636:chr3:13395-28211_+" chrStart: 64487424
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 247  "ENSMUST00000181356:chr3:18408-25783_+" chrStart: 64749568
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 248  "ENSMUST00000181396:chr3:18418-29969_+" chrStart: 65011712
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 249  "ENSMUST00000181622:chr3:26587-28225_+" chrStart: 65273856
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 250  "ENSMUST00000180635:chr3:28203-33882_+" chrStart: 65536000
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 251  "ENSMUST00000180984:chr3:29856-31933_+" chrStart: 65798144
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 252  "ENSMUST00000180478:chr3:32491-33693_+" chrStart: 66060288
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 253  "ENSMUST00000181361:chr3:32706-33882_+" chrStart: 66322432
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 254  "ENSMUST00000175247:chr3:19094-19180_+" chrStart: 66584576
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 255  "ENSMUST00000175135:chr3:19512-19619_-" chrStart: 66846720
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 256  "ENSMUST00000199907:chr3:19521-19609_+" chrStart: 67108864
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 257  "ENSMUST00000171887:chr3:46797-58632_-" chrStart: 67371008
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 258  "ENSMUST00000165196:chr3:47303-91133_-" chrStart: 67633152
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 259  "ENSMUST00000163277:chr3:49118-91133_-" chrStart: 67895296
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 260  "ENSMUST00000107556:chr3:86680-100922_-" chrStart: 68157440
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 261  "ENSMUST00000010682:chr3:86683-100761_-" chrStart: 68419584
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 262  "ENSMUST00000123536:chr3:98847-100819_-" chrStart: 68681728
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 263  "ENSMUST00000195161:chr3:88530-88676_-" chrStart: 68943872
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 264  "ENSMUST00000001452:chr3:101039-125692_+" chrStart: 69206016
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 265  "ENSMUST00000193666:chr3:101040-102870_+" chrStart: 69468160
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 266  "ENSMUST00000167000:chr3:101046-125432_+" chrStart: 69730304
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 267  "ENSMUST00000164783:chr3:101049-118332_+" chrStart: 69992448
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 268  "ENSMUST00000167718:chr3:101076-125432_+" chrStart: 70254592
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 269  "ENSMUST00000164166:chr3:101097-125691_+" chrStart: 70516736
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 270  "ENSMUST00000168062:chr3:101111-125432_+" chrStart: 70778880
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 271  "ENSMUST00000163735:chr3:106761-124575_+" chrStart: 71041024
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 272  "ENSMUST00000164122:chr3:124920-125689_+" chrStart: 71303168
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 273  "ENSMUST00000168971:chr3:124973-125690_+" chrStart: 71565312
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 274  "ENSMUST00000177005:chr3:128948-135238_+" chrStart: 71827456
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 275  "ENSMUST00000193646:chr3:128980-133436_+" chrStart: 72089600
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 276  "ENSMUST00000153716:chr3:128983-130503_+" chrStart: 72351744
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 277  "ENSMUST00000152801:chr3:128985-131512_+" chrStart: 72613888
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 278  "ENSMUST00000131666:chr3:128997-130392_+" chrStart: 72876032
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 279  "ENSMUST00000176519:chr3:129007-132288_+" chrStart: 73138176
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 280  "ENSMUST00000001454:chr3:129007-132293_+" chrStart: 73400320
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 281  "ENSMUST00000176425:chr3:129007-132293_+" chrStart: 73662464
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 282  "ENSMUST00000140039:chr3:129969-132243_+" chrStart: 73924608
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 283  "ENSMUST00000154381:chr3:131998-132506_+" chrStart: 74186752
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 284  "ENSMUST00000001456:chr3:132580-138429_-" chrStart: 74448896
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 285  "ENSMUST00000107553:chr3:132971-138193_-" chrStart: 74711040
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 286  "ENSMUST00000107552:chr3:132972-138379_-" chrStart: 74973184
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 287  "ENSMUST00000193872:chr3:137063-140072_-" chrStart: 75235328
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 288  "ENSMUST00000001451:chr3:140184-166262_+" chrStart: 75497472
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 289  "ENSMUST00000192057:chr3:140235-156653_+" chrStart: 75759616
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 290  "ENSMUST00000194942:chr3:140289-147240_+" chrStart: 76021760
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 291  "ENSMUST00000193007:chr3:144644-151520_+" chrStart: 76283904
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 292  "ENSMUST00000192009:chr3:146365-154655_+" chrStart: 76546048
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 293  "ENSMUST00000193097:chr3:156415-158561_+" chrStart: 76808192
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 294  "ENSMUST00000192377:chr3:162118-163561_+" chrStart: 77070336
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 295  "ENSMUST00000193224:chr3:162271-165194_+" chrStart: 77332480
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 296  "ENSMUST00000194359:chr3:164460-165015_+" chrStart: 77594624
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 297  "ENSMUST00000147948:chr3:168508-171957_+" chrStart: 77856768
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 298  "ENSMUST00000147991:chr3:168513-172465_+" chrStart: 78118912
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 299  "ENSMUST00000149640:chr3:168515-171167_+" chrStart: 78381056
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 300  "ENSMUST00000123200:chr3:168517-169726_+" chrStart: 78643200
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 301  "ENSMUST00000147818:chr3:170646-172465_+" chrStart: 78905344
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 302  "ENSMUST00000107543:chr3:172540-176667_-" chrStart: 79167488
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 303  "ENSMUST00000152477:chr3:172544-173505_-" chrStart: 79429632
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 304  "ENSMUST00000140259:chr3:172544-173646_-" chrStart: 79691776
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 305  "ENSMUST00000075523:chr3:172546-173755_-" chrStart: 79953920
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 306  "ENSMUST00000107542:chr3:172546-176667_-" chrStart: 80216064
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 307  "ENSMUST00000179946:chr3:179947-180999_+" chrStart: 80478208
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 308  "ENSMUST00000098956:chr3:181660-182623_-" chrStart: 80740352
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 309  "ENSMUST00000107540:chr3:185696-186768_+" chrStart: 81002496
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 310  "ENSMUST00000076048:chr3:187425-188357_-" chrStart: 81264640
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 311  "ENSMUST00000128732:chr3:187751-188388_-" chrStart: 81526784
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 312  "ENSMUST00000193338:chr3:198067-214250_-" chrStart: 81788928
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 313  "ENSMUST00000056370:chr3:198067-214255_-" chrStart: 82051072
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 314  "ENSMUST00000192365:chr3:198303-214189_-" chrStart: 82313216
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 315  "ENSMUST00000195899:chr3:199667-200644_-" chrStart: 82575360
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 316  "ENSMUST00000192909:chr3:199992-214210_-" chrStart: 82837504
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 317  "ENSMUST00000198774:chr3:201289-203634_-" chrStart: 83099648
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 318  "ENSMUST00000191622:chr3:203457-214232_-" chrStart: 83361792
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 319  "ENSMUST00000168755:chr3:214422-229035_-" chrStart: 83623936
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 320  "ENSMUST00000193433:chr3:214422-229036_-" chrStart: 83886080
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 321  "ENSMUST00000195657:chr3:214423-229040_-" chrStart: 84148224
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 322  "ENSMUST00000057935:chr3:214423-229067_-" chrStart: 84410368
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 323  "ENSMUST00000199370:chr3:232864-233323_+" chrStart: 84672512
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 324  "ENSMUST00000029700:chr3:239887-259667_-" chrStart: 84934656
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 325  "ENSMUST00000156108:chr3:239890-245067_-" chrStart: 85196800
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 326  "ENSMUST00000135539:chr3:239890-252558_-" chrStart: 85458944
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 327  "ENSMUST00000149145:chr3:239890-253966_-" chrStart: 85721088
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 328  "ENSMUST00000107531:chr3:239890-259625_-" chrStart: 85983232
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 329  "ENSMUST00000166237:chr3:239890-265110_-" chrStart: 86245376
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 330  "ENSMUST00000165898:chr3:239890-263029_-" chrStart: 86507520
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 331  "ENSMUST00000169222:chr3:239890-262812_-" chrStart: 86769664
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 332  "ENSMUST00000185137:chr3:253614-255378_-" chrStart: 87031808
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 333  "ENSMUST00000135732:chr3:253752-255714_-" chrStart: 87293952
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 334  "ENSMUST00000184487:chr3:253963-259242_-" chrStart: 87556096
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 335  "ENSMUST00000127436:chr3:254025-263029_-" chrStart: 87818240
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 336  "ENSMUST00000184876:chr3:254496-262958_-" chrStart: 88080384
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 337  "ENSMUST00000147200:chr3:254513-262804_-" chrStart: 88342528
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 338  "ENSMUST00000125526:chr3:255972-259233_-" chrStart: 88604672
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 339  "ENSMUST00000184972:chr3:256759-258770_-" chrStart: 88866816
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 340  "ENSMUST00000141471:chr3:257017-260343_-" chrStart: 89128960
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 341  "ENSMUST00000123753:chr3:258693-260364_-" chrStart: 89391104
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 342  "ENSMUST00000146921:chr3:259653-260364_-" chrStart: 89653248
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 343  "ENSMUST00000183768:chr3:244807-244879_-" chrStart: 89915392
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 344  "ENSMUST00000193850:chr3:278512-279082_+" chrStart: 90177536
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 345  "ENSMUST00000147537:chr3:284075-288538_-" chrStart: 90439680
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 346  "ENSMUST00000029699:chr3:285076-307266_-" chrStart: 90701824
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 347  "ENSMUST00000135494:chr3:285774-307268_-" chrStart: 90963968
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 348  "ENSMUST00000150496:chr3:286008-286795_-" chrStart: 91226112
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 349  "ENSMUST00000120377:chr3:287136-307238_-" chrStart: 91488256
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 350  "ENSMUST00000036252:chr3:287137-297243_-" chrStart: 91750400
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 351  "ENSMUST00000149068:chr3:306684-313887_-" chrStart: 92012544
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 352  "ENSMUST00000193595:chr3:329997-331286_-" chrStart: 92274688
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 353  "ENSMUST00000172699:chr3:336326-345327_+" chrStart: 92536832
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 354  "ENSMUST00000122779:chr3:340232-340313_-" chrStart: 92798976
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 355  "ENSMUST00000008745:chr3:345960-352231_-" chrStart: 93061120
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 356  "ENSMUST00000131775:chr3:346240-352180_-" chrStart: 93323264
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 357  "ENSMUST00000141371:chr3:346607-347445_-" chrStart: 93585408
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 358  "ENSMUST00000149724:chr3:348573-352213_-" chrStart: 93847552
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 359  "ENSMUST00000145548:chr3:353750-355025_-" chrStart: 94109696
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 360  "ENSMUST00000029698:chr3:353750-356955_-" chrStart: 94371840
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 361  "ENSMUST00000119002:chr3:353751-356790_-" chrStart: 94633984
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 362  "ENSMUST00000156421:chr3:353752-356824_-" chrStart: 94896128
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 363  "ENSMUST00000145172:chr3:356161-357005_-" chrStart: 95158272
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 364  "ENSMUST00000008748:chr3:357689-373665_+" chrStart: 95420416
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 365  "ENSMUST00000194303:chr3:357695-367491_+" chrStart: 95682560
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 366  "ENSMUST00000192962:chr3:357727-360769_+" chrStart: 95944704
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 367  "ENSMUST00000192687:chr3:360634-368445_+" chrStart: 96206848
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 368  "ENSMUST00000195498:chr3:367838-369205_+" chrStart: 96468992
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 369  "ENSMUST00000192688:chr3:379816-387813_+" chrStart: 96731136
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 370  "ENSMUST00000193069:chr3:379879-383923_+" chrStart: 96993280
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 371  "ENSMUST00000194604:chr3:379889-383916_+" chrStart: 97255424
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 372  "ENSMUST00000195014:chr3:383548-392361_+" chrStart: 97517568
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 373  "ENSMUST00000193934:chr3:383581-391959_+" chrStart: 97779712
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 374  "ENSMUST00000192495:chr3:383607-391973_+" chrStart: 98041856
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 375  "ENSMUST00000035785:chr3:383611-392361_+" chrStart: 98304000
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 376  "ENSMUST00000098952:chr3:380350-381079_-" chrStart: 98566144
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 377  "ENSMUST00000212392:chr3:409908-411795_+" chrStart: 98828288
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 378  "ENSMUST00000176226:chr3:411396-418519_+" chrStart: 99090432
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 379  "ENSMUST00000175749:chr3:411601-421281_+" chrStart: 99352576
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 380  "ENSMUST00000175903:chr3:411733-450871_+" chrStart: 99614720
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 381  "ENSMUST00000176514:chr3:418363-421443_+" chrStart: 99876864
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 382  "ENSMUST00000177023:chr3:418551-437537_+" chrStart: 100139008
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 383  "ENSMUST00000176539:chr3:419309-438441_+" chrStart: 100401152
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 384  "ENSMUST00000177498:chr3:420085-451474_+" chrStart: 100663296
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 385  "ENSMUST00000176500:chr3:420085-451994_+" chrStart: 100925440
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 386  "ENSMUST00000175779:chr3:420459-450837_+" chrStart: 101187584
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 387  "ENSMUST00000029694:chr3:425048-451994_+" chrStart: 101449728
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 388  "ENSMUST00000176804:chr3:425067-450805_+" chrStart: 101711872
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 389  "ENSMUST00000177418:chr3:425080-443478_+" chrStart: 101974016
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 390  "ENSMUST00000107510:chr3:425234-451992_+" chrStart: 102236160
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 391  "ENSMUST00000170653:chr3:425378-451990_+" chrStart: 102498304
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 392  "ENSMUST00000176401:chr3:425402-438404_+" chrStart: 102760448
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 393  "ENSMUST00000176400:chr3:425490-437002_+" chrStart: 103022592
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 394  "ENSMUST00000177303:chr3:425497-450871_+" chrStart: 103284736
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 395  "ENSMUST00000176307:chr3:426401-436868_+" chrStart: 103546880
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 396  "ENSMUST00000175911:chr3:426863-444650_+" chrStart: 103809024
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 397  "ENSMUST00000176243:chr3:427296-437559_+" chrStart: 104071168
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 398  "ENSMUST00000176316:chr3:433384-436918_+" chrStart: 104333312
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 399  "ENSMUST00000177120:chr3:433411-436043_+" chrStart: 104595456
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 400  "ENSMUST00000176879:chr3:433415-436934_+" chrStart: 104857600
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 401  "ENSMUST00000175745:chr3:433513-436276_+" chrStart: 105119744
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 402  "ENSMUST00000176528:chr3:435853-438604_+" chrStart: 105381888
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 403  "ENSMUST00000176079:chr3:436138-437532_+" chrStart: 105644032
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 404  "ENSMUST00000176123:chr3:436675-437580_+" chrStart: 105906176
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 405  "ENSMUST00000177091:chr3:436860-441758_+" chrStart: 106168320
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 406  "ENSMUST00000176301:chr3:438265-439018_+" chrStart: 106430464
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 407  "ENSMUST00000177099:chr3:446368-447854_+" chrStart: 106692608
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 408  "ENSMUST00000176272:chr3:447874-450907_+" chrStart: 106954752
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 409  "ENSMUST00000177314:chr3:420399-425003_-" chrStart: 107216896
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 410  "ENSMUST00000063119:chr3:455840-457084_-" chrStart: 107479040
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 411  "ENSMUST00000198351:chr3:488966-490339_-" chrStart: 107741184
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 412  "ENSMUST00000029696:chr3:489745-516866_+" chrStart: 108003328
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 413  "ENSMUST00000200588:chr3:489756-492004_+" chrStart: 108265472
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 414  "ENSMUST00000198042:chr3:489769-516504_+" chrStart: 108527616
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 415  "ENSMUST00000199684:chr3:489769-516796_+" chrStart: 108789760
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 416  "ENSMUST00000200364:chr3:489775-505555_+" chrStart: 109051904
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 417  "ENSMUST00000198078:chr3:489779-515945_+" chrStart: 109314048
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 418  "ENSMUST00000197300:chr3:497383-512850_+" chrStart: 109576192
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 419  "ENSMUST00000200438:chr3:502781-504858_+" chrStart: 109838336
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 420  "ENSMUST00000198721:chr3:503582-512929_+" chrStart: 110100480
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 421  "ENSMUST00000200622:chr3:512722-515026_+" chrStart: 110362624
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 422  "ENSMUST00000197479:chr3:497872-497999_+" chrStart: 110624768
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 423  "ENSMUST00000198589:chr3:497873-497999_+" chrStart: 110886912
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 424  "ENSMUST00000122484:chr3:511100-511234_+" chrStart: 111149056
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 425  "ENSMUST00000029692:chr3:520780-533669_+" chrStart: 111411200
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 426  "ENSMUST00000171645:chr3:520818-530311_+" chrStart: 111673344
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 427  "ENSMUST00000165846:chr3:520823-521949_+" chrStart: 111935488
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 428  "ENSMUST00000170377:chr3:520836-534983_+" chrStart: 112197632
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 429  "ENSMUST00000166234:chr3:520840-534991_+" chrStart: 112459776
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 430  "ENSMUST00000172333:chr3:520841-533490_+" chrStart: 112721920
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 431  "ENSMUST00000172252:chr3:520848-533498_+" chrStart: 112984064
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 432  "ENSMUST00000172187:chr3:520853-530261_+" chrStart: 113246208
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 433  "ENSMUST00000108464:chr3:526032-526612_+" chrStart: 113508352
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 434  "ENSMUST00000194270:chr3:542695-543634_-" chrStart: 113770496
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 435  "ENSMUST00000107503:chr3:548642-555993_-" chrStart: 114032640
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 436  "ENSMUST00000107505:chr3:548642-579106_-" chrStart: 114294784
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 437  "ENSMUST00000090945:chr3:548643-576541_-" chrStart: 114556928
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 438  "ENSMUST00000183267:chr3:551414-566326_-" chrStart: 114819072
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 439  "ENSMUST00000130869:chr3:576656-579094_-" chrStart: 115081216
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 440  "ENSMUST00000135913:chr3:579158-629529_+" chrStart: 115343360
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 441  "ENSMUST00000184014:chr3:586885-636489_-" chrStart: 115605504
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 442  "ENSMUST00000183374:chr3:604624-636429_-" chrStart: 115867648
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 443  "ENSMUST00000184640:chr3:604630-636310_-" chrStart: 116129792
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 444  "ENSMUST00000183966:chr3:609231-636443_-" chrStart: 116391936
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 445  "ENSMUST00000185189:chr3:610961-636454_-" chrStart: 116654080
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 446  "ENSMUST00000183707:chr3:623587-636489_-" chrStart: 116916224
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 447  "ENSMUST00000184958:chr3:625212-636319_-" chrStart: 117178368
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 448  "ENSMUST00000184170:chr3:628424-636400_-" chrStart: 117440512
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 449  "ENSMUST00000184013:chr3:633990-636473_-" chrStart: 117702656
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 450  "ENSMUST00000107498:chr3:639173-714045_+" chrStart: 117964800
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 451  "ENSMUST00000081695:chr3:640958-714040_+" chrStart: 118226944
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 452  "ENSMUST00000090942:chr3:640958-714040_+" chrStart: 118489088
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 453  "ENSMUST00000212694:chr3:659606-694835_+" chrStart: 118751232
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 454  "ENSMUST00000198113:chr3:694377-704441_+" chrStart: 119013376
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 455  "ENSMUST00000198251:chr3:648967-703943_-" chrStart: 119275520
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 456  "ENSMUST00000082804:chr3:666861-667022_+" chrStart: 119537664
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 457  "ENSMUST00000107494:chr3:709049-717873_-" chrStart: 119799808
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 458  "ENSMUST00000137243:chr3:712569-716016_-" chrStart: 120061952
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 459  "ENSMUST00000126245:chr3:713557-717941_-" chrStart: 120324096
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 460  "ENSMUST00000147828:chr3:713586-717845_-" chrStart: 120586240
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 461  "ENSMUST00000128988:chr3:715301-717824_-" chrStart: 120848384
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 462  "ENSMUST00000083302:chr3:710452-710570_+" chrStart: 121110528
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 463  "ENSMUST00000090938:chr3:724745-754356_-" chrStart: 121372672
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 464  "ENSMUST00000173711:chr3:727577-729484_-" chrStart: 121634816
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 465  "ENSMUST00000107491:chr3:727577-753893_-" chrStart: 121896960
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 466  "ENSMUST00000174571:chr3:727704-734927_-" chrStart: 122159104
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 467  "ENSMUST00000173094:chr3:727740-734960_-" chrStart: 122421248
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 468  "ENSMUST00000173135:chr3:727770-755123_-" chrStart: 122683392
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 469  "ENSMUST00000174077:chr3:732416-754240_-" chrStart: 122945536
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 470  "ENSMUST00000173021:chr3:732450-755050_-" chrStart: 123207680
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 471  "ENSMUST00000174402:chr3:733385-754213_-" chrStart: 123469824
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 472  "ENSMUST00000172942:chr3:733433-753848_-" chrStart: 123731968
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 473  "ENSMUST00000174491:chr3:737545-742463_-" chrStart: 123994112
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 474  "ENSMUST00000188259:chr3:752995-754979_-" chrStart: 124256256
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 475  "ENSMUST00000172790:chr3:754586-755051_-" chrStart: 124518400
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 476  "ENSMUST00000186583:chr3:754564-883317_+" chrStart: 124780544
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 477  "ENSMUST00000090933:chr3:769754-883315_+" chrStart: 125042688
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 478  "ENSMUST00000198846:chr3:827125-832210_+" chrStart: 125304832
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 479  "ENSMUST00000189824:chr3:856744-859722_+" chrStart: 125566976
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 480  "ENSMUST00000178517:chr3:774565-774671_-" chrStart: 125829120
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 481  "ENSMUST00000104616:chr3:852940-853069_-" chrStart: 126091264
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 482  "ENSMUST00000200659:chr3:885881-905041_-" chrStart: 126353408
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 483  "ENSMUST00000166687:chr3:887923-893987_-" chrStart: 126615552
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 484  "ENSMUST00000090929:chr3:887923-897232_-" chrStart: 126877696
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 485  "ENSMUST00000052539:chr3:887923-897253_-" chrStart: 127139840
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 486  "ENSMUST00000200357:chr3:891063-893683_-" chrStart: 127401984
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 487  "ENSMUST00000196223:chr3:892163-893917_-" chrStart: 127664128
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 488  "ENSMUST00000198506:chr3:892997-893697_-" chrStart: 127926272
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 489  "ENSMUST00000196043:chr3:893181-893917_-" chrStart: 128188416
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 490  "ENSMUST00000196709:chr3:897530-905830_-" chrStart: 128450560
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 491  "ENSMUST00000081848:chr3:897530-905901_-" chrStart: 128712704
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 492  "ENSMUST00000196254:chr3:897691-899621_-" chrStart: 128974848
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 493  "ENSMUST00000200433:chr3:898998-899925_-" chrStart: 129236992
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 494  "ENSMUST00000196921:chr3:899306-905257_-" chrStart: 129499136
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 495  "ENSMUST00000199668:chr3:899541-905794_-" chrStart: 129761280
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 496  "ENSMUST00000198239:chr3:902881-905833_-" chrStart: 130023424
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 497  "ENSMUST00000103960:chr3:901852-901955_-" chrStart: 130285568
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 498  "ENSMUST00000196011:chr3:920666-920918_+" chrStart: 130547712
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 499  "ENSMUST00000047111:chr3:940084-950536_+" chrStart: 130809856
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 500  "ENSMUST00000151591:chr3:940116-941401_+" chrStart: 131072000
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 501  "ENSMUST00000107482:chr3:940514-950726_+" chrStart: 131334144
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 502  "ENSMUST00000127058:chr3:940521-945481_+" chrStart: 131596288
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 503  "ENSMUST00000148097:chr3:940565-944854_+" chrStart: 131858432
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 504  "ENSMUST00000029686:chr3:950016-964138_-" chrStart: 132120576
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 505  "ENSMUST00000132156:chr3:952674-955174_-" chrStart: 132382720
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 506  "ENSMUST00000127654:chr3:952791-955156_-" chrStart: 132644864
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 507  "ENSMUST00000133368:chr3:955423-963922_-" chrStart: 132907008
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 508  "ENSMUST00000121212:chr3:968737-980863_+" chrStart: 133169152
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 509  "ENSMUST00000152205:chr3:968759-971146_+" chrStart: 133431296
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 510  "ENSMUST00000090927:chr3:968760-980863_+" chrStart: 133693440
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 511  "ENSMUST00000148265:chr3:968761-977399_+" chrStart: 133955584
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 512  "ENSMUST00000138822:chr3:968761-980861_+" chrStart: 134217728
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 513  "ENSMUST00000121931:chr3:968782-980863_+" chrStart: 134479872
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 514  "ENSMUST00000128318:chr3:968921-980863_+" chrStart: 134742016
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 515  "ENSMUST00000133323:chr3:971106-974351_+" chrStart: 135004160
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 516  "ENSMUST00000153255:chr3:976107-980022_+" chrStart: 135266304
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 517  "ENSMUST00000132830:chr3:977897-979689_+" chrStart: 135528448
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 518  "ENSMUST00000139221:chr3:978977-979913_+" chrStart: 135790592
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 519  "ENSMUST00000029684:chr3:981415-986707_+" chrStart: 136052736
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 520  "ENSMUST00000120697:chr3:981432-986707_+" chrStart: 136314880
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 521  "ENSMUST00000136165:chr3:981438-983607_+" chrStart: 136577024
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 522  "ENSMUST00000098941:chr3:981462-986705_+" chrStart: 136839168
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 523  "ENSMUST00000156447:chr3:981473-983394_+" chrStart: 137101312
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 524  "ENSMUST00000148881:chr3:981479-983606_+" chrStart: 137363456
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 525  "ENSMUST00000129294:chr3:981563-985218_+" chrStart: 137625600
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 526  "ENSMUST00000124291:chr3:981700-984327_+" chrStart: 137887744
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 527  "ENSMUST00000131146:chr3:984697-986235_-" chrStart: 138149888
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 528  "ENSMUST00000140473:chr3:987085-988621_+" chrStart: 138412032
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 529  "ENSMUST00000041913:chr3:987145-993233_+" chrStart: 138674176
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 530  "ENSMUST00000147696:chr3:987146-993231_+" chrStart: 138936320
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 531  "ENSMUST00000127982:chr3:987522-993232_+" chrStart: 139198464
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 532  "ENSMUST00000117278:chr3:987575-993230_+" chrStart: 139460608
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 533  "ENSMUST00000119707:chr3:987583-993237_+" chrStart: 139722752
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 534  "ENSMUST00000126115:chr3:988171-989711_+" chrStart: 139984896
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 535  "ENSMUST00000136209:chr3:991318-992419_+" chrStart: 140247040
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 536  "ENSMUST00000125501:chr3:991876-992418_+" chrStart: 140509184
+/project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2.fa : chr # 537  "ENSMUST00000155033:chr3:991926-992722_+" chrStart: 140771328
+Number of SA indices: 1706778
+Feb 15 19:09:41 ... starting to sort Suffix Array. This may take a long time...
+Number of chunks: 4;   chunks size limit: 4551408 bytes
+Feb 15 19:09:41 ... sorting Suffix Array chunks and saving them to disk...
+Writing 93536 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SA_3 ; empty space on disk = 1539913388392448 bytes ... done
+Writing 4499480 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SA_2 ; empty space on disk = 1539913388392448 bytes ... done
+Writing 4540080 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SA_0 ; empty space on disk = 1539913380003840 bytes ...Writing 4521128 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SA_1 ; empty space on disk = 1539913375809536 bytes ... done
+ done
+Feb 15 19:09:43 ... loading chunks from disk, packing SA...
+Feb 15 19:09:43 ... finished generating suffix array
+Feb 15 19:09:43 ... generating Suffix Array index
+Feb 15 19:09:46 ... completed Suffix Array index
+Feb 15 19:09:46 ... writing Genome to disk ...
+Writing 141033472 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/Genome ; empty space on disk = 1539913363226624 bytes ... done
+SA size in bytes: 7040463
+Feb 15 19:09:46 ... writing Suffix Array to disk ...
+Writing 7040463 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SA ; empty space on disk = 1539913216425984 bytes ... done
+Feb 15 19:09:46 ... writing SAindex to disk
+Writing 8 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SAindex ; empty space on disk = 1539913203843072 bytes ... done
+Writing 120 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SAindex ; empty space on disk = 1539913203843072 bytes ... done
+Writing 1565873491 bytes into /project/itmatlab/for_soum/BEERS2.0/BEERS2.0/data/_run5/expression_pipeline/data/sample1/transcriptome_2/SAindex ; empty space on disk = 1539913203843072 bytes ... done
+Feb 15 19:09:48 ..... finished successfully
+DONE: Genome generation, EXITING

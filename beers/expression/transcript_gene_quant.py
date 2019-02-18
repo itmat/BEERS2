@@ -114,7 +114,7 @@ class TranscriptGeneQuantificationStep:
                 # Sum all exon lengths together to create overall transcript length
                 transcript_length = 0
                 for i in range(len(start_location)):
-                    transcript_length = transcript_length + int(end_location[i]) - int(start_location[i])
+                    transcript_length = transcript_length + int(end_location[i]) - int(start_location[i]) + 1
 
                 # Map transcript's ENSEMBL ID to its length
                 self.transcript_length_map[fields[7]] = transcript_length
@@ -241,7 +241,7 @@ class TranscriptGeneQuantificationStep:
                 #  twice as many reads from the longer one.  But we're getting more reads because it's longer,
                 #  not because it's expressed higher.  That's why we divide by length in the sum.
                 for key in ensids.keys():
-                    fpk[key] = self.transcript_umap_count[key]/self.transcript_length_map[key]
+                    fpk[key] = 1000.0*self.transcript_umap_count[key]/self.transcript_length_map[key]
                     total_fpk += fpk[key]
 
                 # This means that there are NO uniquey mapping reads to any of the isoforms that the current read
