@@ -154,18 +154,25 @@ class MoleculeMaker:
         return allelic_quant
 
     def make_molecule(self):
+        # Pick random gene
         gene_index = numpy.random.choice(len(self.genes), p=self.gene_probabilities)
         gene = self.genes[gene_index]
         gene_quant = self.gene_quants[gene_index]
 
+        # Pick random transcript in gene
         transcripts, psis = self.isoform_quants[gene]
         transcript = numpy.random.choice(transcripts, p=psis)
 
+        # Pick random allele based on the gene's allelic distribution
         allele_number = numpy.random.choice([1,2], p=self.allelic_quant[gene])
 
-        #sequence = self.transcriptomes[allele_number - 1][transcript]
+        # Read in annotation for the chosen transcript
         chrom,strand,tx_start,tx_end,starts,ends= self.annotations[allele_number - 1][transcript]
 
+        #TODO: use the strand information!! Things are currently incorrect for - strand
+        #   Eg: 3' side should get the polyA tail, sequence needs to be complemented from strand
+
+        # If chosen to be pre_mRNA, overwrite the usual exon starts/ends with a single, big "exon"
         intron_quant = self.transcript_intron_quants[transcript]
         fraction_pre_mRNA = intron_quant / (intron_quant + gene_quant)
         pre_mRNA = numpy.random.uniform() < fraction_pre_mRNA
@@ -173,13 +180,23 @@ class MoleculeMaker:
             starts = [tx_start]
             ends = [tx_end]
 
+        # Find cigar string relative to the reference genome (i.e. custom_genome_1 or custom_genome_2)
         gaps = [next_start - last_end - 1 for next_start,last_end in zip(starts[1:],ends[:-1])]
         cigar = ''.join( f"{end - start + 1}M{gap}N" for start,end,gap in zip(starts[:-1],ends[:-1],gaps)) \
                     + f"{ends[-1] - starts[-1] + 1}M"
-        transcript_id = transcript + ("_pre_mRNA" if pre_mRNA else "")
+        transcript_id = f"{transcript}_{allele_number}{'_pre_mRNA' if pre_mRNA else ''}"
 
+        # Build the actual sequence
         chrom_sequence = self.genomes[allele_number - 1][chrom]
         sequence = ''.join( chrom_sequence[start-1:end] for start,end in zip(starts, ends) )
+
+        # TODO: for now, everything gets polyA but maybe shouldn't
+        polyA_tail = True
+        if polyA_tail:
+            # TODO: polyA tails should vary in length
+            sequence = sequence + "A"*200
+            # Soft-clip the polyA tail at the end since it shouldn't align
+            cigar = cigar + "200S"
 
 
         return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
