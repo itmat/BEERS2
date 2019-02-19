@@ -4,6 +4,7 @@ import numpy
 from beers.molecule_packet import MoleculePacket
 from beers.molecule import Molecule
 from beers.sample import Sample
+from beers.utilities.general_utils import GeneralUtils
 
 class MoleculeMaker:
     def __init__(self, sample, sample_directory):
@@ -169,9 +170,6 @@ class MoleculeMaker:
         # Read in annotation for the chosen transcript
         chrom,strand,tx_start,tx_end,starts,ends= self.annotations[allele_number - 1][transcript]
 
-        #TODO: use the strand information!! Things are currently incorrect for - strand
-        #   Eg: 3' side should get the polyA tail, sequence needs to be complemented from strand
-
         # If chosen to be pre_mRNA, overwrite the usual exon starts/ends with a single, big "exon"
         intron_quant = self.transcript_intron_quants[transcript]
         fraction_pre_mRNA = intron_quant / (intron_quant + gene_quant)
@@ -190,13 +188,23 @@ class MoleculeMaker:
         chrom_sequence = self.genomes[allele_number - 1][chrom]
         sequence = ''.join( chrom_sequence[start-1:end] for start,end in zip(starts, ends) )
 
+        if strand == '-':
+            # We always give the sequence from 5' to 3' end of the RNA molecule
+            # so reverse complement this
+            sequence = GeneralUtils.create_complement_strand(sequence)
+            # NOTE: cigar string stays the same since that is relative to the + strand
+
         # TODO: for now, everything gets polyA but maybe shouldn't
         polyA_tail = True
         if polyA_tail:
             # TODO: polyA tails should vary in length
+            # Add polyA tail to 3' end
             sequence = sequence + "A"*200
             # Soft-clip the polyA tail at the end since it shouldn't align
-            cigar = cigar + "200S"
+            if strand == "+":
+                cigar = cigar + "200S"
+            else:
+                cigar = "200S" + cigar # Relative to + strand, the A's are going on the 5' end
 
 
         return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
