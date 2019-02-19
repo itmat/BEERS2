@@ -295,14 +295,16 @@ class GenomeBuilderStep:
 
                     fields = datum.decode('ascii').rstrip('\n').split('\t')
                     log_file.write(f"Beagle Field: {fields}\n")
-                    beagle_chromosome, position, _, ref, alt, *others = fields
+                    beagle_chromosome, position, _, ref, alts, *others = fields
                     position = int(position)
-                    sample = fields[sample_index].strip()
+                    alts = alts.split(',')
+                    sample = fields[sample_index].strip().split('|')
+                    alt_indexes = [int(s) for s in sample]
 
                     # Making position 0 based.
                     position -= 1
 
-                    for index, genome in enumerate(genomes):
+                    for genome_index, genome in enumerate(genomes):
 
                         # If the nascent genome seq position translated to reference is downstream of the variant
                         # ignore the variant for this genome.
@@ -317,9 +319,12 @@ class GenomeBuilderStep:
                                            f" {genome.position + genome.offset} to genome_{genome.name}\n")
                             genome.append_segment(reference_sequence[genome.position + genome.offset: position])
 
-                        if int(sample.split("|")[index]):
+                        alt_index = alt_indexes[genome_index]
+                        if alt_index == 0:
                             genome.append_segment(ref)
                         else:
+                            alt = alts[alt_index-1]
+
                             if len(alt) == len(ref):
                                 if self.ignore_snps:
                                     genome.append_segment(ref)
@@ -331,6 +336,9 @@ class GenomeBuilderStep:
                                 elif len(alt) > len(ref):
                                     genome.insert_segment(alt)
                                 else:
+                                    # TODO: does this always correctly "delete" the right segment?
+                                    #  Eg: if ref is ACGT and alt is CG, then there'd actually be two deletions
+                                    #  Unclear if we actually get these, but also whether deletions are at the start or end
                                     genome.delete_segment(len(ref) - len(alt))
                             log_file.write(f"Currently: {genome}\n")
 
