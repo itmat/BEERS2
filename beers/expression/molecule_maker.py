@@ -169,8 +169,8 @@ class MoleculeMaker:
         if pre_mRNA:
             starts = [tx_start]
             ends = [tx_end]
-        gaps = [end - start - 1 for start,end in zip(starts[1:],ends[:-1])]
-        cigar = ''.join( f"{next_start - last_end + 1}M{gap}N" for next_start,last_end,gap in zip(starts[:-1],ends[:-1],gaps)) \
+        gaps = [next_start - last_end - 1 for next_start,last_end in zip(starts[1:],ends[:-1])]
+        cigar = ''.join( f"{end - start + 1}M{gap}N" for start,end,gap in zip(starts[:-1],ends[:-1],gaps)) \
                     + f"{ends[-1] - starts[-1] + 1}M"
         transcript_id = transcript + ("_pre_mRNA" if pre_mRNA else "")
 
@@ -181,7 +181,7 @@ class MoleculeMaker:
         return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
                             source_start=starts[0], source_cigar = cigar, transcript_id=transcript_id)
 
-    def make_packet(self, N=100):
+    def make_packet(self, N=10_000):
         molecules = [self.make_molecule() for i in range(N)]
         #TODO: make a new packet ID
         return MoleculePacket("packet0", self.sample, molecules)
