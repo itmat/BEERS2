@@ -154,7 +154,9 @@ class MoleculeMaker:
         return allelic_quant
 
     def make_molecule(self):
-        gene = numpy.random.choice(self.genes, p=self.gene_probabilities)
+        gene_index = numpy.random.choice(len(self.genes), p=self.gene_probabilities)
+        gene = self.genes[gene_index]
+        gene_quant = self.gene_quants[gene_index]
 
         transcripts, psis = self.isoform_quants[gene]
         transcript = numpy.random.choice(transcripts, p=psis)
@@ -164,11 +166,13 @@ class MoleculeMaker:
         #sequence = self.transcriptomes[allele_number - 1][transcript]
         chrom,strand,tx_start,tx_end,starts,ends= self.annotations[allele_number - 1][transcript]
 
-        # TODO: use intron/gene quantifications to get this p
-        pre_mRNA = numpy.random.uniform() < 0.1
+        intron_quant = self.transcript_intron_quants[transcript]
+        fraction_pre_mRNA = intron_quant / (intron_quant + gene_quant)
+        pre_mRNA = numpy.random.uniform() < fraction_pre_mRNA
         if pre_mRNA:
             starts = [tx_start]
             ends = [tx_end]
+
         gaps = [next_start - last_end - 1 for next_start,last_end in zip(starts[1:],ends[:-1])]
         cigar = ''.join( f"{end - start + 1}M{gap}N" for start,end,gap in zip(starts[:-1],ends[:-1],gaps)) \
                     + f"{ends[-1] - starts[-1] + 1}M"
