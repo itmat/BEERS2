@@ -60,7 +60,7 @@ class UpdateAnnotationForGenomeStep:
     def validate(self):
         return True
 
-    def execute(self, sample, genome_indel_suffix, input_annot_file_path):
+    def execute(self, sample, genome_indel_suffix, input_annot_file_path, chr_ploidy_file_path):
         """Main work-horse function that generates the updated annotation.
 
          Parameters
@@ -71,12 +71,20 @@ class UpdateAnnotationForGenomeStep:
             Full path to annotation file with coordinates for reference genome.
         """
 
+        # Compute which chromosomes we need to have in this annotation
+        # If we are in annotation_2, we only want ones with ploidy 2 in this gender
+        gender_index = 1 if sample.gender == "female" else 0
+        self.chr_ploidy = self._get_chr_ploidy_from_file(chr_ploidy_file_path)
+        desired_chromosomes = [chromosome for chromosome, ploidies in self.chr_ploidy.items()
+                                if  ploidies[gender_index] >= genome_indel_suffix]
+
         self.genome_indel_file_path = os.path.join(self.data_directory_path, f"sample{sample.sample_id}",
                                                    f"custom_genome_indels_{genome_indel_suffix}.txt")
         self.input_annot_file_path = input_annot_file_path
         self.updated_annot_file_path = os.path.join(self.data_directory_path, f"sample{sample.sample_id}",
                                                     f"updated_annotation_{genome_indel_suffix}.txt")
         self.log_file_path = os.path.join(self.log_directory_path, f'sample{sample.sample_id}', __class__.__name__ + f"{genome_indel_suffix}.log")
+
 
         #Load indel offsets from the indel file
         indel_offsets = UpdateAnnotationForGenomeStep._get_offsets_from_variant_file(self.genome_indel_file_path)
@@ -121,6 +129,9 @@ class UpdateAnnotationForGenomeStep:
                         log_file.write(f"----No indels from chromosome {current_chrom}.\n")
                         current_chrom_variant_coords = ()
                         current_chrom_variant_coords = ()
+
+                if current_chrom not in desired_chromosomes:
+                    continue
 
                 #Current chromosome contains variants
                 if current_chrom_variant_coords:
@@ -212,6 +223,15 @@ class UpdateAnnotationForGenomeStep:
                 #feature coordinates.
                 else:
                     updated_annot_file.write(f"{annot_feature}\n")
+    @staticmethod
+    def _get_chr_ploidy_from_file(chr_ploidy_filename):
+        chr_ploidy = dict()
+        with open(chr_ploidy_filename) as chr_ploidy_file:
+            chr_ploidy_file.readline() # Header line
+            for line in chr_ploidy_file:
+                chrom, male, female = line.strip().split("\t")
+                chr_ploidy[chrom] = (int(male), int(female))
+        return chr_ploidy
 
     @staticmethod
     def _get_offsets_from_variant_file(genome_indel_filename):

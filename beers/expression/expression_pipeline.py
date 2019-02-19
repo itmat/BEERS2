@@ -447,7 +447,7 @@ class ExpressionPipeline:
             for suffix in [1,2]:
 
                 annotation_updater = self.steps['UpdateAnnotationForGenomeStep']
-                annotation_updater.execute(sample, suffix, self.annotation_file_path)
+                annotation_updater.execute(sample, suffix, self.annotation_file_path, self.chr_ploidy_file_path)
 
         transcriptomes.prep_transcriptomes(self.samples, self.data_directory_path, self.log_directory_path, self.star_file_path, self.dispatcher_mode)
 
