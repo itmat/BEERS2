@@ -304,6 +304,51 @@ class VariantsFinderStep:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
+    def get_commandline_call(self, sample, alignment_file_path, chr_ploidy_file_path, reference_genome_file_path):
+        """
+        Prepare command to execute the VariantsFinder from the command line, given
+        all of the arugments used to run the execute() function.
+
+        Parameters
+        ----------
+        sample : Sample
+            Sample for which variants will be called.
+        alignment_file_path : string
+            Path to BAM file which will be parsed.
+        chr_ploidy_file_path : string
+            Mapping of chromosome names to their male/female ploidy.
+        reference_genome_file_path : string
+            Mapping chromosome names in reference to nucleotide sequence.
+
+        Returns
+        -------
+        string
+            Command to execute on the command line. It will perform the same
+            operations as a call to execute() with the same parameters.
+        """
+
+        #Retrieve path to the variants_finder.py script.
+        variant_finder_path = os.path.realpath(__file__)
+        #If the above command returns a string with a "pyc" extension, instead
+        #of "py", strip off "c" so it points to this script.
+        variant_finder_path = variant_finder_path.rstrip('c')
+
+        variant_finder_params = {}
+        variant_finder_params['sort_by_entropy'] = self.entropy_sort
+        variant_finder_params['min_threshold'] = self.min_abundance_threshold
+
+        command = (f" python {variant_finder_path}"
+                   f" --log_directory_path {self.log_directory_path}"
+                   f" --data_directory_path {self.data_directory_path}"
+                   f" --config_parameters '{json.dumps(variant_finder_params)}'"
+                   f" --sample '{repr(sample)}'"
+                   f" --bam_filename {alignment_file_path}"
+                   f" --chr_ploidy_file_path {chr_ploidy_file_path}"
+                   f" --reference_genome_file_path {reference_genome_file_path}")
+
+        return command
+
+
     @staticmethod
     def main():
         """
@@ -371,6 +416,7 @@ class VariantsFinderStep:
                 valid_output = True
 
         return valid_output
+
 
 
 class PositionInfo:

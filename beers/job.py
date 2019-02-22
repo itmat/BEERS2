@@ -181,23 +181,6 @@ class Job:
                             job_status = "COMPLETED"
                         else:
                             job_status = "FAILED"
-                        """
-                        variants_outfile_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "variants.txt")
-                        variants_logfile_path = os.path.join(self.log_directory, f"sample{self.sample_id}", "VariantsFinderStep.log")
-                        if os.path.isfile(variants_outfile_path) and \
-                           os.path.isfile(variants_logfile_path):
-                            #Read last line in variants_finder log file
-                            line = ""
-                            with open(variants_logfile_path, "r") as variants_log_file:
-                                for line in variants_log_file:
-                                    line = line.rstrip()
-                            if line == "ALL DONE!":
-                                job_status = "COMPLETED"
-                            else:
-                                job_status = "FAILED"
-                        else:
-                            job_status = "FAILED"
-                        """
                     else:
                         raise NotImplementedError()
                 else:
