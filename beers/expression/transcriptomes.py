@@ -34,7 +34,7 @@ def prep_transcriptomes(samples, data_directory,  log_directory, star_file_path,
             stdout_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.out")
             stderr_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.err")
             bsub_command = (f"bsub -M 85000"
-                            f" -J Variant_Finder.sample{sample.sample_id}_{sample.sample_name}"
+                            f" -J Prep_Transcriptomes.sample{sample.sample_id}_{sample.sample_name}"
                             f" -oo {stdout_log}"
                             f" -eo {stderr_log}"
                             f" {command}")
