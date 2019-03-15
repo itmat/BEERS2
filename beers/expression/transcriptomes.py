@@ -3,6 +3,8 @@ Module containing a rough draft of transcriptome preparation including:
     1) creation of transcriptome fasta files from genome fasta files and annotations
     2) creation of STAR indexes for transcriptomes
     3) alignment of fastq files to STAR indexes
+    4) Quantification at transcript and allele levels
+    5) Expression of molecules based on quantifications
 
 Runs these tasks in parallel through bsub
 """
@@ -31,7 +33,7 @@ def prep_transcriptomes(samples, data_directory,  log_directory, star_file_path,
         elif dispatcher_mode == "lsf":
             stdout_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.out")
             stderr_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.err")
-            bsub_command = (f"bsub -M 40000"
+            bsub_command = (f"bsub -M 85000"
                             f" -J Variant_Finder.sample{sample.sample_id}_{sample.sample_name}"
                             f" -oo {stdout_log}"
                             f" -eo {stderr_log}"
@@ -89,7 +91,8 @@ if __name__ == '__main__':
         transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
         transcriptome_dir = os.path.join(sample_dir, f"transcriptome_{i}")
         os.mkdir(transcriptome_dir)
-        command = f"{star_file_path} --runThreadN 4 --runMode genomeGenerate --genomeDir {transcriptome_dir} --genomeFastaFiles {transcriptome}"
+        ram_limit = 120_000_000_000
+        command = f"{star_file_path} --runThreadN 4 --runMode genomeGenerate --genomeDir {transcriptome_dir} --limitGenomeGenerateRAM {ram_limit} --genomeFastaFiles {transcriptome}"
         subprocess.run(command, shell=True, check=True)
 
     # Align fastq files to new indexes

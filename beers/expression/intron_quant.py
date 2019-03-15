@@ -35,12 +35,17 @@ class IntronQuantificationStep:
         intron_antisense_read_counts = collections.Counter()
         # chrom -> {intron -> read count}
 
+        # Open BAM file with pysam
+        # NOTE: use the check_sq=False flag since sometimes pysam complains erroneously about BAM headers
+        # even though the header appears fine in samtools
+        print(f"Opening alignment file {aligned_file_path}")
         with pysam.AlignmentFile(aligned_file_path, "rb") as alignments:
 
             chrom_lengths = dict(zip(alignments.references, alignments.lengths))
 
             #  Read in the annotation information
             self.info = AnnotationInfo(geneinfo_file_path, chrom_lengths)
+            print(f"Read in annotation info file {geneinfo_file_path}")
 
             unpaired_reads = dict()
 

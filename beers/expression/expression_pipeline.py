@@ -226,7 +226,10 @@ class ExpressionPipeline:
                 expression_pipeline_monitor.submit_new_job(f"IntronQuantificationStep.{sample_id}",
                                                             sample, 'IntronQuantificationStep',
                                                             output_directory, system_id=None,
-                                                            dependency_list=[f"GenomeAlignment.{sample_id}"])
+                                                            dependency_list=[f"GenomeBamIndex.{sample_id}"])
+                #TODO: do we need to depend upon the index being done? or just the alignment?
+                #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
+                #      on the same BAM file at the same time, though I don't know why this would be a problem.
             else:
                 print(f"Computing Intron Quantifications in sample {sample_id}")
                 intron_quant = self.steps["IntronQuantificationStep"]
@@ -317,7 +320,9 @@ class ExpressionPipeline:
 
                         intron_quant_path = self.__step_paths["IntronQuantificationStep"]
                         output_directory = os.path.join(intron_quant.data_directory_path, f"sample{resub_sample.sample_id}")
-                        intron_quant_params = {"forward_read_is_sense": intron_quant.forward_read_is_sense}
+                        intron_quant_params = {"forward_read_is_sense": intron_quant.forward_read_is_sense, "flank_size": intron_quant.flank_size}
+                        params = json.dumps(intron_quant_params)
+
                         bsub_command = (f"bsub"
                                         f" -J IntronQuantification.sample{resub_sample.sample_id}_{resub_sample.sample_name}"
                                         f" -oo {stdout_log}"
@@ -326,7 +331,7 @@ class ExpressionPipeline:
                                         f" --log_directory_path {intron_quant.log_directory_path}"
                                         f" --data_directory_path {intron_quant.data_directory_path}"
                                         f" --output_directory {output_directory}"
-                                        f" {'--forward_read_is_sense' if intron_quant.forward_read_is_sense else ''}"
+                                        f" --parameters '{params}'"
                                         f" --bam_file {bam_file}"
                                         f" --info_file {self.annotation_file_path}")
 
