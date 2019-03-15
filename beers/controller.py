@@ -295,7 +295,7 @@ class Controller:
         sequence_pipeline) and beneath each of these are data and log folders.  Additional subdirectories are created
         later to organize the numerous files exprected and avoid congestion.
         :param stage_names: names of folders directly below the top level output directory (e.g., controller,
-         library_prep)
+        library_prep)
         """
         self.output_directory_path = f"{self.controller_configuration['output_directory_path']}_run{self.run_id}"
         if not os.path.exists(self.output_directory_path):
