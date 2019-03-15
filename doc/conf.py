@@ -20,8 +20,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'CAMPAREE'
-copyright = '2019, Greg Grant, Nick Lahens, Soum Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
-author = 'Greg Grant, Nick Lahens, Soum Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
+copyright = '2019, Greg Grant, Nick Lahens, Soumyashant Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
+author = 'Greg Grant, Nick Lahens, Soumyashant Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
 
 # The short X.Y version
 version = ''
@@ -132,7 +132,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'BEERS20.tex', 'CAMPAREE Documentation',
-     'Greg Grant, Nick Lahens, Soum Nayak, Dimitra S S', 'manual'),
+     'Greg Grant, Nick Lahens, Soumyashant Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence', 'manual'),
 ]
 
 
