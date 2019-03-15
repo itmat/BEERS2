@@ -19,7 +19,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'BEERS 2.0'
+project = 'CAMPAREE'
 copyright = '2019, Greg Grant, Nick Lahens, Soum Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
 author = 'Greg Grant, Nick Lahens, Soum Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
 
@@ -131,7 +131,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'BEERS20.tex', 'BEERS 2.0 Documentation',
+    (master_doc, 'BEERS20.tex', 'CAMPAREE Documentation',
      'Greg Grant, Nick Lahens, Soum Nayak, Dimitra S S', 'manual'),
 ]
 
@@ -141,7 +141,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'beers20', 'BEERS 2.0 Documentation',
+    (master_doc, 'beers20', 'CAMPAREE Documentation',
      [author], 1)
 ]
 
@@ -152,7 +152,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'BEERS20', 'BEERS 2.0 Documentation',
+    (master_doc, 'BEERS20', 'CAMPAREE Documentation',
      author, 'BEERS20', 'One line description of project.',
      'Miscellaneous'),
 ]

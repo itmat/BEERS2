@@ -1,4 +1,4 @@
-The BEERS 2.0 API Reference
+The CAMPAREE API Reference
 ===========================
 
 .. automodule:: beers
