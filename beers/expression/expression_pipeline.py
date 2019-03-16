@@ -38,8 +38,8 @@ class ExpressionPipeline:
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
             self.__step_paths[step_name] = inspect.getfile(module)
-        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, resources_index_files_directory_path =\
-            self.validate_and_gather_resources(resources)
+        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, \
+            kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path = self.validate_and_gather_resources(resources)
         if not valid:
             raise ExpressionPipelineValidationException("The resources data is not completely valid."
                                                         "  Consult the standard error file for details.")
@@ -48,6 +48,8 @@ class ExpressionPipeline:
         self.beagle_file_path = beagle_file_path
         self.annotation_file_path = annotation_file_path
         self.star_file_path = star_file_path
+        self.kallisto_file_path = kallisto_file_path
+        self.bowtie2_dir_path = bowtie2_dir_path
         self.chr_ploidy_file_path = chr_ploidy_file_path
         self.reference_genome_file_path = reference_genome_file_path
         self.resources_index_files_directory_path = resources_index_files_directory_path
@@ -155,7 +157,37 @@ class ExpressionPipeline:
                           file=sys.stderr)
                     valid = False
 
-        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, resources_index_files_directory_path
+
+            kallisto_filenames = [filename for filename in os.listdir(third_party_software_directory_path)
+                                if "kallisto" in filename]
+            if not kallisto_filenames:
+                print(f"No file is the third party software directory can be identified as the Kallisto program",
+                      file=sys.stderr)
+                valid = False
+            else:
+                kallisto_file_path = os.path.join(third_party_software_directory_path, kallisto_filenames[0])
+                if not (os.path.exists(kallisto_file_path) and os.path.isfile(kallisto_file_path)):
+                    print(f"The Kallisto file path, {kallisto_file_path}, must exist as an executable",
+                          file=sys.stderr)
+                    valid = False
+
+            
+            bowtie2_dir_names = [filename for filename in os.listdir(third_party_software_directory_path)
+                                if "bowtie2" in filename]
+            if not bowtie2_dir_names:
+                print(f"No file is the third party software directory can be identified as the Bowtie2 program",
+                      file=sys.stderr)
+                valid = False
+            else:
+                bowtie2_dir_path = os.path.join(third_party_software_directory_path, bowtie2_dir_names[0])
+                # Make sure build and run files are there in the directory
+                if not (os.path.exists(bowtie2_dir_path)):
+                    print(f"The Bowtie2 directory path, {bowtie2_dir_path}, must exist as an executable",
+                          file=sys.stderr)
+                    valid = False
+
+        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, \
+            kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path
 
     def validate(self):
         valid = True
@@ -454,7 +486,7 @@ class ExpressionPipeline:
                 annotation_updater = self.steps['UpdateAnnotationForGenomeStep']
                 annotation_updater.execute(sample, suffix, self.annotation_file_path, self.chr_ploidy_file_path)
 
-        transcriptomes.prep_transcriptomes(self.samples, self.data_directory_path, self.log_directory_path, self.star_file_path, self.dispatcher_mode)
+        transcriptomes.prep_transcriptomes(self.samples, self.data_directory_path, self.log_directory_path, self.kallisto_file_path, self.bowtie2_dir_path, self.dispatcher_mode)
 
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
