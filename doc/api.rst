@@ -1,17 +1,11 @@
-The CAMPAREE API Reference
-===========================
-
-.. automodule:: beers
-    :members:
-
 The Controller Module
----------------------
+=====================
 
 .. automodule:: beers.controller
     :members:
 
 The Expression Package
-----------------------
+======================
 
 .. automodule:: beers.expression
 
@@ -82,7 +76,7 @@ Allelic Imbalance Quantification
     :members:
 
 Utilities Package
------------------
+=================
 
 .. automodule:: beers.utilities
     :members:

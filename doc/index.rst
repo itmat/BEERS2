@@ -8,15 +8,27 @@ Welcome to CAMPAREE's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    reST_guide
+
+User Guide
+----------
+
+.. toctree::
+   :maxdepth: 2
+
    introduction
+   license
    quick_start
    installation
+
+The API Reference
+-----------------
+
+.. toctree::
+   :maxdepth: 2
+
    api
-
-
 
 Indices and tables
 ==================
