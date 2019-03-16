@@ -14,6 +14,11 @@ import beers.expression.transcriptomes as transcriptomes
 
 
 class ExpressionPipeline:
+    """
+    This class represents a pipeline of steps that take user supplied fastq files through alignment, variants
+    finding, parental genome construction, annotation, quantification and generation of transcripts and finally the
+    generation of packets of molecules that may be used to simulate RNA sequencing.
+    """
     def __init__(self, configuration, dispatcher_mode, resources, output_directory_path, input_samples):
         self.dispatcher_mode = dispatcher_mode
         self.samples = input_samples
