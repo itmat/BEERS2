@@ -24,16 +24,17 @@ from beers.sample import Sample
 def done_file_name(data_directory, sample_id):
     return os.path.join(data_directory, f"sample{sample_id}", "transcriptome_prep_done.txt")
 
-def prep_transcriptomes(samples, data_directory,  log_directory, star_file_path, dispatcher_mode="serial"):
+
+def prep_transcriptomes(samples, data_directory, log_directory, kallisto_file_path, bowtie2_dir_path, dispatcher_mode="serial"):
     for sample in samples:
-        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {star_file_path} --fastq_files {' '.join(sample.input_file_paths)}"
+        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} --fastq_files {' '.join(sample.input_file_paths)}"
 
         if dispatcher_mode == "serial":
             subprocess.run(command, shell=True)
         elif dispatcher_mode == "lsf":
             stdout_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.out")
             stderr_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.err")
-            bsub_command = (f"bsub -M 85000"
+            bsub_command = (f"bsub -M 40000"
                             f" -J Prep_Transcriptomes.sample{sample.sample_id}_{sample.sample_name}"
                             f" -oo {stdout_log}"
                             f" -eo {stderr_log}"
@@ -66,15 +67,17 @@ if __name__ == '__main__':
     parser.add_argument("sample_id", help="Id of the sample to process")
     parser.add_argument("data_directory", help="Directory for the data (input + output)")
     parser.add_argument("log_directory", help="Directory for log files")
-    parser.add_argument("star_file_path", help="path to STAR executable")
+    parser.add_argument("kallisto_file_path", help="path to Kallisto executable")
+    parser.add_argument("bowtie2_dir_path", help="path to Bowtie2 directory")
     parser.add_argument("--fastq_files", help="fastq files to use", nargs="+")
 
     args = parser.parse_args()
     data_directory = args.data_directory
     sample_id = args.sample_id
     log_directory = args.log_directory
-    star_file_path = args.star_file_path
-    fastq_files = ' '.join(args.fastq_files)
+    kallisto_file_path = args.kallisto_file_path
+    bowtie2_dir_path = args.bowtie2_dir_path
+    fastq_file_1, fastq_file_2 = args.fastq_files
 
     sample_dir = os.path.join(data_directory, f"sample{sample_id}")
 
@@ -86,28 +89,57 @@ if __name__ == '__main__':
         file_prep = GeneFilesPreparation(genome, geneinfo, transcriptome)
         file_prep.prepare_gene_files()
 
-    # Create STAR indexes
+
+    # Build Kallisto indexes
+    for i in [1, 2]:
+        transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
+        transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
+        os.mkdir(transcriptome_index_dir)
+        transcriptome_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}.kallisto.index")
+
+        command = f"{kallisto_file_path} index -i {transcriptome_index} {transcriptome}"
+        subprocess.run(command, shell=True, check=True)
+
+
+    # Kallisto Quantification Step
+    for i in [1, 2]:
+        transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
+        transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
+        transcriptome_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}.kallisto.index")
+
+        kallisto_output_dir = os.path.join(sample_dir, f"transcriptome_{i}_kallisto_quant")
+        os.mkdir(kallisto_output_dir)
+        command = f"{kallisto_file_path} quant -i {transcriptome_index} -o {kallisto_output_dir} {fastq_file_1} {fastq_file_2}"
+        subprocess.run(command, shell=True, check=True)
+
+
+    # Build Bowtie2 indexes
     for i in [1,2]:
         transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
-        transcriptome_dir = os.path.join(sample_dir, f"transcriptome_{i}")
-        os.mkdir(transcriptome_dir)
-        ram_limit = 120_000_000_000
-        command = f"{star_file_path} --runThreadN 4 --runMode genomeGenerate --genomeDir {transcriptome_dir} --limitGenomeGenerateRAM {ram_limit} --genomeFastaFiles {transcriptome}"
+        bowtie2_build_file_path = os.path.join(bowtie2_dir_path, f"bowtie2-build")
+        transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
+        transcriptome_bowtie2_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}")
+
+        command = f"{bowtie2_build_file_path} {transcriptome} {transcriptome_bowtie2_index}"
         subprocess.run(command, shell=True, check=True)
 
-    # Align fastq files to new indexes
-    for i in [1,2]:
-        transcriptome_dir = os.path.join(sample_dir, f"transcriptome_{i}")
-        align_file_prefix = os.path.join(sample_dir, f"{i}_")
-        command = f"{star_file_path} --runThreadN 4 --genomeDir {transcriptome_dir}  --readFilesIn {fastq_files} --readFilesCommand zcat --outFileNamePrefix {align_file_prefix} --outSAMunmapped Within"
-        subprocess.run(command, shell=True, check=True)
+    # Align fastq files to Bowtie2 indexes
+    for i in [1, 2]:
+        transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
+        bowtie2_file_path = os.path.join(bowtie2_dir_path, f"bowtie2")
+        transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
+        transcriptome_bowtie2_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}")
 
+        aligned_file_path = os.path.join(sample_dir, f"{i}_Aligned.out.sam")
+        command = f"{bowtie2_file_path} -x {transcriptome_bowtie2_index} -1 {fastq_file_1} -2 {fastq_file_2} -S {aligned_file_path}"
+        subprocess.run(command, shell=True, check=True)
+        
     # Run transcript/gene/allelic_imbalance quantification scripts
-    align_filename = os.path.join(sample_dir, "1_Aligned.out.sam")
+    #align_filename = os.path.join(sample_dir, "1_Aligned.out.sam")
     geneinfo_filename = os.path.join(sample_dir, "updated_annotation_1.txt")
 
-    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir, align_filename)
-    transcript_gene_quant.quantify_transcript()
+    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir)
+    #transcript_gene_quant.quantify_transcript()
     transcript_gene_quant.make_transcript_gene_dist_file()
 
     allelic_imbalance_quant = AllelicImbalanceQuantificationStep(sample_dir)
