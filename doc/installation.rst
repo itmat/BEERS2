@@ -89,9 +89,9 @@ Without it, exception tracebacks will not appear.  The library_prep_pipeline cur
 one molecule packet which it locates via the configuration file.  For example::
 
      "input": {
-      "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
-      "molecule_packet_filename": "molecule_packet_plus_source.pickle"
-    }
+        "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
+        "molecule_packet_filename": "molecule_packet_plus_source.pickle"
+     }
 
 We only have the one packet so it is kind of precious right now.  A copy of
 ``molecule_packet_plus_source.pickle`` is available under ``/projects/itmatlab/for_cris``.  Feel free to
