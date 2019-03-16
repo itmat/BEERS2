@@ -69,6 +69,32 @@ Annotation Updater
 .. automodule:: beers.expression.update_annotation_for_genome
     :members:
 
+Transcriptome Preparation
+-------------------------
 
+.. automodule:: beers.expression.transcriptomes
+    :members:
 
+Allelic Imbalance Quantification
+--------------------------------
 
+.. automodule:: beers.expression.allelic_imbalance_quant
+    :members:
+
+Utilities Package
+-----------------
+
+.. automodule:: beers.utilities
+    :members:
+
+General Utilities
+-----------------
+
+.. automodule:: beers.utilities.general_utils
+    :members:
+
+Expression Pipeline Utilities
+-----------------------------
+
+.. automodule:: beers.utilities.expression_utils
+    :members:

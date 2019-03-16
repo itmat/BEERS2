@@ -7,6 +7,9 @@ import pandas as pd
 from beers.utilities.general_utils import BeersUtilsException
 
 class ExpressionUtils:
+    """
+    Utilities that have a more limited applicability - essentially useful for steps in the expression pipeline.
+    """
 
     # Line format definition for annotation file
     annot_output_format = '{chrom}\t{strand}\t{txStart}\t{txEnd}\t{exonCount}\t{exonStarts}\t{exonEnds}\t{transcriptID}\t{geneID}\t{geneSymbol}\t{biotype}\n'
