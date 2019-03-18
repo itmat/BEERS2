@@ -59,6 +59,9 @@ class ExpressionPipeline:
         self.reference_genome_file_path = reference_genome_file_path
         self.resources_index_files_directory_path = resources_index_files_directory_path
 
+        self.output_type = configuration["output"]["type"]
+        self.output_molecule_count = configuration["output"]["molecule_count"]
+
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
             os.makedirs(os.path.join(data_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
@@ -491,7 +494,14 @@ class ExpressionPipeline:
                 annotation_updater = self.steps['UpdateAnnotationForGenomeStep']
                 annotation_updater.execute(sample, suffix, self.annotation_file_path, self.chr_ploidy_file_path)
 
-        transcriptomes.prep_transcriptomes(self.samples, self.data_directory_path, self.log_directory_path, self.kallisto_file_path, self.bowtie2_dir_path, self.dispatcher_mode)
+        transcriptomes.prep_transcriptomes(self.samples,
+                                            self.data_directory_path,
+                                            self.log_directory_path,
+                                            self.kallisto_file_path,
+                                            self.bowtie2_dir_path,
+                                            self.output_type,
+                                            self.output_molecule_count,
+                                            self.dispatcher_mode)
 
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
