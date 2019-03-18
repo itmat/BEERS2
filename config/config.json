@@ -31,6 +31,10 @@
         }
       ]
     },
+    "output": {
+        "type": "packet",
+        "molecule_count": 50000
+    },
     "steps": [
       {
         "step_name": "genome_alignment.GenomeAlignmentStep",
