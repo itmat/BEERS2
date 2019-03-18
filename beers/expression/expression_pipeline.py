@@ -2,13 +2,14 @@ import sys
 import os
 import importlib
 import time
-from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
+from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
 from beers.job_monitor import Monitor
 from beers.utilities.expression_utils import ExpressionUtils
 #To enable export of config parameter dictionaries to command line
 import json
 import subprocess
 import inspect
+import numpy
 
 import beers.expression.transcriptomes as transcriptomes
 
@@ -213,6 +214,8 @@ class ExpressionPipeline:
 
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
+
+        seeds = self.generate_job_seeds()
 
         expression_pipeline_monitor = Monitor(self.output_directory_path, self.dispatcher_mode)
 
@@ -479,7 +482,7 @@ class ExpressionPipeline:
 
         print(f"Processing combined samples...")
         beagle = self.steps['BeagleStep']
-        outcome = beagle.execute(self.beagle_file_path)
+        outcome = beagle.execute(self.beagle_file_path, seeds["beagle"])
         if outcome != 0:
             raise ExpressionPipelineException("Beagle process failed.")
 
@@ -513,6 +516,20 @@ class ExpressionPipeline:
             #r_rna = RibosomalRNA(self.parameters)
             #molecules.append(r_rna.generate_rRNA_sample())
         print("Execution of the Expression Pipeline Ended")
+
+    def generate_job_seeds(self):
+        """
+        Generate one seed per job that needs a seed, returns a dictionary mapping
+        job names to seeds
+
+        We generate seeds for each job since they run on separate nodes of the cluster, potentially
+        and so do not simply share Numpy seeds. We generate them all ahead of time so that if jobs need
+        to be restart, they can reuse the same seed.
+        """
+        seeds = {}
+        for job in ["beagle"]: #Currently only Beagle is using a seed, but other jobs will need one, add them here
+            seeds[job] = numpy.random.randint(MAX_SEED)
+        return seeds
 
     @staticmethod
     def main(configuration, dispatcher_mode, resources, output_directory_path, input_samples):
