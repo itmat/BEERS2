@@ -83,6 +83,7 @@ if __name__ == '__main__':
 
     # Prepare the transcriptome fasta files
     for i in [1,2]:
+        print(f"Preparing fasta files for transcriptome {i} of sample{sample_id}")
         genome = os.path.join(sample_dir, f"custom_genome_{i}.fa")
         geneinfo = os.path.join(sample_dir, f"updated_annotation_{i}.txt")
         transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
@@ -92,6 +93,7 @@ if __name__ == '__main__':
 
     # Build Kallisto indexes
     for i in [1, 2]:
+        print(f"Building Kallisto indexes for transcriptome {i} of sample{sample_id}")
         transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
         transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
         os.mkdir(transcriptome_index_dir)
@@ -103,6 +105,7 @@ if __name__ == '__main__':
 
     # Kallisto Quantification Step
     for i in [1, 2]:
+        print(f"Running Kallisto quantification for transcriptome {i} of sample{sample_id}")
         transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
         transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
         transcriptome_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}.kallisto.index")
@@ -115,6 +118,7 @@ if __name__ == '__main__':
 
     # Build Bowtie2 indexes
     for i in [1,2]:
+        print(f"Building Bowtie2 indexes for transcriptome {i} of sample{sample_id}")
         transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
         bowtie2_build_file_path = os.path.join(bowtie2_dir_path, f"bowtie2-build")
         transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
@@ -125,6 +129,7 @@ if __name__ == '__main__':
 
     # Align fastq files to Bowtie2 indexes
     for i in [1, 2]:
+        print(f"Aligning by Bowtie2 indexes for transcriptome {i} of sample{sample_id}")
         transcriptome = os.path.join(sample_dir, f"transcriptome_{i}.fa")
         bowtie2_file_path = os.path.join(bowtie2_dir_path, f"bowtie2")
         transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
@@ -135,25 +140,29 @@ if __name__ == '__main__':
         subprocess.run(command, shell=True, check=True)
         
     # Run transcript/gene/allelic_imbalance quantification scripts
-    #align_filename = os.path.join(sample_dir, "1_Aligned.out.sam")
     geneinfo_filename = os.path.join(sample_dir, "updated_annotation_1.txt")
 
+    print(f"Quantifying transcriptome reads for sample{sample_id}")
     transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir)
     #transcript_gene_quant.quantify_transcript()
     transcript_gene_quant.make_transcript_gene_dist_file()
 
+    print(f"Quantifying allelic imabalance for sample{sample_id}")
     allelic_imbalance_quant = AllelicImbalanceQuantificationStep(sample_dir)
     allelic_imbalance_quant.quantify_allelic_imbalance()
     allelic_imbalance_quant.make_allele_imbalance_dist_file()
 
     # Run Molecule maker to generate a packet
     # TODO: what sample object can we use?
+    print(f"Generating molecules for sample{sample_id}")
     sample = Sample(sample_id, "sample{sample_id}", [sample_dir], ["unkown", "unknown"])
     molecule_maker = MoleculeMaker(sample, sample_dir)
     packet = molecule_maker.make_packet()
 
     with open(os.path.join(sample_dir, "molecule_packet.pickle"), "wb") as out_file:
         pickle.dump(packet, out_file)
+
+    print(f"Done with transcriptome.py for sample{sample_id}")
 
     # Output to DONE file
     with open(done_file_name(data_directory, sample_id), "w") as done_file:
