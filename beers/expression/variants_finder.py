@@ -320,7 +320,11 @@ class VariantsFinderStep:
         parser.add_argument('--bam_filename')
         parser.add_argument('--chr_ploidy_file_path')
         parser.add_argument('--reference_genome_file_path')
+        parser.add_argument('--seed', type=int, default=None)
         args = parser.parse_args()
+
+        if args.seed is not None:
+            numpy.random.seed(args.seed)
 
         config_parameters = json.loads(args.config_parameters)
         variants_finder = VariantsFinderStep(args.log_directory_path,
