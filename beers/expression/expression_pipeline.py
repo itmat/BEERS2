@@ -335,6 +335,8 @@ class ExpressionPipeline:
                         variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
                         variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
 
+                        seed = seeds[f"variant_finder.{resub_sample.sample_id}"]
+
                         bsub_command = (f"bsub"
                                         f" -J Variant_Finder.sample{resub_sample.sample_id}_{resub_sample.sample_name}"
                                         f" -oo {stdout_log}"
@@ -346,7 +348,8 @@ class ExpressionPipeline:
                                         f" --sample '{repr(resub_sample)}'"
                                         f" --bam_filename {bam_filename}"
                                         f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
-                                        f" --reference_genome_file_path {self.reference_genome_file_path}")
+                                        f" --reference_genome_file_path {self.reference_genome_file_path}"
+                                        f" --seed {seed}")
 
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
@@ -422,6 +425,8 @@ class ExpressionPipeline:
                             variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
                             variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
 
+                            seed = seeds[f"variant_finder.{pend_sample.sample_id}"]
+
                             bsub_command = (f"bsub"
                                             f" -J Variant_Finder.sample{pend_sample.sample_id}_{pend_sample.sample_name}"
                                             f" -oo {stdout_log}"
@@ -433,7 +438,8 @@ class ExpressionPipeline:
                                             f" --sample '{repr(pend_sample)}'"
                                             f" --bam_filename {bam_filename}"
                                             f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
-                                            f" --reference_genome_file_path {self.reference_genome_file_path}")
+                                            f" --reference_genome_file_path {self.reference_genome_file_path}"
+                                            f" --seed {seed}")
 
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
@@ -527,8 +533,13 @@ class ExpressionPipeline:
         to be restart, they can reuse the same seed.
         """
         seeds = {}
-        for job in ["beagle"]: #Currently only Beagle is using a seed, but other jobs will need one, add them here
+        # Seeds for jobs that don't run per sample
+        for job in ["beagle"]:
             seeds[job] = numpy.random.randint(MAX_SEED)
+        # Seeds for jobs that are run per sample
+        for job in ["variant_finder"]:
+            for sample in self.samples:
+                seeds[f"{job}.{sample.sample_id}"] = numpy.random.randint(MAX_SEED)
         return seeds
 
     @staticmethod
