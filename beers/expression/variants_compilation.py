@@ -1,7 +1,8 @@
 import contextlib
 import os
-import random
 import argparse
+
+import numpy
 
 class VariantsCompilationStep():
 
@@ -96,7 +97,7 @@ class VariantsCompilationStep():
                         maximum_count = max(count for var, count in variants.items())
                         common_variants = [var for var, count in variants.items() if count == maximum_count]
                         # Take random choice of the tied maximally seen variants
-                        return random.choice(common_variants)
+                        return numpy.random.choice(common_variants)
                     else:
                         return None
 
