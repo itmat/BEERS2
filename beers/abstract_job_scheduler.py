@@ -22,10 +22,11 @@ class AbstractJobScheduler(ABC):
         -------
         string
             One of the following:
-                RUNNING - job submitted to scheduler and is actively running.
-                PENDING - job submitted to scheduler and is pending.
-                FAILED - job finished with error status.
-                COMPLETED - job finished without error status.
+                RUNNING - according to scheduler and the job is actively running.
+                PENDING - according to scheduler and the job is pending.
+                FAILED - according to scheduler the job finished with error status.
+                COMPLETED - according to scheduler the job finished without error status.
+                ERROR - could not retrieve job status from scheduler.
 
         """
         pass
