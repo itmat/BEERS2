@@ -34,7 +34,7 @@ def prep_transcriptomes(samples, data_directory, log_directory, kallisto_file_pa
     numpy.random.seed(seed)
     for sample in samples:
         sample_seed = numpy.random.randint(MAX_SEED)
-        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.input_file_paths)} --seed {sample_seed}"
+        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.fastq_file_paths)} --seed {sample_seed}"
 
         if dispatcher_mode == "serial":
             subprocess.run(command, shell=True)
