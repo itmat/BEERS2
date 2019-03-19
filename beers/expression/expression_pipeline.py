@@ -179,7 +179,7 @@ class ExpressionPipeline:
                           file=sys.stderr)
                     valid = False
 
-            
+
             bowtie2_dir_names = [filename for filename in os.listdir(third_party_software_directory_path)
                                 if "bowtie2" in filename]
             if not bowtie2_dir_names:
@@ -218,26 +218,24 @@ class ExpressionPipeline:
 
         genome_alignment = self.steps['GenomeAlignmentStep']
 
-        print(f"{self.star_file_path}\t{self.dispatcher_mode}")
-
         bam_files = {}
         for sample in self.samples:
             (bam_file, system_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
                                                              self.star_file_path, self.dispatcher_mode)
             bam_files[sample.sample_id] = bam_file
             expression_pipeline_monitor.submit_new_job(f"GenomeAlignment.{sample.sample_id}",
-                                                       sample, 'GenomeAlignmentStep',
+                                                       sample, 'GenomeAlignmentStep', None,
                                                        self.output_directory_path, system_id)
-                #TODO: This is a hack to handle the cases where the bam files were
-                #      already present, or the script was run in serial/multicore mode.
-                #      Need to change this to something more legit.
+            #TODO: This is a hack to handle the cases where the bam files were
+            #      already present, or the script was run in serial/multicore mode.
+            #      Need to change this to something more legit.
             if system_id == "ALREADY_ALIGNED" or self.dispatcher_mode != "lsf":
                 expression_pipeline_monitor.mark_job_completed(f"GenomeAlignment.{sample.sample_id}")
 
         for sample in self.samples:
             if self.dispatcher_mode == "lsf":
                 expression_pipeline_monitor.submit_new_job(f"GenomeBamIndex.{sample.sample_id}",
-                                                           sample, 'GenomeBamIndexStep',
+                                                           sample, 'GenomeBamIndexStep', None,
                                                            self.output_directory_path, system_id=None,
                                                            dependency_list=[f"GenomeAlignment.{sample.sample_id}"])
             else:
@@ -251,8 +249,10 @@ class ExpressionPipeline:
             sample = expression_pipeline_monitor.get_sample(sample_id)
 
             if self.dispatcher_mode == "lsf":
+                variants_finder_attributes = {}
                 expression_pipeline_monitor.submit_new_job(f"VariantsFinder.{sample_id}",
                                                            sample, 'VariantsFinderStep',
+                                                           variants_finder_attributes,
                                                            self.output_directory_path, system_id=None,
                                                            dependency_list=[f"GenomeBamIndex.{sample_id}"])
             else:
@@ -296,13 +296,6 @@ class ExpressionPipeline:
                 for resub_job_id, resub_job in resubmission_jobs.items():
                     resub_sample = expression_pipeline_monitor.get_sample(resub_job.sample_id)
 
-                    """
-                    #Generate bam file name from sample info using same rules as the
-                    #execute code from genome_alignment.
-                    bam_filename = os.path.join(genome_alignment.data_directory_path,
-                                                f"sample{resub_sample.sample_id}",
-                                                f"genome_alignment.{genome_alignment.star_bamfile_suffix}")
-                    """
                     bam_filename = bam_files[resub_job.sample_id]
 
                     if resub_job.step_name == "GenomeAlignmentStep":
@@ -391,13 +384,7 @@ class ExpressionPipeline:
                 for pend_job_id, pend_job in pending_jobs.items():
                     if expression_pipeline_monitor.are_dependencies_satisfied(pend_job_id):
                         pend_sample = expression_pipeline_monitor.get_sample(pend_job.sample_id)
-                        """
-                        #Generate bam file name from sample info using same rules as the
-                        #execute code from genome_alignment.
-                        bam_filename = os.path.join(genome_alignment.data_directory_path,
-                                                    f"sample{pend_sample.sample_id}",
-                                                    f"genome_alignment.{genome_alignment.star_bamfile_suffix}")
-                        """
+
                         bam_filename = bam_files[pend_job.sample_id]
 
                         if pend_job.step_name == "GenomeAlignmentStep":

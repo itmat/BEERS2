@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import re
+import importlib
 import subprocess
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers.beers_exception import BeersException
@@ -24,7 +25,7 @@ class Job:
                           'COMPLETED',              #job finished successfully with complete output files.
                           'WAITING_FOR_DEPENDENCY'] #job not submitted and waiting for dependency to complete.
 
-    def __init__(self, job_id, sample_id, step_name, output_directory_path,
+    def __init__(self, job_id, sample_id, step_name, job_attributes, output_directory_path,
                  dispatcher_mode, system_id=None, dependency_list=None):
         """
         Initialize job to track the status of a step/operation running on the
@@ -44,6 +45,10 @@ class Job:
             monitoring a molecule packet making its way through the library_prep
             pipeline). I might eventually be able to do away with this, or
             generalize the code further.
+        job_attributes : dict
+            Dictionary of attribute names and values specific to the job and this
+            step. This stores information the various is_output_valid() methods
+            need to find and test output files / parameters.
         output_directory_path : string
             Path to data directory where job/process output is being stored.
         dispatcher_mode : string
@@ -65,6 +70,7 @@ class Job:
         self.job_id = job_id
         self.sample_id = sample_id
         self.step_name = step_name
+        self.job_attributes = job_attributes
         self.output_directory = output_directory_path
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
         self.data_directory = os.path.join(self.output_directory, CONSTANTS.DATA_DIRECTORY_NAME)
@@ -169,19 +175,10 @@ class Job:
                         else:
                             job_status = "FAILED"
                     elif self.step_name == "VariantsFinderStep":
-                        variants_outfile_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "variants.txt")
-                        variants_logfile_path = os.path.join(self.log_directory, f"sample{self.sample_id}", "VariantsFinderStep.log")
-                        if os.path.isfile(variants_outfile_path) and \
-                           os.path.isfile(variants_logfile_path):
-                            #Read last line in variants_finder log file
-                            line = ""
-                            with open(variants_logfile_path, "r") as variants_log_file:
-                                for line in variants_log_file:
-                                    line = line.rstrip()
-                            if line == "ALL DONE!":
-                                job_status = "COMPLETED"
-                            else:
-                                job_status = "FAILED"
+                        module = importlib.import_module(f'.variants_finder', package="beers.expression")
+                        VariantsFinderStep = getattr(module, self.step_name)
+                        if VariantsFinderStep.is_output_valid(self.job_attributes):
+                            job_status = "COMPLETED"
                         else:
                             job_status = "FAILED"
                     elif self.step_name == "IntronQuantificationStep":
