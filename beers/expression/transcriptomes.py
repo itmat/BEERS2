@@ -179,7 +179,7 @@ if __name__ == '__main__':
         num_packets = output_molecule_count // MOLECULES_PER_PACKET
         for i in range(1,num_packets+1):
             print(f"Generating packet {i} of {num_packets} for sample{sample_id}")
-            packet = molecule_maker.make_packet()
+            packet = molecule_maker.make_packet(id=f"sample{sample_id}.{i}")
 
             with open(os.path.join(sample_dir, f"molecule_packet{i}.pickle"), "wb") as out_file:
                 pickle.dump(packet, out_file)

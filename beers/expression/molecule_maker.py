@@ -210,10 +210,9 @@ class MoleculeMaker:
         return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
                             source_start=starts[0], source_cigar = cigar, transcript_id=transcript_id)
 
-    def make_packet(self, N=10_000):
+    def make_packet(self, id="packet0", N=10_000):
         molecules = [self.make_molecule() for i in range(N)]
-        #TODO: make a new packet ID
-        return MoleculePacket("packet0", self.sample, molecules)
+        return MoleculePacket(id, self.sample, molecules)
 
 if __name__ == "__main__":
     import argparse
