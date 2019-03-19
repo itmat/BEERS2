@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument("log_directory", help="Directory for log files")
     parser.add_argument("kallisto_file_path", help="path to Kallisto executable")
     parser.add_argument("bowtie2_dir_path", help="path to Bowtie2 directory")
-    parser.add_argument("output_type", help="type of output file to write", choices=["packet"], default="packet")
+    parser.add_argument("output_type", help="type of output file to write", choices=["packet", "molecule_file"], default="molecule_file")
     parser.add_argument("output_molecule_count", help="number of molecules to output", type=int)
     parser.add_argument("--fastq_files", help="fastq files to use", nargs="+")
     parser.add_argument("--seed", help="seed for RNG", default=None, type=int)
@@ -183,6 +183,9 @@ if __name__ == '__main__':
 
             with open(os.path.join(sample_dir, f"molecule_packet{i}.pickle"), "wb") as out_file:
                 pickle.dump(packet, out_file)
+    elif output_type == "molecule_file":
+        molecule_maker.make_molecule_file(filepath=os.path.join(sample_dir, f"molecule_file"),
+                                          N = output_molecule_count)
 
     print(f"Done with transcriptome.py for sample{sample_id}")
 
