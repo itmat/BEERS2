@@ -214,7 +214,7 @@ class MoleculeMaker:
         molecules = [self.make_molecule() for i in range(N)]
         return MoleculePacket(id, self.sample, molecules)
 
-    def make_molecules_file(self, filepath, N=10_000):
+    def make_molecule_file(self, filepath, N=10_000):
         """
         Write out molecules to a tab-separated file
 
@@ -225,11 +225,11 @@ class MoleculeMaker:
             header = "#transcript_id\tstart\tcigar\tsequence\n"
             for i in range(N):
                 molecule = self.make_molecule()
-                #TODO: this file should include a `strand` field but molecules don't have that attribute, awkwardly
+                # TODO: this file should include a `strand` field but molecules don't have that attribute, awkwardly
                 # NOTE: Not outputing the molecules start or cigar string since those are relative to parent
                 #       which in this case is always trivial (start=1, cigar=###M) since the molecule is new
                 line = "\t".join([molecule.transcript_id,
-                                  molecule.source_start,
+                                  str(molecule.source_start),
                                   molecule.source_cigar,
                                   molecule.sequence]
                                   ) + "\n"
