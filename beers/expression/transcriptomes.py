@@ -15,6 +15,8 @@ import argparse
 import time
 import pickle
 
+import numpy
+
 from beers.personal.gene_files_preparation import GeneFilesPreparation
 from beers.expression.transcript_gene_quant import TranscriptGeneQuantificationStep
 from beers.expression.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
@@ -27,9 +29,10 @@ def done_file_name(data_directory, sample_id):
     return os.path.join(data_directory, f"sample{sample_id}", "transcriptome_prep_done.txt")
 
 
-def prep_transcriptomes(samples, data_directory, log_directory, kallisto_file_path, bowtie2_dir_path, output_type, output_molecule_count, dispatcher_mode="serial"):
+def prep_transcriptomes(samples, data_directory, log_directory, kallisto_file_path, bowtie2_dir_path, output_type, output_molecule_count, dispatcher_mode="serial", seed=None):
     for sample in samples:
-        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.input_file_paths)}"
+        seed_param = (f"--seed {seed}" if seed is not None else '')
+        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.input_file_paths)} {seed_param}"
 
         if dispatcher_mode == "serial":
             subprocess.run(command, shell=True)
@@ -74,6 +77,7 @@ if __name__ == '__main__':
     parser.add_argument("output_type", help="type of output file to write", choices=["packet"], default="packet")
     parser.add_argument("output_molecule_count", help="number of molecules to output", type=int)
     parser.add_argument("--fastq_files", help="fastq files to use", nargs="+")
+    parser.add_argument("--seed", help="seed for RNG", default=None, type=int)
 
     args = parser.parse_args()
     data_directory = args.data_directory
@@ -84,6 +88,10 @@ if __name__ == '__main__':
     output_type = args.output_type
     output_molecule_count = args.output_molecule_count
     fastq_file_1, fastq_file_2 = args.fastq_files
+
+
+    if args.seed is not None:
+        numpy.random.seed(args.seed)
 
     sample_dir = os.path.join(data_directory, f"sample{sample_id}")
 

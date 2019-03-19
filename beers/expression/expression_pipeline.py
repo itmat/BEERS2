@@ -510,7 +510,8 @@ class ExpressionPipeline:
                                             self.bowtie2_dir_path,
                                             self.output_type,
                                             self.output_molecule_count,
-                                            self.dispatcher_mode)
+                                            self.dispatcher_mode,
+                                            self.seed)
 
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
