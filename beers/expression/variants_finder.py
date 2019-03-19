@@ -13,6 +13,7 @@ import argparse
 import json
 from beers.sample import Sample
 from beers.utilities.expression_utils import ExpressionUtils
+import numpy
 
 
 Read = namedtuple('Read', ['position', 'description'])
