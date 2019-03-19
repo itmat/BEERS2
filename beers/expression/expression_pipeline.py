@@ -511,7 +511,7 @@ class ExpressionPipeline:
                                             self.output_type,
                                             self.output_molecule_count,
                                             self.dispatcher_mode,
-                                            self.seed)
+                                            seeds["transcriptomes"])
 
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
@@ -535,7 +535,7 @@ class ExpressionPipeline:
         """
         seeds = {}
         # Seeds for jobs that don't run per sample
-        for job in ["beagle"]:
+        for job in ["beagle", "transcriptomes"]:
             seeds[job] = numpy.random.randint(MAX_SEED)
         # Seeds for jobs that are run per sample
         for job in ["variant_finder"]:

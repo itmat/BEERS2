@@ -17,6 +17,7 @@ import pickle
 
 import numpy
 
+from beers.constants import MAX_SEED
 from beers.personal.gene_files_preparation import GeneFilesPreparation
 from beers.expression.transcript_gene_quant import TranscriptGeneQuantificationStep
 from beers.expression.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
@@ -30,9 +31,10 @@ def done_file_name(data_directory, sample_id):
 
 
 def prep_transcriptomes(samples, data_directory, log_directory, kallisto_file_path, bowtie2_dir_path, output_type, output_molecule_count, dispatcher_mode="serial", seed=None):
+    numpy.random.seed(seed)
     for sample in samples:
-        seed_param = (f"--seed {seed}" if seed is not None else '')
-        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.input_file_paths)} {seed_param}"
+        sample_seed = numpy.random.randint(MAX_SEED)
+        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.input_file_paths)} --seed {sample_seed}"
 
         if dispatcher_mode == "serial":
             subprocess.run(command, shell=True)
