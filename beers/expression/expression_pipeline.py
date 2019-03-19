@@ -203,7 +203,7 @@ class ExpressionPipeline:
         ploidy_chromosomes = set(self.chr_ploidy_data.keys())
         if not ploidy_chromosomes.issubset(reference_genome_chromosomes):
             missing_chromosomes = ' '.join(chrom for chrom in ploidy_chromosomes.difference(reference_genome_chromosomes))
-            reference_chroms = ' '.join(chrom for chrom in reference_genome_chromosomes.keys())
+            reference_chroms = ' '.join(chrom for chrom in reference_genome_chromosomes)
             print(f"The chromosome ploidy has chromosomes `{missing_chromosomes}` not found in the reference genome file", file=sys.stderr)
             print(f"The reference genome has chromosomes {reference_chroms}", file=sys.stderr)
             valid = False
@@ -264,7 +264,7 @@ class ExpressionPipeline:
             sample = expression_pipeline_monitor.get_sample(sample_id)
             if self.dispatcher_mode == "lsf":
                 expression_pipeline_monitor.submit_new_job(f"IntronQuantificationStep.{sample_id}",
-                                                            sample, 'IntronQuantificationStep',
+                                                            sample, 'IntronQuantificationStep', None,
                                                             output_directory, system_id=None,
                                                             dependency_list=[f"GenomeBamIndex.{sample_id}"])
                 #TODO: do we need to depend upon the index being done? or just the alignment?
@@ -348,8 +348,8 @@ class ExpressionPipeline:
                     elif resub_job.step_name == "IntronQuantificationStep":
                         intron_quant = self.steps["IntronQuantificationStep"]
 
-                        stdout_log = os.path.join(intron_quant.log_directory_path, f"sample{pend_sample.sample_id}", "IntronQuantification.bsub.%J.out")
-                        stderr_log = os.path.join(intron_quant.log_directory_path, f"sample{pend_sample.sample_id}", "IntronQuantification.bsub.%J.err")
+                        stdout_log = os.path.join(intron_quant.log_directory_path, f"sample{resub_sample.sample_id}", "IntronQuantification.bsub.%J.out")
+                        stderr_log = os.path.join(intron_quant.log_directory_path, f"sample{resub_sample.sample_id}", "IntronQuantification.bsub.%J.err")
 
                         intron_quant_path = self.__step_paths["IntronQuantificationStep"]
                         output_directory = os.path.join(intron_quant.data_directory_path, f"sample{resub_sample.sample_id}")
