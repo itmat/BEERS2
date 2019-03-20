@@ -9,14 +9,18 @@ class AbstractJobScheduler(ABC):
 
     @staticmethod
     @abstractmethod
-    def check_job_status(job_id):
+    def check_job_status(job_id, additional_args):
         """
-        Determine a job's current run status based on the system's scheduler.
+        Execute command(s) to determine a job's current run status based on the
+        system's scheduler.
 
         Parameters
         ----------
         job_id : string
             Identifier used by system's scheduler to uniquely identify the job.
+        additional_args : string
+            Additonal arguments to provide to the command(s) used to check the
+            job's status.
 
         Returns
         -------
@@ -33,9 +37,29 @@ class AbstractJobScheduler(ABC):
 
     @staticmethod
     @abstractmethod
-    def submit_job():
+    def submit_job(job_command, job_name, stdout_logfile, stderr_logfile,
+                   memory_in_mb, num_processors, additional_args):
         """
         Execute command(s) to submit job to system's scheduler.
+
+        Parameters
+        ----------
+        job_command : string
+            Full command to execute job when run from the command line.
+        job_name : string
+            Name assigned to job by scheduler.
+        stdout_logfile : string
+            Full path to file where stdout from the scheduler/command should be
+            stored.
+        stderr_logfile : string
+            Full path to file where stderr from the scheduler/command should be
+            stored.
+        memory_in_mb : int
+            Memory (in Mb) to request for running the job.
+        num_processors : int
+            Number of processors/cores to request for running the job.
+        additional_args : string
+            Additonal arguments to provide to the command(s) used to submit the job.
 
         Returns
         -------
@@ -48,7 +72,7 @@ class AbstractJobScheduler(ABC):
 
     @staticmethod
     @abstractmethod
-    def kill_job(job_id):
+    def kill_job(job_id, additional_args):
         """
         Execute command(s) to kill a running job.
 
@@ -56,6 +80,8 @@ class AbstractJobScheduler(ABC):
         ----------
         job_id : type
             Identifier used by system's scheduler to uniquely identify the job.
+        additional_args : string
+            Additonal arguments to provide to the command(s) used to kill the job.
 
         Returns
         -------
