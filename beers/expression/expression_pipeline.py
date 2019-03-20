@@ -2,13 +2,14 @@ import sys
 import os
 import importlib
 import time
-from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
+from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
 from beers.job_monitor import Monitor
 from beers.utilities.expression_utils import ExpressionUtils
 #To enable export of config parameter dictionaries to command line
 import json
 import subprocess
 import inspect
+import numpy
 
 import beers.expression.transcriptomes as transcriptomes
 
@@ -214,6 +215,8 @@ class ExpressionPipeline:
     def execute(self):
         print("Execution of the Expression Pipeline Started...")
 
+        seeds = self.generate_job_seeds()
+
         expression_pipeline_monitor = Monitor(self.output_directory_path, self.dispatcher_mode)
 
         genome_alignment = self.steps['GenomeAlignmentStep']
@@ -325,6 +328,8 @@ class ExpressionPipeline:
                         variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
                         variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
 
+                        seed = seeds[f"variant_finder.{resub_sample.sample_id}"]
+
                         bsub_command = (f"bsub"
                                         f" -J Variant_Finder.sample{resub_sample.sample_id}_{resub_sample.sample_name}"
                                         f" -oo {stdout_log}"
@@ -336,7 +341,8 @@ class ExpressionPipeline:
                                         f" --sample '{repr(resub_sample)}'"
                                         f" --bam_filename {bam_filename}"
                                         f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
-                                        f" --reference_genome_file_path {self.reference_genome_file_path}")
+                                        f" --reference_genome_file_path {self.reference_genome_file_path}"
+                                        f" --seed {seed}")
 
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
@@ -406,6 +412,8 @@ class ExpressionPipeline:
                             variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
                             variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
 
+                            seed = seeds[f"variant_finder.{pend_sample.sample_id}"]
+
                             bsub_command = (f"bsub"
                                             f" -J Variant_Finder.sample{pend_sample.sample_id}_{pend_sample.sample_name}"
                                             f" -oo {stdout_log}"
@@ -417,7 +425,8 @@ class ExpressionPipeline:
                                             f" --sample '{repr(pend_sample)}'"
                                             f" --bam_filename {bam_filename}"
                                             f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
-                                            f" --reference_genome_file_path {self.reference_genome_file_path}")
+                                            f" --reference_genome_file_path {self.reference_genome_file_path}"
+                                            f" --seed {seed}")
 
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
@@ -466,7 +475,7 @@ class ExpressionPipeline:
 
         print(f"Processing combined samples...")
         beagle = self.steps['BeagleStep']
-        outcome = beagle.execute(self.beagle_file_path)
+        outcome = beagle.execute(self.beagle_file_path, seeds["beagle"])
         if outcome != 0:
             raise ExpressionPipelineException("Beagle process failed.")
 
@@ -488,7 +497,8 @@ class ExpressionPipeline:
                                             self.bowtie2_dir_path,
                                             self.output_type,
                                             self.output_molecule_count,
-                                            self.dispatcher_mode)
+                                            self.dispatcher_mode,
+                                            seeds["transcriptomes"])
 
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
@@ -500,6 +510,25 @@ class ExpressionPipeline:
             #r_rna = RibosomalRNA(self.parameters)
             #molecules.append(r_rna.generate_rRNA_sample())
         print("Execution of the Expression Pipeline Ended")
+
+    def generate_job_seeds(self):
+        """
+        Generate one seed per job that needs a seed, returns a dictionary mapping
+        job names to seeds
+
+        We generate seeds for each job since they run on separate nodes of the cluster, potentially
+        and so do not simply share Numpy seeds. We generate them all ahead of time so that if jobs need
+        to be restart, they can reuse the same seed.
+        """
+        seeds = {}
+        # Seeds for jobs that don't run per sample
+        for job in ["beagle", "transcriptomes"]:
+            seeds[job] = numpy.random.randint(MAX_SEED)
+        # Seeds for jobs that are run per sample
+        for job in ["variant_finder"]:
+            for sample in self.samples:
+                seeds[f"{job}.{sample.sample_id}"] = numpy.random.randint(MAX_SEED)
+        return seeds
 
     @staticmethod
     def main(configuration, dispatcher_mode, resources, output_directory_path, input_samples):

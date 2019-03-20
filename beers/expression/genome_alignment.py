@@ -38,18 +38,15 @@ class GenomeAlignmentStep():
         # Right now, options are mode="serial", "parallel" and "lsf"
         # and mode="parallel" is the same as "serial"
 
-        assert 1 <= len(sample.input_file_paths) <= 2
-
         job_id = ""
 
         # Check if they are already bam files and so we don't need to re-run the alignment
-        if sample.input_file_paths[0].endswith("bam"):
-            assert len(sample.input_file_paths) == 1
+        if sample.bam_file_path is not '':
             print(f"sample{sample.sample_id} {sample.sample_name} is already aligned.")
             job_id = "ALREADY_ALIGNED"
 
             # Give the path to the already-existing bam file
-            return sample.input_file_paths[0], job_id
+            return sample.bam_file_path, job_id
 
         read_files = ' '.join(sample.input_file_paths)
 

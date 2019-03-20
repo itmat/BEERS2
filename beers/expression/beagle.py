@@ -12,10 +12,10 @@ class BeagleStep:
     def validate(self):
         return True
 
-    def execute(self, beagle_file_path):
+    def execute(self, beagle_file_path, seed):
         input_file_path = os.path.join(self.data_directory_path, "all_variants.vcf")
         output_file_path = os.path.join(self.data_directory_path, "beagle.vcf")
-        command = f"java -jar {beagle_file_path} gt={input_file_path} out={output_file_path}"
+        command = f"java -jar {beagle_file_path} gt={input_file_path} out={output_file_path} seed={seed}"
         print(f"Calling beagle with command: {command}")
         result = subprocess.call(command, shell=True)
         print(f"Finished running Beagle.")

@@ -23,3 +23,7 @@ CONSTANTS = Constants(ROOT_DIR, "variants.txt", "beagle.vcf.vcf.gz", "male", "fe
                       "audit.txt", 100, 'data', 'logs', 'stdout', 'stderr', [1, 2])
 
 SUPPORTED_DISPATCHER_MODES = ['multicore', 'lsf', 'serial']
+
+# Maximum size for a job seed, generated from the controller's seed
+# which is specified in the config.json file
+MAX_SEED = 2_000_000_000
