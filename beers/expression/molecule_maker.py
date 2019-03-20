@@ -207,8 +207,9 @@ class MoleculeMaker:
                 cigar = "200S" + cigar # Relative to + strand, the A's are going on the 5' end
 
 
-        return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
-                            source_start=starts[0], source_cigar = cigar, transcript_id=transcript_id)
+        return Molecule(Molecule.new_id(), sequence, start=1, cigar=f"{len(sequence)}M",
+                            source_start=starts[0], source_cigar=cigar, source_strand=strand,
+                            transcript_id=transcript_id)
 
     def make_packet(self, id="packet0", N=10_000):
         molecules = [self.make_molecule() for i in range(N)]
@@ -222,7 +223,8 @@ class MoleculeMaker:
         custom genome, either _1 or _2 as per the transcript id
         """
         with open(filepath, "w") as molecule_file:
-            header = "#transcript_id\tstart\tcigar\tsequence\n"
+            header = "#transcript_id\tstart\tcigar\tstrand\tsequence\n"
+            molecule_file.write(header)
             for i in range(N):
                 molecule = self.make_molecule()
                 # TODO: this file should include a `strand` field but molecules don't have that attribute, awkwardly
@@ -231,6 +233,7 @@ class MoleculeMaker:
                 line = "\t".join([molecule.transcript_id,
                                   str(molecule.source_start),
                                   molecule.source_cigar,
+                                  molecule.source_strand,
                                   molecule.sequence]
                                   ) + "\n"
 
