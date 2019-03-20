@@ -152,7 +152,7 @@ if __name__ == '__main__':
         transcriptome_bowtie2_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}")
 
         aligned_file_path = os.path.join(sample_dir, f"{i}_Aligned.out.sam")
-        command = f"{bowtie2_file_path} -x {transcriptome_bowtie2_index} -1 {fastq_file_1} -2 {fastq_file_2} -S {aligned_file_path}"
+        command = f"{bowtie2_file_path} --threads 4 --very-sensitive -x {transcriptome_bowtie2_index} -1 {fastq_file_1} -2 {fastq_file_2} -S {aligned_file_path}"
         subprocess.run(command, shell=True, check=True)
         
     # Run transcript/gene/allelic_imbalance quantification scripts
