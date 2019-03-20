@@ -170,11 +170,16 @@ class MoleculeMaker:
         # Read in annotation for the chosen transcript
         chrom,strand,tx_start,tx_end,starts,ends= self.annotations[allele_number - 1][transcript]
 
-        # If chosen to be pre_mRNA, overwrite the usual exon starts/ends with a single, big "exon"
+        # Determine if pre_mRNA or mature mRNA
         intron_quant = self.transcript_intron_quants[transcript]
-        fraction_pre_mRNA = intron_quant / (intron_quant + gene_quant)
+        # TODO: check that this gives the appropriate fraction as pre_mRNA
+        #       previously was using intron_quant / (intron_quant + gene_quant)
+        #       but if assuming everything is either full pre_mRNA or mature mRNA then this should be
+        #       the right fraction, which could happen to be greater than one (!)
+        fraction_pre_mRNA = min(intron_quant / (gene_quant), 1)
         pre_mRNA = numpy.random.uniform() < fraction_pre_mRNA
         if pre_mRNA:
+            # If chosen to be pre_mRNA, overwrite the usual exon starts/ends with a single, big "exon"
             starts = [tx_start]
             ends = [tx_end]
 
