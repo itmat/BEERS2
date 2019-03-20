@@ -210,10 +210,31 @@ class MoleculeMaker:
         return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
                             source_start=starts[0], source_cigar = cigar, transcript_id=transcript_id)
 
-    def make_packet(self, N=10_000):
+    def make_packet(self, id="packet0", N=10_000):
         molecules = [self.make_molecule() for i in range(N)]
-        #TODO: make a new packet ID
-        return MoleculePacket("packet0", self.sample, molecules)
+        return MoleculePacket(id, self.sample, molecules)
+
+    def make_molecule_file(self, filepath, N=10_000):
+        """
+        Write out molecules to a tab-separated file
+
+        Note: we write out a molecules start and cigar relative to the appropriate
+        custom genome, either _1 or _2 as per the transcript id
+        """
+        with open(filepath, "w") as molecule_file:
+            header = "#transcript_id\tstart\tcigar\tsequence\n"
+            for i in range(N):
+                molecule = self.make_molecule()
+                # TODO: this file should include a `strand` field but molecules don't have that attribute, awkwardly
+                # NOTE: Not outputing the molecules start or cigar string since those are relative to parent
+                #       which in this case is always trivial (start=1, cigar=###M) since the molecule is new
+                line = "\t".join([molecule.transcript_id,
+                                  str(molecule.source_start),
+                                  molecule.source_cigar,
+                                  molecule.sequence]
+                                  ) + "\n"
+
+                molecule_file.write(line)
 
 if __name__ == "__main__":
     import argparse

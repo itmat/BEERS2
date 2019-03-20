@@ -34,7 +34,7 @@ def prep_transcriptomes(samples, data_directory, log_directory, kallisto_file_pa
     numpy.random.seed(seed)
     for sample in samples:
         sample_seed = numpy.random.randint(MAX_SEED)
-        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.input_file_paths)} --seed {sample_seed}"
+        command = f"python -m beers.expression.transcriptomes {sample.sample_id} {data_directory} {log_directory} {kallisto_file_path} {bowtie2_dir_path} {output_type} {output_molecule_count} --fastq_files {' '.join(sample.fastq_file_paths)} --seed {sample_seed}"
 
         if dispatcher_mode == "serial":
             subprocess.run(command, shell=True)
@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument("log_directory", help="Directory for log files")
     parser.add_argument("kallisto_file_path", help="path to Kallisto executable")
     parser.add_argument("bowtie2_dir_path", help="path to Bowtie2 directory")
-    parser.add_argument("output_type", help="type of output file to write", choices=["packet"], default="packet")
+    parser.add_argument("output_type", help="type of output file to write", choices=["packet", "molecule_file"], default="molecule_file")
     parser.add_argument("output_molecule_count", help="number of molecules to output", type=int)
     parser.add_argument("--fastq_files", help="fastq files to use", nargs="+")
     parser.add_argument("--seed", help="seed for RNG", default=None, type=int)
@@ -179,10 +179,13 @@ if __name__ == '__main__':
         num_packets = output_molecule_count // MOLECULES_PER_PACKET
         for i in range(1,num_packets+1):
             print(f"Generating packet {i} of {num_packets} for sample{sample_id}")
-            packet = molecule_maker.make_packet()
+            packet = molecule_maker.make_packet(id=f"sample{sample_id}.{i}")
 
             with open(os.path.join(sample_dir, f"molecule_packet{i}.pickle"), "wb") as out_file:
                 pickle.dump(packet, out_file)
+    elif output_type == "molecule_file":
+        molecule_maker.make_molecule_file(filepath=os.path.join(sample_dir, f"molecule_file"),
+                                          N = output_molecule_count)
 
     print(f"Done with transcriptome.py for sample{sample_id}")
 

@@ -10,13 +10,14 @@ class Molecule:
     # TODO: we are currently allowing 'N' as a base, but should probably not in the future
 
     def __init__(self, molecule_id, sequence, start=None, cigar=None,
-                 transcript_id=None, source_start=None, source_cigar=None):
+                 transcript_id=None, source_start=None, source_cigar=None, source_strand='.'):
         self.molecule_id = molecule_id
         self.sequence = sequence.strip()
         self.start = start
         self.source_start = source_start or start
         self.cigar = cigar
         self.source_cigar = source_cigar or cigar
+        self.source_strand = source_strand
         self.transcript_id = transcript_id
         #Track sequences and locations of bound primers or newly synthesized
         #cDNA strands, etc.
@@ -146,6 +147,7 @@ class Molecule:
                  "cigar": self.cigar,
                  "source_start": self.source_start,
                  "source_cigar": self.source_cigar,
+                 "source_strand": self.source_strand,
                  "transcript id": self.transcript_id})
         )
 
@@ -166,13 +168,13 @@ class Molecule:
 
     def serialize(self):
         return(f"{self.molecule_id}\t{self.sequence}\t{self.start}\t{self.cigar}\t{self.transcript_id}\t"
-               f"{self.source_start}\t{self.source_cigar}")
+               f"{self.source_start}\t{self.source_cigar}\t{self.source_strand}")
 
     @staticmethod
     def deserialize(data):
         data = data[1:] if (data.startswith("#")) else data
         molecule_id, sequence, start, cigar, transcript_id, source_start, source_cigar = data.rstrip().split("\t")
-        return Molecule(molecule_id, sequence, start, cigar, transcript_id, source_start, source_cigar)
+        return Molecule(molecule_id, sequence, start, cigar, transcript_id, source_start, source_cigar, source_strand)
 
 class BeersMoleculeException(Exception):
     """Base class for other molecule exceptions."""
