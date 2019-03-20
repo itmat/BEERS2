@@ -237,12 +237,16 @@ class MoleculeMaker:
                 cigar = "200S" + cigar # Relative to + strand, the A's are going on the 5' end
 
 
-        return Molecule(Molecule.new_id(), sequence, start=1, cigar=f"{len(sequence)}M",
-                            source_start=starts[0], source_cigar=cigar, source_strand=strand,
-                            transcript_id=transcript_id)
+        return sequence, starts[0], cigar, strand, chrom, transcript_id
 
     def make_packet(self, id="packet0", N=10_000):
-        molecules = [self.make_molecule() for i in range(N)]
+        molecules = []
+        for i in range(N):
+            sequence, start, cigar, strand, chrom, transcript_id = self.make_molecule()
+            mol = Molecule(Molecule.new_id(), sequence, start=1, cigar=f"{len(sequence)}M",
+                                source_start=start, source_cigar=cigar, source_strand=strand,
+                                transcript_id=transcript_id)
+            molecules.append(mol)
         return MoleculePacket(id, self.sample, molecules)
 
     def make_molecule_file(self, filepath, N=10_000):
@@ -253,17 +257,18 @@ class MoleculeMaker:
         custom genome, either _1 or _2 as per the transcript id
         """
         with open(filepath, "w") as molecule_file:
-            header = "#transcript_id\tstart\tcigar\tstrand\tsequence\n"
+            header = "#transcript_id\tchrom\tstart\tcigar\tstrand\tsequence\n"
             molecule_file.write(header)
             for i in range(N):
-                molecule = self.make_molecule()
+                sequence, start, cigar, strand, chrom, transcript_id = self.make_molecule()
                 # NOTE: Not outputing the molecules start or cigar string since those are relative to parent
                 #       which in this case is always trivial (start=1, cigar=###M) since the molecule is new
-                line = "\t".join([molecule.transcript_id,
-                                  str(molecule.source_start),
-                                  molecule.source_cigar,
-                                  molecule.source_strand,
-                                  molecule.sequence]
+                line = "\t".join([transcript_id,
+                                  chrom,
+                                  str(source_start),
+                                  source_cigar,
+                                  source_strand,
+                                  sequence]
                                   ) + "\n"
 
                 molecule_file.write(line)
