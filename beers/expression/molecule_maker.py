@@ -7,7 +7,15 @@ from beers.sample import Sample
 from beers.utilities.general_utils import GeneralUtils
 
 class MoleculeMaker:
+    """
+    MoleculeMaker generates molecules based off of gene, intron, and allelic quantification files
+    as well as customized genomic sequence and annotation
+    """
     def __init__(self, sample, sample_directory):
+        """
+        :param sample: sample object to work on
+        :param sample_directory: path to the directory that contains the sample's file (i.e. the CAMPAREE data directory for the sample)
+        """
         self.sample = sample
 
         intron_quant_file_path = os.path.join(sample_directory, "intron_quantifications.txt")
@@ -49,8 +57,10 @@ class MoleculeMaker:
 
 
     def load_transcriptome(self, file_path):
-        ''' Read in a fasta file and load is a dictionary id -> sequence
-        assumed one-line for the whole contig '''
+        """
+        Read in a fasta file and load is a dictionary id -> sequence
+        assumed one-line for the whole contig
+        """
         transcripts = dict()
         with open(file_path) as transcriptome_file:
             while True:
@@ -65,7 +75,9 @@ class MoleculeMaker:
         return transcripts
 
     def load_genome(self, file_path):
-        ''' Read in a fasta file and load is a dictionary id -> sequence '''
+        """
+        Read in a fasta file and load is a dictionary id -> sequence
+        """
         genome = dict()
         with open(file_path) as transcriptome_file:
             while True:
@@ -80,10 +92,11 @@ class MoleculeMaker:
         return genome
 
     def load_intron_quants(self, file_path):
-        ''' Load an intron quantification file as two dictionaries,
+        """
+        Load an intron quantification file as two dictionaries,
         (transcript ID -> sum FPK of all introns in transcript) and
         (transcript ID -> list of FPKs of each intron in transcript)
-        '''
+        """
         transcript_intron_quants = dict() # Dictionary transcript -> FPK for all introns in the transcript, combined
         intron_quants = dict() # Dictioanry transcript -> array of FPKs for each intron in the transcript
 
@@ -101,7 +114,9 @@ class MoleculeMaker:
         return transcript_intron_quants, intron_quants
 
     def load_gene_quants(self, file_path):
-        ''' Read in a gene quantification file as two lists of gene IDs and of their read quantifications '''
+        """
+        Read in a gene quantification file as two lists of gene IDs and of their read quantifications
+        """
         genes = []
         gene_quants = []
 
@@ -118,7 +133,9 @@ class MoleculeMaker:
         return genes, numpy.array(gene_quants)
 
     def load_isoform_quants(self, file_path):
-        ''' Reads an isoform quant file into a dictionary gene -> (list of transcript IDs, list of psi values) '''
+        """
+        Reads an isoform quant file into a dictionary gene -> (list of transcript IDs, list of psi values)
+        """
         isoform_quants = dict()
 
         with open(file_path) as isoform_quant_file:
@@ -138,7 +155,9 @@ class MoleculeMaker:
         return isoform_quants
 
     def load_allelic_quants(self, file_path):
-        ''' Reads allelic quantification file into a dictionary: gene_id -> (allele 1 probability, allele 2 probability) '''
+        """
+        Reads allelic quantification file into a dictionary: gene_id -> (allele 1 probability, allele 2 probability)
+        """
 
         allelic_quant = dict()
 
