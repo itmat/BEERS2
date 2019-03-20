@@ -257,7 +257,6 @@ class MoleculeMaker:
             molecule_file.write(header)
             for i in range(N):
                 molecule = self.make_molecule()
-                # TODO: this file should include a `strand` field but molecules don't have that attribute, awkwardly
                 # NOTE: Not outputing the molecules start or cigar string since those are relative to parent
                 #       which in this case is always trivial (start=1, cigar=###M) since the molecule is new
                 line = "\t".join([molecule.transcript_id,
