@@ -176,7 +176,13 @@ class MoleculeMaker:
         #       previously was using intron_quant / (intron_quant + gene_quant)
         #       but if assuming everything is either full pre_mRNA or mature mRNA then this should be
         #       the right fraction, which could happen to be greater than one (!)
-        fraction_pre_mRNA = min(intron_quant / (gene_quant), 1)
+        try:
+            fraction_pre_mRNA = min(intron_quant / (gene_quant), 1)
+        except ZeroDivisionError:
+            # Should not ever get here since a gene with 0 gene_quant should have 0 chance of being chosen
+            # however, if we do, we will just always give pre_mRNA
+            fraction_pre_mRNA = 1.0
+
         pre_mRNA = numpy.random.uniform() < fraction_pre_mRNA
         if pre_mRNA:
             # If chosen to be pre_mRNA, overwrite the usual exon starts/ends with a single, big "exon"
