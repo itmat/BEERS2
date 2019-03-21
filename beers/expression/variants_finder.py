@@ -317,9 +317,9 @@ class VariantsFinderStep:
         alignment_file_path : string
             Path to BAM file which will be parsed.
         chr_ploidy_file_path : string
-            Mapping of chromosome names to their male/female ploidy.
+            File that maps chromosome names to their male/female ploidy.
         reference_genome_file_path : string
-            Mapping chromosome names in reference to nucleotide sequence.
+            File that maps chromosome names in reference to nucleotide sequence.
 
         Returns
         -------
@@ -348,6 +348,27 @@ class VariantsFinderStep:
                    f" --reference_genome_file_path {reference_genome_file_path}")
 
         return command
+
+    def get_validation_attributes(self, sample):
+        """
+        Prepare attributes required by is_output_valid() function to validate
+        output generated the VariantsFinder job corresponding to the given sample.
+
+        Parameters
+        ----------
+        sample : Sample
+            Sample for which variants will be called.
+
+        Returns
+        -------
+        dict
+            A VariantsFinder job's data_directory, log_directory, and sample_id.
+        """
+        validation_attributes = {}
+        validation_attributes['data_directory'] = self.data_directory_path
+        validation_attributes['log_directory'] = self.log_directory_path
+        validation_attributes['sample_id'] = sample.sample_id
+        return validation_attributes
 
 
     @staticmethod
@@ -385,15 +406,16 @@ class VariantsFinderStep:
                                 reference_genome)
 
     @staticmethod
-    def is_output_valid(job_attributes):
+    def is_output_valid(validation_attributes):
         """
         Check if output of VariantsFinder for a specific job/execution is
         correctly formed and valid, given a job's data directory, log directory,
-        and sample id.
+        and sample id. Prepare these attributes for a given sample's jobs using
+        the get_validation_attributes() method.
 
         Parameters
         ----------
-        job_attributes : dict
+        validation_attributes : dict
             A job's data_directory, log_directory, and sample_id.
 
         Returns
@@ -402,9 +424,9 @@ class VariantsFinderStep:
             True  - VariantsFinder output files were created and are well formed.
             False - VariantsFinder output files do not exist or are missing data.
         """
-        data_directory = job_attributes['data_directory']
-        log_directory = job_attributes['log_directory']
-        sample_id = job_attributes['sample_id']
+        data_directory = validation_attributes['data_directory']
+        log_directory = validation_attributes['log_directory']
+        sample_id = validation_attributes['sample_id']
 
         valid_output = False
 

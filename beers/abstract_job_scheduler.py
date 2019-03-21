@@ -65,7 +65,7 @@ class AbstractJobScheduler(ABC):
         -------
         string
             Unique identifier for the submitted job assigned by the system's scheduler.
-            Empty string indicates job submission failed.
+            "ERROR" string indicates job submission failed.
 
         """
         pass

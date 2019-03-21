@@ -116,10 +116,10 @@ class LsfJobScheduler(AbstractJobScheduler):
         -------
         string
             Unique identifier for the submitted job assigned by the LSF scheduler.
-            Empty string indicates job submission failed.
+            "ERROR" string indicates job submission failed.
 
         """
-        job_id = ""
+        job_id = "ERROR"
 
         bsub_command = LsfJobScheduler.DEFAULT_BSUB_COMMAND.format(job_name=job_name,
                                                                    num_processors=num_processors,
