@@ -5,6 +5,7 @@ import os
 import collections
 
 
+
 OUTPUT_ALLELIC_IMBALANCE_FILE_NAME = "allelic_imbalance_quantifications.txt"
 
 class AllelicImbalanceQuantificationStep:
@@ -49,7 +50,7 @@ class AllelicImbalanceQuantificationStep:
         self.gene_final_count = collections.defaultdict(lambda: collections.defaultdict(int))
         self.exclusive_genes = []
 
-
+    
     def create_transcript_gene_map(self):
         """
         Create dictionary to map transcript id to gene id using geneinfo file
@@ -102,8 +103,8 @@ class AllelicImbalanceQuantificationStep:
                 # This means both forward and reverse reads are non-mappers
                 # So store 'transcript_id' as '*' and 'NM' as 2*read_length
                 if fwd_transcript_id == '*' and rev_transcript_id == '*':
-                    read_info_map[fwd_fields[0]]['transcript_id'] = [ '*' ]
-                    read_info_map[fwd_fields[0]]['NM'] = [ 200 ]
+                    read_info_map[fwd_fields[0]]['transcript_id'] =  '*' 
+                    read_info_map[fwd_fields[0]]['NM'] =  200 
                     continue
                 # Get transcript_id for mapped reads
                 elif fwd_transcript_id == rev_transcript_id:
@@ -130,12 +131,8 @@ class AllelicImbalanceQuantificationStep:
                     NM_count = 100
 
                 # Update read_info dictionary with transcript_id and corresponding edit distance
-                if not read_info_map[fwd_fields[0]]:
-                    read_info_map[fwd_fields[0]]['transcript_id'] = [ transcript_id ]
-                    read_info_map[fwd_fields[0]]['NM'] = [NM_count]
-                else:
-                    read_info_map[fwd_fields[0]]['transcript_id'].append(transcript_id)
-                    read_info_map[fwd_fields[0]]['NM'].append(NM_count)
+                read_info_map[fwd_fields[0]]['transcript_id'] = transcript_id 
+                read_info_map[fwd_fields[0]]['NM'] = NM_count
 
         return read_info_map
 
@@ -154,70 +151,64 @@ class AllelicImbalanceQuantificationStep:
 
         read_ids_1 = [ i for i in read_info_1.keys() ]
         read_ids_2 = [ i for i in read_info_2.keys() ]
-        read_ids = set(read_ids_1).union(set(read_ids_2))
+        read_ids = set(read_ids_1).intersection(set(read_ids_2))
+        read_ids_1_u = set(read_ids_1).difference(read_ids)
+        read_ids_2_u = set(read_ids_2).difference(read_ids)
+
+        for read in read_ids_1_u:
+            transcript = read_info_1[read]['transcript_id']
+            gene = self.transcript_gene_map[transcript]
+            self.gene_final_count[gene]['1'] += 1
+
+        for read in read_ids_2_u:
+            transcript = read_info_2[read]['transcript_id']
+            gene = self.transcript_gene_map[transcript]
+            self.gene_final_count[gene]['2'] += 1
 
         for read in read_ids:
             # Transcripts to which the read mapped for each parent
-            if read in read_ids_1:
-                transcripts_1 = read_info_1[read]['transcript_id']
-            else:
-                transcripts_1 = ['*']
-
-            if read in read_ids_2:
-                transcripts_2 = read_info_2[read]['transcript_id']
-            else:
-                transcripts_2 = ['*']
+            transcript_1 = read_info_1[read]['transcript_id']
+            transcript_2 = read_info_2[read]['transcript_id']
 
             # The read did not map to any transcript in either parent
-            if set(transcripts_1) == {'*'} and set(transcripts_2) == {'*'}:
+            if transcript_1 == '*' and transcript_2 == '*':
                 continue
             # The read mapped to atleast one transcript in each parent
-            elif set(transcripts_1) != {'*'} and set(transcripts_2) != {'*'}:
+            elif transcript_1 != '*' and transcript_2 != '*':
                 # Get the genes in parent 1 to which the read mapped
-                genes_1 = [ self.transcript_gene_map[transcript_id] for transcript_id in transcripts_1 ]
+                gene_1 = self.transcript_gene_map[transcript_1] 
                 NM_count_1 = read_info_1[read]['NM']
 
                 # Get the genes in parent 2 to which the read mapped
-                genes_2 = [ self.transcript_gene_map[transcript_id] for transcript_id in transcripts_2 ]
+                gene_2 = self.transcript_gene_map[transcript_2] 
                 NM_count_2 = read_info_2[read]['NM']
 
                 # Amongst the genes to which the read mapped,
                 # there is exactly one gene in common between parent 1 and 2.
-                if len(set(genes_1) & set(genes_2)) == 1:
-                    # Find the edit distance of alignments to that gene in parent 1
-                    gene_id = list(set(genes_1) & set(genes_2))[0]
-                    indices_1 = [i for i, x in enumerate(genes_1) if x == gene_id ]
-                    min_NM_1 = min([NM_count_1[i] for i in indices_1 ])
-
-                    # Find the edit distance of alignments to that gene in parent 2
-                    indices_2 = [i for i, x in enumerate(genes_2) if x == gene_id ]
-                    min_NM_2 = min([NM_count_2[i] for i in indices_2 ])
-
+                if gene_1 == gene_2:
                     # Minimum edit distance for the mapping to the gene is the same in
                     # parent 1 and parent 2. So increment counts of both alleles of the genes by 0.5
-                    if min_NM_1 == min_NM_2:
-                        self.gene_final_count[gene_id]['1'] += 0.5
-                        self.gene_final_count[gene_id]['2'] += 0.5
+                    if NM_count_1 == NM_count_2:
+                        self.gene_final_count[gene_1]['1'] += 0.5
+                        self.gene_final_count[gene_1]['2'] += 0.5
                     # Minimum edit distance for the mapping to the gene is less in parent 1.
                     # So increment count of allele of gene corresponding to parent 1.
-                    elif min_NM_1 < min_NM_2:
-                        self.gene_final_count[gene_id]['1'] += 1
+                    elif NM_count_1 < NM_count_2:
+                        self.gene_final_count[gene_1]['1'] += 1
                     # Minimum edit distance for the mapping to the gene is less in parent 2.
                     # So increment count of allele of gene corresponding to parent 2.
                     else:
-                        self.gene_final_count[gene_id]['2'] += 1
+                        self.gene_final_count[gene_1]['2'] += 1
             # The read is a non-mapper for the parent 1 transcriptome
-            elif set(transcripts_1) == {'*'}:
+            elif transcript_1 == '*':
                 # Get the genes in parent 2 to which the read mapped
-                genes_2 = [ self.transcript_gene_map[transcript_id] for transcript_id in transcripts_2 ]
-                if len(set(genes_2)) == 1:
-                    self.gene_final_count[genes_2[0]]['2'] += 1
+                gene_2 = self.transcript_gene_map[transcript_2]
+                self.gene_final_count[gene_2]['2'] += 1
 
             # The read is a non-mapper for the parent 2 transcriptome
-            elif set(transcripts_2) == {'*'}:
-                genes_1 = [ self.transcript_gene_map[transcript_id] for transcript_id in transcripts_1 ]
-                if len(set(genes_1)) == 1:
-                    self.gene_final_count[genes_1[0]]['1'] += 1
+            elif transcript_2 == '*':
+                gene_1 = self.transcript_gene_map[transcript_1]
+                self.gene_final_count[gene_1]['1'] += 1
 
         #self.gene_final_count = collections.OrderedDict(sorted(self.gene_final_count.items()))
 
@@ -244,6 +235,7 @@ class AllelicImbalanceQuantificationStep:
         # Write the allelic imbalance quantification information to allele imbalance dist filename
         with open(self.allele_imbalance_dist_filename, 'w') as allele_imbalance_dist_file:
             allele_imbalance_dist_file.write('#gene_id' + '\t' + '_1' + '\t' + '_2' + '\n')
+
             #for key, value in list(self.gene_final_count.items()):
             for gene_id in sorted(set(self.transcript_gene_map.values())):
                 if gene_id in exclusive_genes:
@@ -292,3 +284,5 @@ if __name__ == "__main__":
 
 # Example command
 # python allelic_imbalance_quant.py -g 'geneinfo_file.txt' -d 'sampleA' -r 'Aligned.out'
+
+
