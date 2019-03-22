@@ -346,7 +346,7 @@ class Controller:
         self.input_samples = []
         for input_sample in self.configuration['expression_pipeline']["input"]["data"].values():
             input_files = copy.copy(input_sample["fastq_files"])
-            if input_sample["bam_file"]:
+            if "bam_file" in input_sample:
                 input_files.append(input_sample["bam_file"])
 
             for filename in input_files:
