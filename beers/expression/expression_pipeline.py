@@ -250,17 +250,30 @@ class ExpressionPipeline:
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             variants_finder = self.steps['VariantsFinderStep']
             sample = expression_pipeline_monitor.get_sample(sample_id)
+            seed = seeds[f"variant_finder.{sample_id}"]
 
-            if self.dispatcher_mode == "lsf":
-                variants_finder_attributes = {}
-                expression_pipeline_monitor.submit_new_job(f"VariantsFinder.{sample_id}",
-                                                           sample, 'VariantsFinderStep',
-                                                           variants_finder_attributes,
-                                                           self.output_directory_path, system_id=None,
-                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
-            else:
+            if self.dispatcher_mode == "serial":
                 print(f"Processing variants in sample {sample_id}...")
-                variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome)
+                variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome, seed)
+            else:
+                stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{sample_id}", "Variants_Finder.bsub.%J.out")
+                stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{sample_id}", "Variants_Finder.bsub.%J.err")
+                command = variants_finder.get_commandline_call(sample, bam_file, self.chr_ploidy_file_path,
+                                                               self.reference_genome_file_path, seed)
+                scheduler_args = {'job_name' : f"Variant_Finder.sample{sample_id}_{sample.sample_name}",
+                                  'stdout_logfile' : stdout_log,
+                                  'stderr_logfile' : stderr_log,
+                                  'memory_in_mb' : 6000,
+                                  'num_processors' : 1}
+                validation_attributes = variants_finder.get_validation_attributes(sample)
+                expression_pipeline_monitor.submit_new_job(job_id=f"VariantsFinder.{sample_id}",
+                                                           job_command=command, sample=sample,
+                                                           step_name='VariantsFinderStep',
+                                                           scheduler_arguments=scheduler_args,
+                                                           validation_attributes=validation_attributes,
+                                                           output_directory_path=self.output_directory_path,
+                                                           system_id=None,
+                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
 
         for sample_id, bam_file in bam_files.items():
             output_directory = os.path.join(self.output_directory_path, f"sample{sample_id}")

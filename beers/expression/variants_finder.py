@@ -234,7 +234,7 @@ class VariantsFinderStep:
                     loc_on_read += length
         return reads
 
-    def execute(self, sample, alignment_file_path, chr_ploidy_data, reference_genome, chromosomes = None):
+    def execute(self, sample, alignment_file_path, chr_ploidy_data, reference_genome, seed=None, chromosomes=None):
         """
         Entry point into variants_finder.  Iterates over the chromosomes in the list provided by the chr_ploidy_data
         keys to pick out variants.  Chromosomes that are not pertainent to the sample's gender are skipped.  If no
@@ -242,6 +242,7 @@ class VariantsFinderStep:
         :param sample: The sample for which the variants for to be found
         :param chr_ploidy_data: dictionary of chromosomes as keys and a dictionary of male/female ploidy as values.
         :param reference_genome: A dictionary representation of the reference genome
+        :param seed: Seed for random number generator
         :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
         debugging purposes.
         """
@@ -251,6 +252,10 @@ class VariantsFinderStep:
         self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
         self.chromosomes = chromosomes if chromosomes else chr_ploidy_data.keys()
         self.reference_genome = reference_genome
+
+        if seed is not None:
+            numpy.random.seed(seed)
+
         self.filter_chromosome_list(sample, chr_ploidy_data)
         log_table = PrettyTable()
         log_table.field_names =['chromosome','chromosome length','# positions with variants',
@@ -305,7 +310,7 @@ class VariantsFinderStep:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
-    def get_commandline_call(self, sample, alignment_file_path, chr_ploidy_file_path, reference_genome_file_path):
+    def get_commandline_call(self, sample, alignment_file_path, chr_ploidy_file_path, reference_genome_file_path, seed=None):
         """
         Prepare command to execute the VariantsFinder from the command line, given
         all of the arugments used to run the execute() function.
@@ -320,6 +325,9 @@ class VariantsFinderStep:
             File that maps chromosome names to their male/female ploidy.
         reference_genome_file_path : string
             File that maps chromosome names in reference to nucleotide sequence.
+        seed : integer
+            Seed for random number generator. Used to repeated runs will produce
+            the same results.
 
         Returns
         -------
@@ -346,6 +354,9 @@ class VariantsFinderStep:
                    f" --bam_filename {alignment_file_path}"
                    f" --chr_ploidy_file_path {chr_ploidy_file_path}"
                    f" --reference_genome_file_path {reference_genome_file_path}")
+
+        if seed is not None:
+            command += f" --seed {seed}"
 
         return command
 
@@ -390,9 +401,6 @@ class VariantsFinderStep:
         parser.add_argument('--seed', type=int, default=None)
         args = parser.parse_args()
 
-        if args.seed is not None:
-            numpy.random.seed(args.seed)
-
         config_parameters = json.loads(args.config_parameters)
         variants_finder = VariantsFinderStep(args.log_directory_path,
                                              args.data_directory_path,
@@ -403,7 +411,8 @@ class VariantsFinderStep:
         variants_finder.execute(sample,
                                 args.bam_filename,
                                 chr_ploidy_data,
-                                reference_genome)
+                                reference_genome,
+                                args.seed)
 
     @staticmethod
     def is_output_valid(validation_attributes):
