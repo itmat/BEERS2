@@ -3,7 +3,7 @@ import os
 import importlib
 import time
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
-from beers.job_monitor import Monitor
+from beers.job_monitor import JobMonitor
 from beers.utilities.expression_utils import ExpressionUtils
 #To enable export of config parameter dictionaries to command line
 import json
@@ -217,7 +217,7 @@ class ExpressionPipeline:
 
         seeds = self.generate_job_seeds()
 
-        expression_pipeline_monitor = Monitor(self.output_directory_path, self.dispatcher_mode)
+        expression_pipeline_monitor = JobMonitor(self.output_directory_path, self.dispatcher_mode)
 
         genome_alignment = self.steps['GenomeAlignmentStep']
 
@@ -347,7 +347,7 @@ class ExpressionPipeline:
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
                         #Extract job ID from LSF stdout
-                        system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                        system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
 
                         print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
@@ -377,7 +377,7 @@ class ExpressionPipeline:
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
                         #Extract job ID from LSF stdout
-                        system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                        system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
                         print(f"Finished submitting intron quantification command to {self.dispatcher_mode} for sample {resub_sample.sample_name}")
 
                     # Finish resubmission
@@ -431,7 +431,7 @@ class ExpressionPipeline:
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout
-                            system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                            system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
 
                             print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
@@ -463,7 +463,7 @@ class ExpressionPipeline:
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout
-                            system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                            system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
                             print(f"Finished submitting intron quantification command to {self.dispatcher_mode} for sample {pend_sample.sample_name}")
 
                         # Finish submission

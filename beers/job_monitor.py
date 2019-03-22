@@ -5,18 +5,12 @@ import subprocess
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers.beers_exception import BeersException
 
-class Monitor:
+class JobMonitor:
     """
     The class monitors the status of various subprocesses running throughout the
     pipeline. It checks for jobs that are pending, running, stalled, or halted
     (either due to success or error/failure).
     """
-
-    #Regular expression for parsion bjobs output (including header)
-    lsf_bjobs_output_pattern = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
-
-    #Regex for recognizing and extracting lsf job IDs following submission.
-    lsf_bsub_output_pattern = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
 
     def __init__(self, output_directory_path, dispatcher_mode):
         """
@@ -47,8 +41,8 @@ class Monitor:
         self.samples_by_ids = {}
 
         if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise BeersException(f'{dispatcher_mode} is not a supported mode.\n'
-                                 'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
+            raise JobMonitorException(f'{dispatcher_mode} is not a supported mode.\n'
+                                      'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         else:
             self.dispatcher_mode = dispatcher_mode
 
@@ -107,7 +101,7 @@ class Monitor:
             likely be the output of the StepName.get_commandline_call() function.
         sample : Sample
             Sample object associated with the job. Will be added to the dictionary
-            of samples stored in the Monitor if it's not already there.
+            of samples stored in the JobMonitor if it's not already there.
         step_name : string
             Name of the step in the pipeline associated with monitored job.
         validation_attributes : dict
@@ -148,9 +142,9 @@ class Monitor:
         #      require restarting).
 
         if job_id in self.running_list or job_id in self.pending_list:
-            raise MonitorException(f'Submitted job is already in the list of running or pending\n',
-                                   'jobs. To move a job from the pending to the running list, use\n',
-                                   'the submit_pending_job() function\n')
+            raise JobMonitorException(f'Submitted job is already in the list of running or pending\n',
+                                      'jobs. To move a job from the pending to the running list, use\n',
+                                      'the submit_pending_job() function\n')
         else:
             if system_id is not None:
                 self.running_list[job_id] = submitted_job
@@ -175,10 +169,10 @@ class Monitor:
             New system-level ID assigned to the job during submission.
         """
         if not job_id in self.pending_list:
-            raise MonitorException(f'Job missing from the list of pending jobs.\n')
+            raise JobMonitorException(f'Job missing from the list of pending jobs.\n')
         elif job_id in self.running_list or job_id in self.resubmission_list:
-            raise MonitorException(f'Job is already in the list of running jobs or ',
-                                   'jobs marked for resubmission.\n')
+            raise JobMonitorException(f'Job is already in the list of running jobs or ',
+                                      'jobs marked for resubmission.\n')
         else:
             job = self.pending_list[job_id]
             job.system_id = new_system_id
@@ -199,11 +193,11 @@ class Monitor:
             New system-level ID assigned to the job during resubmission.
         """
         if not job_id in self.resubmission_list:
-            raise MonitorException(f'Resubmitted job missing from the list of jobs ',
-                                   'marked for resubmission.\n')
+            raise JobMonitorException(f'Resubmitted job missing from the list of jobs ',
+                                      'marked for resubmission.\n')
         elif job_id in self.running_list or job_id in self.pending_list:
-            raise MonitorException(f'Resubmitted job is already in the list of ',
-                                   'running or pending jobs.\n')
+            raise JobMonitorException(f'Resubmitted job is already in the list of ',
+                                      'running or pending jobs.\n')
         else:
             job = self.resubmission_list[job_id]
             job.system_id = new_system_id
@@ -241,10 +235,6 @@ class Monitor:
         return set(job.dependency_list).issubset(self.completed_list.keys())
 
 
-class MonitorException(BeersException):
-    pass
-
-
 class Job:
     """
     Wrapper around subprocesses executed throughout the pipeline. Contains
@@ -263,9 +253,9 @@ class Job:
                           'COMPLETED',              #job finished successfully with complete output files.
                           'WAITING_FOR_DEPENDENCY'] #job not submitted and waiting for dependency to complete.
 
-    def __init__(self, job_id, job_command, sample_id, step_name, validation_attributes,
-                 output_directory_path, dispatcher_mode, system_id=None,
-                 dependency_list=None):
+    def __init__(self, job_id, job_command, sample_id, step_name, scheduler_arguments,
+                 validation_attributes, output_directory_path, dispatcher_mode,
+                 system_id=None, dependency_list=None):
         """
         Initialize job to track the status of a step/operation running on the
         current sample.
@@ -287,6 +277,9 @@ class Job:
             monitoring a molecule packet making its way through the library_prep
             pipeline). I might eventually be able to do away with this, or
             generalize the code further.
+        scheduler_arguments : dict
+            Dictionary of arguments passed to the job scheduler when submitting
+            the job. These will be passed on to the submit_job() function.
         validation_attributes : dict
             Dictionary of attribute names and values required to validate the
             output of this specific job. This will most often be generated by
@@ -455,3 +448,7 @@ class Job:
             raise NotImplementedError()
 
         return job_status
+
+
+class JobMonitorException(BeersException):
+    pass
