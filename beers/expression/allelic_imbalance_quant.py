@@ -4,9 +4,7 @@ import sys
 import os
 import collections
 
-
 from pysam import AlignmentFile
-
 
 
 OUTPUT_ALLELIC_IMBALANCE_FILE_NAME = "allelic_imbalance_quantifications.txt"
@@ -301,6 +299,6 @@ if __name__ == "__main__":
     sys.exit(AllelicImbalanceQuantificationStep.main())
 
 # Example command
-# python allelic_imbalance_quant.py -g 'geneinfo_file.txt' -d 'sampleA' -r 'Aligned.out'
+# python allelic_imbalance_quant.py -d 'sampleA' 
 
 
