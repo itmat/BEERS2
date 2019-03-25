@@ -131,6 +131,12 @@ if __name__ == '__main__':
         command = f"{kallisto_file_path} quant -i {transcriptome_index} -o {kallisto_output_dir} {fastq_file_1} {fastq_file_2}"
         subprocess.run(command, shell=True, check=True)
 
+    # Run transcript/gene/allelic_imbalance quantification scripts
+    geneinfo_filename = os.path.join(sample_dir, "updated_annotation_1.txt")
+
+    print(f"Quantifying transcriptome reads for sample{sample_id}")
+    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir)
+    transcript_gene_quant.make_transcript_gene_dist_file()
 
     # Build Bowtie2 indexes
     for i in [1,2]:
@@ -155,14 +161,6 @@ if __name__ == '__main__':
         num_threads = 8
         command = f"{bowtie2_file_path} --threads {num_threads} --very-sensitive -x {transcriptome_bowtie2_index} -1 {fastq_file_1} -2 {fastq_file_2} -S {aligned_file_path}"
         subprocess.run(command, shell=True, check=True)
-        
-    # Run transcript/gene/allelic_imbalance quantification scripts
-    geneinfo_filename = os.path.join(sample_dir, "updated_annotation_1.txt")
-
-    print(f"Quantifying transcriptome reads for sample{sample_id}")
-    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir)
-    #transcript_gene_quant.quantify_transcript()
-    transcript_gene_quant.make_transcript_gene_dist_file()
 
     print(f"Quantifying allelic imabalance for sample{sample_id}")
     allelic_imbalance_quant = AllelicImbalanceQuantificationStep(sample_dir)

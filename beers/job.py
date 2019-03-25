@@ -139,9 +139,9 @@ class Job:
                 #      or check output/log files (in the case of RUN) for their
                 #      their last update. If too much time has passed during
                 #      an update, might need to resubmit jobs.
-                if lsf_job_status == "PEND" or lsf_job_status == "RUN" or lsf_job_status == "WAIT":
+                if lsf_job_status == "PEND"  or lsf_job_status == "RUN" or lsf_job_status == "WAIT":
                     pass
-                elif lsf_job_status == "EXIT":
+                elif lsf_job_status == "EXIT" or lsf_job_status == "UNKWN":
                     job_status = "FAILED"
                 elif lsf_job_status == "DONE":
                     #TODO: To clean up the code, we should probably create

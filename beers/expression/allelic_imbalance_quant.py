@@ -5,6 +5,9 @@ import os
 import collections
 
 
+from pysam import AlignmentFile
+
+
 
 OUTPUT_ALLELIC_IMBALANCE_FILE_NAME = "allelic_imbalance_quantifications.txt"
 
@@ -31,6 +34,7 @@ class AllelicImbalanceQuantificationStep:
         self.sample_directory = sample_directory
         self.geneinfo_filename_1 = os.path.join(self.sample_directory, 'updated_annotation_1.txt')
         self.geneinfo_filename_2 = os.path.join(self.sample_directory, 'updated_annotation_2.txt')
+        self.genome_alignment_file = os.path.join(self.sample_directory, "genome_alignment.Aligned.sortedByCoord.out.bam")
 
         self.align_filename_1 = os.path.join(self.sample_directory, '1_Aligned.out.sam')
         self.align_filename_2 = os.path.join(self.sample_directory, '2_Aligned.out.sam')
@@ -65,6 +69,18 @@ class AllelicImbalanceQuantificationStep:
             for line in geneinfo_file:
                 fields = line.strip('\n').split('\t')
                 self.transcript_gene_map[fields[7]] = fields[8]
+
+    def reads_to_ignore(self):
+        reads_to_ignore = []
+        bamfile = AlignmentFile(self.genome_alignment_file, "rb")
+        num_hits_pattern = re.compile('(NH:i:)(\d+)')
+
+        for read in bamfile.fetch(until_eof=True):
+            num_hits = dict(read.tags)['NH']
+            if num_hits > 1:
+                reads_to_ignore.append(read.query_name)
+
+        return reads_to_ignore
 
 
     def read_info(self, in_align_filename):
@@ -149,11 +165,13 @@ class AllelicImbalanceQuantificationStep:
         read_info_1 = self.read_info(self.align_filename_1)
         read_info_2 = self.read_info(self.align_filename_2)
 
-        read_ids_1 = [ i for i in read_info_1.keys() ]
-        read_ids_2 = [ i for i in read_info_2.keys() ]
-        read_ids = set(read_ids_1).intersection(set(read_ids_2))
-        read_ids_1_u = set(read_ids_1).difference(read_ids)
-        read_ids_2_u = set(read_ids_2).difference(read_ids)
+        reads_to_ignore = self.reads_to_ignore()
+
+        read_ids_1 = set(read_info_1.keys()).difference(reads_to_ignore)
+        read_ids_2 = set(read_info_2.keys()).difference(reads_to_ignore)
+        read_ids = read_ids_1.intersection(read_ids_2)
+        read_ids_1_u = read_ids_1.difference(read_ids)
+        read_ids_2_u = read_ids_2.difference(read_ids)
 
         for read in read_ids_1_u:
             transcript = read_info_1[read]['transcript_id']
