@@ -48,7 +48,7 @@ class GenomeAlignmentStep():
             # Give the path to the already-existing bam file
             return sample.bam_file_path, job_id
 
-        read_files = ' '.join(sample.input_file_paths)
+        read_files = ' '.join(sample.fastq_file_paths)
 
         out_file_prefix = os.path.join(self.data_directory_path, f"sample{sample.sample_id}", "genome_alignment.")
 

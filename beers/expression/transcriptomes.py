@@ -91,6 +91,8 @@ if __name__ == '__main__':
     output_molecule_count = args.output_molecule_count
     fastq_file_1, fastq_file_2 = args.fastq_files
 
+    num_threads = 8
+
 
     if args.seed is not None:
         numpy.random.seed(args.seed)
@@ -131,6 +133,12 @@ if __name__ == '__main__':
         command = f"{kallisto_file_path} quant -i {transcriptome_index} -o {kallisto_output_dir} {fastq_file_1} {fastq_file_2}"
         subprocess.run(command, shell=True, check=True)
 
+    # Run transcript/gene/allelic_imbalance quantification scripts
+    geneinfo_filename = os.path.join(sample_dir, "updated_annotation_1.txt")
+
+    print(f"Quantifying transcriptome reads for sample{sample_id}")
+    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir)
+    transcript_gene_quant.make_transcript_gene_dist_file()
 
     # Build Bowtie2 indexes
     for i in [1,2]:
@@ -140,7 +148,7 @@ if __name__ == '__main__':
         transcriptome_index_dir = os.path.join(sample_dir, f"transcriptome_{i}_index")
         transcriptome_bowtie2_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}")
 
-        command = f"{bowtie2_build_file_path} {transcriptome} {transcriptome_bowtie2_index}"
+        command = f"{bowtie2_build_file_path} --threads {num_threads} {transcriptome} {transcriptome_bowtie2_index}"
         subprocess.run(command, shell=True, check=True)
 
     # Align fastq files to Bowtie2 indexes
@@ -152,16 +160,8 @@ if __name__ == '__main__':
         transcriptome_bowtie2_index = os.path.join(transcriptome_index_dir, f"transcriptome_{i}")
 
         aligned_file_path = os.path.join(sample_dir, f"{i}_Aligned.out.sam")
-        command = f"{bowtie2_file_path} -x {transcriptome_bowtie2_index} -1 {fastq_file_1} -2 {fastq_file_2} -S {aligned_file_path}"
+        command = f"{bowtie2_file_path} --threads {num_threads} --very-sensitive -x {transcriptome_bowtie2_index} -1 {fastq_file_1} -2 {fastq_file_2} -S {aligned_file_path}"
         subprocess.run(command, shell=True, check=True)
-        
-    # Run transcript/gene/allelic_imbalance quantification scripts
-    geneinfo_filename = os.path.join(sample_dir, "updated_annotation_1.txt")
-
-    print(f"Quantifying transcriptome reads for sample{sample_id}")
-    transcript_gene_quant = TranscriptGeneQuantificationStep(geneinfo_filename, sample_dir)
-    #transcript_gene_quant.quantify_transcript()
-    transcript_gene_quant.make_transcript_gene_dist_file()
 
     print(f"Quantifying allelic imabalance for sample{sample_id}")
     allelic_imbalance_quant = AllelicImbalanceQuantificationStep(sample_dir)

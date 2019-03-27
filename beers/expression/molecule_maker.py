@@ -7,7 +7,15 @@ from beers.sample import Sample
 from beers.utilities.general_utils import GeneralUtils
 
 class MoleculeMaker:
+    """
+    MoleculeMaker generates molecules based off of gene, intron, and allelic quantification files
+    as well as customized genomic sequence and annotation
+    """
     def __init__(self, sample, sample_directory):
+        """
+        :param sample: sample object to work on
+        :param sample_directory: path to the directory that contains the sample's file (i.e. the CAMPAREE data directory for the sample)
+        """
         self.sample = sample
 
         intron_quant_file_path = os.path.join(sample_directory, "intron_quantifications.txt")
@@ -49,8 +57,10 @@ class MoleculeMaker:
 
 
     def load_transcriptome(self, file_path):
-        ''' Read in a fasta file and load is a dictionary id -> sequence
-        assumed one-line for the whole contig '''
+        """
+        Read in a fasta file and load is a dictionary id -> sequence
+        assumed one-line for the whole contig
+        """
         transcripts = dict()
         with open(file_path) as transcriptome_file:
             while True:
@@ -65,7 +75,9 @@ class MoleculeMaker:
         return transcripts
 
     def load_genome(self, file_path):
-        ''' Read in a fasta file and load is a dictionary id -> sequence '''
+        """
+        Read in a fasta file and load is a dictionary id -> sequence
+        """
         genome = dict()
         with open(file_path) as transcriptome_file:
             while True:
@@ -80,10 +92,11 @@ class MoleculeMaker:
         return genome
 
     def load_intron_quants(self, file_path):
-        ''' Load an intron quantification file as two dictionaries,
+        """
+        Load an intron quantification file as two dictionaries,
         (transcript ID -> sum FPK of all introns in transcript) and
         (transcript ID -> list of FPKs of each intron in transcript)
-        '''
+        """
         transcript_intron_quants = dict() # Dictionary transcript -> FPK for all introns in the transcript, combined
         intron_quants = dict() # Dictioanry transcript -> array of FPKs for each intron in the transcript
 
@@ -101,7 +114,9 @@ class MoleculeMaker:
         return transcript_intron_quants, intron_quants
 
     def load_gene_quants(self, file_path):
-        ''' Read in a gene quantification file as two lists of gene IDs and of their read quantifications '''
+        """
+        Read in a gene quantification file as two lists of gene IDs and of their read quantifications
+        """
         genes = []
         gene_quants = []
 
@@ -118,7 +133,9 @@ class MoleculeMaker:
         return genes, numpy.array(gene_quants)
 
     def load_isoform_quants(self, file_path):
-        ''' Reads an isoform quant file into a dictionary gene -> (list of transcript IDs, list of psi values) '''
+        """
+        Reads an isoform quant file into a dictionary gene -> (list of transcript IDs, list of psi values)
+        """
         isoform_quants = dict()
 
         with open(file_path) as isoform_quant_file:
@@ -138,7 +155,9 @@ class MoleculeMaker:
         return isoform_quants
 
     def load_allelic_quants(self, file_path):
-        ''' Reads allelic quantification file into a dictionary: gene_id -> (allele 1 probability, allele 2 probability) '''
+        """
+        Reads allelic quantification file into a dictionary: gene_id -> (allele 1 probability, allele 2 probability)
+        """
 
         allelic_quant = dict()
 
@@ -170,11 +189,22 @@ class MoleculeMaker:
         # Read in annotation for the chosen transcript
         chrom,strand,tx_start,tx_end,starts,ends= self.annotations[allele_number - 1][transcript]
 
-        # If chosen to be pre_mRNA, overwrite the usual exon starts/ends with a single, big "exon"
+        # Determine if pre_mRNA or mature mRNA
         intron_quant = self.transcript_intron_quants[transcript]
-        fraction_pre_mRNA = intron_quant / (intron_quant + gene_quant)
+        # TODO: check that this gives the appropriate fraction as pre_mRNA
+        #       previously was using intron_quant / (intron_quant + gene_quant)
+        #       but if assuming everything is either full pre_mRNA or mature mRNA then this should be
+        #       the right fraction, which could happen to be greater than one (!)
+        try:
+            fraction_pre_mRNA = min(intron_quant / (gene_quant), 1)
+        except ZeroDivisionError:
+            # Should not ever get here since a gene with 0 gene_quant should have 0 chance of being chosen
+            # however, if we do, we will just always give pre_mRNA
+            fraction_pre_mRNA = 1.0
+
         pre_mRNA = numpy.random.uniform() < fraction_pre_mRNA
         if pre_mRNA:
+            # If chosen to be pre_mRNA, overwrite the usual exon starts/ends with a single, big "exon"
             starts = [tx_start]
             ends = [tx_end]
 
@@ -207,11 +237,16 @@ class MoleculeMaker:
                 cigar = "200S" + cigar # Relative to + strand, the A's are going on the 5' end
 
 
-        return Molecule(Molecule.new_id(), sequence, start=1, cigar = f"{len(sequence)}M",
-                            source_start=starts[0], source_cigar = cigar, transcript_id=transcript_id)
+        return sequence, starts[0], cigar, strand, chrom, transcript_id
 
     def make_packet(self, id="packet0", N=10_000):
-        molecules = [self.make_molecule() for i in range(N)]
+        molecules = []
+        for i in range(N):
+            sequence, start, cigar, strand, chrom, transcript_id = self.make_molecule()
+            mol = Molecule(Molecule.new_id(), sequence, start=1, cigar=f"{len(sequence)}M",
+                                source_start=start, source_cigar=cigar, source_strand=strand,
+                                transcript_id=transcript_id)
+            molecules.append(mol)
         return MoleculePacket(id, self.sample, molecules)
 
     def make_molecule_file(self, filepath, N=10_000):
@@ -222,16 +257,18 @@ class MoleculeMaker:
         custom genome, either _1 or _2 as per the transcript id
         """
         with open(filepath, "w") as molecule_file:
-            header = "#transcript_id\tstart\tcigar\tsequence\n"
+            header = "#transcript_id\tchrom\tstart\tcigar\tstrand\tsequence\n"
+            molecule_file.write(header)
             for i in range(N):
-                molecule = self.make_molecule()
-                # TODO: this file should include a `strand` field but molecules don't have that attribute, awkwardly
+                sequence, start, cigar, strand, chrom, transcript_id = self.make_molecule()
                 # NOTE: Not outputing the molecules start or cigar string since those are relative to parent
                 #       which in this case is always trivial (start=1, cigar=###M) since the molecule is new
-                line = "\t".join([molecule.transcript_id,
-                                  str(molecule.source_start),
-                                  molecule.source_cigar,
-                                  molecule.sequence]
+                line = "\t".join([transcript_id,
+                                  chrom,
+                                  str(source_start),
+                                  source_cigar,
+                                  source_strand,
+                                  sequence]
                                   ) + "\n"
 
                 molecule_file.write(line)
