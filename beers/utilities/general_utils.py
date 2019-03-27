@@ -4,6 +4,9 @@ import glob
 import numpy as np
 
 class GeneralUtils:
+    """
+    Utility scripts expected to have wide applicability across the various modules in this app.
+    """
 
     FILES_PER_DIRECTORY_LIMIT = 100
 

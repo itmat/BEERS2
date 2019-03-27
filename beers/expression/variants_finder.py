@@ -13,6 +13,7 @@ import argparse
 import json
 from beers.sample import Sample
 from beers.utilities.expression_utils import ExpressionUtils
+import numpy
 
 
 Read = namedtuple('Read', ['position', 'description'])
@@ -233,7 +234,7 @@ class VariantsFinderStep:
                     loc_on_read += length
         return reads
 
-    def execute(self, sample, alignment_file_path, chr_ploidy_data, reference_genome, chromosomes = None):
+    def execute(self, sample, alignment_file_path, chr_ploidy_data, reference_genome, seed=None, chromosomes=None):
         """
         Entry point into variants_finder.  Iterates over the chromosomes in the list provided by the chr_ploidy_data
         keys to pick out variants.  Chromosomes that are not pertainent to the sample's gender are skipped.  If no
@@ -241,6 +242,7 @@ class VariantsFinderStep:
         :param sample: The sample for which the variants for to be found
         :param chr_ploidy_data: dictionary of chromosomes as keys and a dictionary of male/female ploidy as values.
         :param reference_genome: A dictionary representation of the reference genome
+        :param seed: Seed for random number generator
         :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
         debugging purposes.
         """
@@ -250,6 +252,10 @@ class VariantsFinderStep:
         self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
         self.chromosomes = chromosomes if chromosomes else chr_ploidy_data.keys()
         self.reference_genome = reference_genome
+
+        if seed is not None:
+            numpy.random.seed(seed)
+
         self.filter_chromosome_list(sample, chr_ploidy_data)
         log_table = PrettyTable()
         log_table.field_names =['chromosome','chromosome length','# positions with variants',
@@ -304,6 +310,78 @@ class VariantsFinderStep:
             for variant in variants:
                 variants_file.write(variant.__str__())
 
+    def get_commandline_call(self, sample, alignment_file_path, chr_ploidy_file_path, reference_genome_file_path, seed=None):
+        """
+        Prepare command to execute the VariantsFinder from the command line, given
+        all of the arugments used to run the execute() function.
+
+        Parameters
+        ----------
+        sample : Sample
+            Sample for which variants will be called.
+        alignment_file_path : string
+            Path to BAM file which will be parsed.
+        chr_ploidy_file_path : string
+            File that maps chromosome names to their male/female ploidy.
+        reference_genome_file_path : string
+            File that maps chromosome names in reference to nucleotide sequence.
+        seed : integer
+            Seed for random number generator. Used to repeated runs will produce
+            the same results.
+
+        Returns
+        -------
+        string
+            Command to execute on the command line. It will perform the same
+            operations as a call to execute() with the same parameters.
+        """
+
+        #Retrieve path to the variants_finder.py script.
+        variant_finder_path = os.path.realpath(__file__)
+        #If the above command returns a string with a "pyc" extension, instead
+        #of "py", strip off "c" so it points to this script.
+        variant_finder_path = variant_finder_path.rstrip('c')
+
+        variant_finder_params = {}
+        variant_finder_params['sort_by_entropy'] = self.entropy_sort
+        variant_finder_params['min_threshold'] = self.min_abundance_threshold
+
+        command = (f" python {variant_finder_path}"
+                   f" --log_directory_path {self.log_directory_path}"
+                   f" --data_directory_path {self.data_directory_path}"
+                   f" --config_parameters '{json.dumps(variant_finder_params)}'"
+                   f" --sample '{repr(sample)}'"
+                   f" --bam_filename {alignment_file_path}"
+                   f" --chr_ploidy_file_path {chr_ploidy_file_path}"
+                   f" --reference_genome_file_path {reference_genome_file_path}")
+
+        if seed is not None:
+            command += f" --seed {seed}"
+
+        return command
+
+    def get_validation_attributes(self, sample):
+        """
+        Prepare attributes required by is_output_valid() function to validate
+        output generated the VariantsFinder job corresponding to the given sample.
+
+        Parameters
+        ----------
+        sample : Sample
+            Sample for which variants will be called.
+
+        Returns
+        -------
+        dict
+            A VariantsFinder job's data_directory, log_directory, and sample_id.
+        """
+        validation_attributes = {}
+        validation_attributes['data_directory'] = self.data_directory_path
+        validation_attributes['log_directory'] = self.log_directory_path
+        validation_attributes['sample_id'] = sample.sample_id
+        return validation_attributes
+
+
     @staticmethod
     def main():
         """
@@ -320,6 +398,7 @@ class VariantsFinderStep:
         parser.add_argument('--bam_filename')
         parser.add_argument('--chr_ploidy_file_path')
         parser.add_argument('--reference_genome_file_path')
+        parser.add_argument('--seed', type=int, default=None)
         args = parser.parse_args()
 
         config_parameters = json.loads(args.config_parameters)
@@ -332,7 +411,48 @@ class VariantsFinderStep:
         variants_finder.execute(sample,
                                 args.bam_filename,
                                 chr_ploidy_data,
-                                reference_genome)
+                                reference_genome,
+                                args.seed)
+
+    @staticmethod
+    def is_output_valid(validation_attributes):
+        """
+        Check if output of VariantsFinder for a specific job/execution is
+        correctly formed and valid, given a job's data directory, log directory,
+        and sample id. Prepare these attributes for a given sample's jobs using
+        the get_validation_attributes() method.
+
+        Parameters
+        ----------
+        validation_attributes : dict
+            A job's data_directory, log_directory, and sample_id.
+
+        Returns
+        -------
+        boolean
+            True  - VariantsFinder output files were created and are well formed.
+            False - VariantsFinder output files do not exist or are missing data.
+        """
+        data_directory = validation_attributes['data_directory']
+        log_directory = validation_attributes['log_directory']
+        sample_id = validation_attributes['sample_id']
+
+        valid_output = False
+
+        variants_outfile_path = os.path.join(data_directory, f"sample{sample_id}", "variants.txt")
+        variants_logfile_path = os.path.join(log_directory, f"sample{sample_id}", "VariantsFinderStep.log")
+        if os.path.isfile(variants_outfile_path) and \
+           os.path.isfile(variants_logfile_path):
+            #Read last line in variants_finder log file
+            line = ""
+            with open(variants_logfile_path, "r") as variants_log_file:
+                for line in variants_log_file:
+                    line = line.rstrip()
+            if line == "ALL DONE!":
+                valid_output = True
+
+        return valid_output
+
 
 
 class PositionInfo:

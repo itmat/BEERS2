@@ -1,0 +1,193 @@
+{
+  "controller": {
+    "run_id": null,
+    "seed": 100,
+    "dispatcher_mode": "lsf",
+    "output_directory_path": "/home/thobr/BEERS2.0/data/",
+    "flowcell": {
+      "flowcell_geometry": {
+        "min_x": 1012,
+        "max_x": 32816,
+        "min_y": 998,
+        "max_y": 49247,
+        "min_tile": 1101,
+        "max_tile": 2228,
+        "min_lane": 1,
+        "max_lane": 8
+      },
+      "lanes_to_use": [1,2,8]
+    }
+  },
+  "expression_pipeline": {
+    "input": {
+      "directory_path": "/project/itmatlab/for_cris/Baby.Test_mouse_samples/data/expression/baby_genome.mm9/",
+      "data": {
+        "9576":
+        {
+          "fastq_files": ["9576_forward.fq.gz", "9576_reverse.fq.gz"],
+          "bam_file": "aligned/baby_sample1.bam",
+          "gender": "male"
+        },
+        "9577":
+        {
+          "fastq_files": ["9577_forward.fq.gz", "9577_reverse.fq.gz"],
+          "bam_file": "aligned/baby_sample2.bam",
+          "gender": "male"
+        }
+      }
+    },
+    "output": {
+        "type": "molecule_file",
+        "molecule_count": 50000
+    },
+    "steps": [
+      {
+        "step_name": "genome_alignment.GenomeAlignmentStep",
+        "parameters": {
+          "--runThreadN": 4,
+          "--outFilterMismatchNmax": 33,
+          "--seedSearchStartLmax": 33,
+          "--alignSJoverhangMin": 8,
+          "--readFilesCommand": "zcat",
+          "--outSAMstrandField": "intronMotif", 
+          "--limitOutSJcollapsed": 1000000,
+          "--limitSjdbInsertNsj": 1000000,
+          "--outFilterMultimapNmax": 10,
+          "--outFilterMismatchNmax": 33,
+          "--outFilterMismatchNoverLmax": 0.3,
+          "--seedSearchStartLmax": 33,
+          "--alignSJoverhangMin": 8,
+          "--alignEndsType": "Local"
+        }
+      },
+      {
+        "step_name": "variants_finder.VariantsFinderStep",
+        "parameters": {
+          "sort_by_entropy": false,
+          "min_threshold": 0.03
+        }
+      },
+      {
+        "step_name": "variants_compilation.VariantsCompilationStep"
+      },
+      {
+        "step_name": "beagle.BeagleStep"
+      },
+      {
+        "step_name": "genome_builder.GenomeBuilderStep",
+        "parameters": {
+          "ignore_indels": false,
+          "ignore_snps": false
+        }
+      },
+      {
+        "step_name": "update_annotation_for_genome.UpdateAnnotationForGenomeStep"
+      },
+      {
+          "step_name": "intron_quant.IntronQuantificationStep",
+          "parameters": {
+            "forward_read_is_sense": false,
+            "flank_size": 1500
+          }
+      }
+    ]
+  },
+  "library_prep_pipeline": {
+    "flowcell_retention_percentage": 0.008,
+    "steps": [
+      {
+        "step_name": "polya_step.PolyAStep",
+        "parameters": {
+          "min_polya_tail_length": 40,
+          "min_retention_prob": 0.0,
+          "max_retention_prob": 1.0,
+          "length_retention_prob": 1.0,
+          "min_breakage_prob": 0.0,
+          "max_breakage_prob": 1.0,
+          "breakpoint_prob": 0.0
+        }
+      },
+      {
+        "step_name": "fragment_step.FragmentStep",
+        "parameters": {
+          "method": "beta",
+          "lambda": 0.001,
+          "runtime": 1,
+          "beta_N": 2,
+          "beta_A": 5,
+          "beta_B": 5
+        }
+      },
+      {
+        "step_name": "first_strand_prime_step.FirstStrandPrimeStep",
+        "parameters": {}
+      },
+       {
+        "step_name": "first_strand_synthesis_step.FirstStrandSynthesisStep",
+        "parameters": {}
+      },
+       {
+        "step_name": "second_strand_prime_step.SecondStrandPrimeStep",
+        "parameters": {}
+      },
+       {
+        "step_name": "second_strand_synthesis_step.SecondStrandSynthesisStep",
+        "parameters": {}
+      },
+      {
+        "step_name": "sizing_step.SizingStep",
+        "parameters": {
+          "min_length": 100,
+          "max_length": 400
+        }
+      },
+      {
+        "step_name": "adapter_ligation_step.AdapterLigationStep",
+        "parameters": {
+        }
+      },
+      {
+        "step_name": "pcr_amplification_step.PCRAmplificationStep",
+        "parameters": {
+          "number_cycles": 4
+        }
+      }
+    ],
+    "input": {
+      "directory_path": "/project/itmatlab/for_cris/Test_Mouse_Samples/data/library_prep/"
+    }
+  },
+  "sequence_pipeline": {
+    "steps": [
+       {
+        "step_name": "bridge_amplification_step.BridgeAmplificationStep",
+        "parameters": {
+          "bridge_amplification_cycles": 10,
+          "bridge_amplification_snp_percentage": 0.0
+        }
+      },
+      {
+        "step_name": "sequence_by_synthesis_step.SequenceBySynthesisStep",
+        "parameters": {
+          "forward_is_5_prime": true,
+          "read_length": 100,
+          "paired_ends": false,
+          "barcode_5_prime_start": 29,
+          "barcode_5_prime_length": 8,
+          "barcode_3_prime_start": 24,
+          "barcode_3_prime_length": 8
+        }
+      }
+    ],
+    "input": {
+      "directory_path": "/project/itmatlab/for_cris/Baby.Test_mouse_samples/resources/index_files/baby_genome.mm9/"
+    }
+  },
+  "resources":{
+    "species_model": "baby_genome.mm10",
+    "reference_genome_filename": "baby_genome.mm10.oneline_seqs.fa",
+    "chr_ploidy_filename": "baby_genome.mm10.chr_ploidy.txt",
+    "annotation_filename": "annotations",
+    "adapter_kit": "TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa"
+  }
+}

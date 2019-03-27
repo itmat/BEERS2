@@ -5,6 +5,7 @@ import termcolor
 import os
 import sys
 import traceback
+import copy
 from datetime import datetime
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers.utilities.general_utils import GeneralUtils
@@ -295,7 +296,7 @@ class Controller:
         sequence_pipeline) and beneath each of these are data and log folders.  Additional subdirectories are created
         later to organize the numerous files exprected and avoid congestion.
         :param stage_names: names of folders directly below the top level output directory (e.g., controller,
-         library_prep)
+        library_prep)
         """
         self.output_directory_path = f"{self.controller_configuration['output_directory_path']}_run{self.run_id}"
         if not os.path.exists(self.output_directory_path):
@@ -344,8 +345,12 @@ class Controller:
         input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
         self.input_samples = []
         for input_sample in self.configuration['expression_pipeline']["input"]["data"].values():
-            for input_sample_file_path in [os.path.join(input_directory_path, filename)
-                                           for filename in input_sample["filenames"]]:
+            input_files = copy.copy(input_sample["fastq_files"])
+            if "bam_file" in input_sample:
+                input_files.append(input_sample["bam_file"])
+
+            for filename in input_files:
+                input_sample_file_path = os.path.join(input_directory_path, filename)
                 if not os.path.exists(input_sample_file_path) or not os.path.isfile(input_sample_file_path):
                     print(f"The input sample file, {input_sample_file_path}, does not exist as a file.", file=sys.stderr)
                     valid = False
@@ -382,17 +387,19 @@ class Controller:
         AdapterGenerator.generate_adapters(adapter_kit_file_path)
         for sample_name, input_sample in self.configuration['expression_pipeline']["input"]["data"].items():
             #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
-            input_sample_file_paths = [os.path.join(input_directory_path, filename)
-                                       for filename in input_sample["filenames"]]
+            fastq_file_paths = [os.path.join(input_directory_path, filename)
+                                       for filename in input_sample["fastq_files"]]
+            bam_file_path = os.path.join(input_directory_path, input_sample["bam_file"]) if "bam_file" in input_sample else ''
             gender = input_sample.get("gender", None)
             if gender:
                 gender = gender.lower()
             self.input_samples.append(
                 Sample(Sample.next_sample_id,
                        sample_name,
-                       input_sample_file_paths,
+                       fastq_file_paths,
                        AdapterGenerator.get_unique_adapter_sequences(),
-                       gender))
+                       bam_file_path=bam_file_path,
+                       gender=gender))
             Sample.next_sample_id += 1
 
     def create_step_log_directories(self, file_count, stage_name, log_directory_path):
