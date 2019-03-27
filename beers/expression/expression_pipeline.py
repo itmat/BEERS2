@@ -3,7 +3,7 @@ import os
 import importlib
 import time
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
-from beers.job_monitor import Monitor
+from beers.job_monitor import JobMonitor
 from beers.utilities.expression_utils import ExpressionUtils
 #To enable export of config parameter dictionaries to command line
 import json
@@ -180,7 +180,7 @@ class ExpressionPipeline:
                           file=sys.stderr)
                     valid = False
 
-            
+
             bowtie2_dir_names = [filename for filename in os.listdir(third_party_software_directory_path)
                                 if "bowtie2" in filename]
             if not bowtie2_dir_names:
@@ -204,7 +204,7 @@ class ExpressionPipeline:
         ploidy_chromosomes = set(self.chr_ploidy_data.keys())
         if not ploidy_chromosomes.issubset(reference_genome_chromosomes):
             missing_chromosomes = ' '.join(chrom for chrom in ploidy_chromosomes.difference(reference_genome_chromosomes))
-            reference_chroms = ' '.join(chrom for chrom in reference_genome_chromosomes.keys())
+            reference_chroms = ' '.join(chrom for chrom in reference_genome_chromosomes)
             print(f"The chromosome ploidy has chromosomes `{missing_chromosomes}` not found in the reference genome file", file=sys.stderr)
             print(f"The reference genome has chromosomes {reference_chroms}", file=sys.stderr)
             valid = False
@@ -217,31 +217,38 @@ class ExpressionPipeline:
 
         seeds = self.generate_job_seeds()
 
-        expression_pipeline_monitor = Monitor(self.output_directory_path, self.dispatcher_mode)
+        expression_pipeline_monitor = JobMonitor(self.output_directory_path, self.dispatcher_mode)
 
         genome_alignment = self.steps['GenomeAlignmentStep']
-
-        print(f"{self.star_file_path}\t{self.dispatcher_mode}")
 
         bam_files = {}
         for sample in self.samples:
             (bam_file, system_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
                                                              self.star_file_path, self.dispatcher_mode)
             bam_files[sample.sample_id] = bam_file
-            expression_pipeline_monitor.submit_new_job(f"GenomeAlignment.{sample.sample_id}",
-                                                       sample, 'GenomeAlignmentStep',
-                                                       self.output_directory_path, system_id)
-                #TODO: This is a hack to handle the cases where the bam files were
-                #      already present, or the script was run in serial/multicore mode.
-                #      Need to change this to something more legit.
+            expression_pipeline_monitor.submit_new_job(job_id=f"GenomeAlignment.{sample.sample_id}",
+                                                       job_command="", sample=sample,
+                                                       step_name='GenomeAlignmentStep',
+                                                       scheduler_arguments=None,
+                                                       validation_attributes=None,
+                                                       output_directory_path=self.output_directory_path,
+                                                       system_id=system_id,
+                                                       dependency_list=None)
+            #TODO: This is a hack to handle the cases where the bam files were
+            #      already present, or the script was run in serial/multicore mode.
+            #      Need to change this to something more legit.
             if system_id == "ALREADY_ALIGNED" or self.dispatcher_mode != "lsf":
                 expression_pipeline_monitor.mark_job_completed(f"GenomeAlignment.{sample.sample_id}")
 
         for sample in self.samples:
             if self.dispatcher_mode == "lsf":
-                expression_pipeline_monitor.submit_new_job(f"GenomeBamIndex.{sample.sample_id}",
-                                                           sample, 'GenomeBamIndexStep',
-                                                           self.output_directory_path, system_id=None,
+                expression_pipeline_monitor.submit_new_job(job_id=f"GenomeBamIndex.{sample.sample_id}",
+                                                           job_command="", sample=sample,
+                                                           step_name='GenomeBamIndexStep',
+                                                           scheduler_arguments=None,
+                                                           validation_attributes=None,
+                                                           output_directory_path=self.output_directory_path,
+                                                           system_id=None,
                                                            dependency_list=[f"GenomeAlignment.{sample.sample_id}"])
             else:
                 print(f"Running Bam Index creating in sample {sample.sample_id}")
@@ -252,24 +259,43 @@ class ExpressionPipeline:
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             variants_finder = self.steps['VariantsFinderStep']
             sample = expression_pipeline_monitor.get_sample(sample_id)
+            seed = seeds[f"variant_finder.{sample_id}"]
 
-            if self.dispatcher_mode == "lsf":
-                expression_pipeline_monitor.submit_new_job(f"VariantsFinder.{sample_id}",
-                                                           sample, 'VariantsFinderStep',
-                                                           self.output_directory_path, system_id=None,
-                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
-            else:
+            if self.dispatcher_mode == "serial":
                 print(f"Processing variants in sample {sample_id}...")
-                variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome)
+                variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome, seed)
+            else:
+                stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{sample_id}", "Variants_Finder.bsub.%J.out")
+                stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{sample_id}", "Variants_Finder.bsub.%J.err")
+                command = variants_finder.get_commandline_call(sample, bam_file, self.chr_ploidy_file_path,
+                                                               self.reference_genome_file_path, seed)
+                scheduler_args = {'job_name' : f"Variant_Finder.sample{sample_id}_{sample.sample_name}",
+                                  'stdout_logfile' : stdout_log,
+                                  'stderr_logfile' : stderr_log,
+                                  'memory_in_mb' : 6000,
+                                  'num_processors' : 1}
+                validation_attributes = variants_finder.get_validation_attributes(sample)
+                expression_pipeline_monitor.submit_new_job(job_id=f"VariantsFinder.{sample_id}",
+                                                           job_command=command, sample=sample,
+                                                           step_name='VariantsFinderStep',
+                                                           scheduler_arguments=scheduler_args,
+                                                           validation_attributes=validation_attributes,
+                                                           output_directory_path=self.output_directory_path,
+                                                           system_id=None,
+                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
 
         for sample_id, bam_file in bam_files.items():
             output_directory = os.path.join(self.output_directory_path, f"sample{sample_id}")
             sample = expression_pipeline_monitor.get_sample(sample_id)
             if self.dispatcher_mode == "lsf":
-                expression_pipeline_monitor.submit_new_job(f"IntronQuantificationStep.{sample_id}",
-                                                            sample, 'IntronQuantificationStep',
-                                                            output_directory, system_id=None,
-                                                            dependency_list=[f"GenomeBamIndex.{sample_id}"])
+                expression_pipeline_monitor.submit_new_job(job_id=f"IntronQuantificationStep.{sample_id}",
+                                                           job_command="", sample=sample,
+                                                           step_name='IntronQuantificationStep',
+                                                           scheduler_arguments=None,
+                                                           validation_attributes=None,
+                                                           output_directory_path=output_directory,
+                                                           system_id=None,
+                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
                 #TODO: do we need to depend upon the index being done? or just the alignment?
                 #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
                 #      on the same BAM file at the same time, though I don't know why this would be a problem.
@@ -299,13 +325,6 @@ class ExpressionPipeline:
                 for resub_job_id, resub_job in resubmission_jobs.items():
                     resub_sample = expression_pipeline_monitor.get_sample(resub_job.sample_id)
 
-                    """
-                    #Generate bam file name from sample info using same rules as the
-                    #execute code from genome_alignment.
-                    bam_filename = os.path.join(genome_alignment.data_directory_path,
-                                                f"sample{resub_sample.sample_id}",
-                                                f"genome_alignment.{genome_alignment.star_bamfile_suffix}")
-                    """
                     bam_filename = bam_files[resub_job.sample_id]
 
                     if resub_job.step_name == "GenomeAlignmentStep":
@@ -354,15 +373,15 @@ class ExpressionPipeline:
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
                         #Extract job ID from LSF stdout
-                        system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                        system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
 
                         print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
                     elif resub_job.step_name == "IntronQuantificationStep":
                         intron_quant = self.steps["IntronQuantificationStep"]
 
-                        stdout_log = os.path.join(intron_quant.log_directory_path, f"sample{pend_sample.sample_id}", "IntronQuantification.bsub.%J.out")
-                        stderr_log = os.path.join(intron_quant.log_directory_path, f"sample{pend_sample.sample_id}", "IntronQuantification.bsub.%J.err")
+                        stdout_log = os.path.join(intron_quant.log_directory_path, f"sample{resub_sample.sample_id}", "IntronQuantification.bsub.%J.out")
+                        stderr_log = os.path.join(intron_quant.log_directory_path, f"sample{resub_sample.sample_id}", "IntronQuantification.bsub.%J.err")
 
                         intron_quant_path = self.__step_paths["IntronQuantificationStep"]
                         output_directory = os.path.join(intron_quant.data_directory_path, f"sample{resub_sample.sample_id}")
@@ -384,7 +403,7 @@ class ExpressionPipeline:
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
                         #Extract job ID from LSF stdout
-                        system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                        system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
                         print(f"Finished submitting intron quantification command to {self.dispatcher_mode} for sample {resub_sample.sample_name}")
 
                     # Finish resubmission
@@ -397,13 +416,7 @@ class ExpressionPipeline:
                 for pend_job_id, pend_job in pending_jobs.items():
                     if expression_pipeline_monitor.are_dependencies_satisfied(pend_job_id):
                         pend_sample = expression_pipeline_monitor.get_sample(pend_job.sample_id)
-                        """
-                        #Generate bam file name from sample info using same rules as the
-                        #execute code from genome_alignment.
-                        bam_filename = os.path.join(genome_alignment.data_directory_path,
-                                                    f"sample{pend_sample.sample_id}",
-                                                    f"genome_alignment.{genome_alignment.star_bamfile_suffix}")
-                        """
+
                         bam_filename = bam_files[pend_job.sample_id]
 
                         if pend_job.step_name == "GenomeAlignmentStep":
@@ -444,7 +457,7 @@ class ExpressionPipeline:
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout
-                            system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                            system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
 
                             print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
@@ -476,7 +489,7 @@ class ExpressionPipeline:
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout
-                            system_id = Monitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                            system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
                             print(f"Finished submitting intron quantification command to {self.dispatcher_mode} for sample {pend_sample.sample_name}")
 
                         # Finish submission

@@ -265,9 +265,9 @@ class MoleculeMaker:
                 #       which in this case is always trivial (start=1, cigar=###M) since the molecule is new
                 line = "\t".join([transcript_id,
                                   chrom,
-                                  str(source_start),
-                                  source_cigar,
-                                  source_strand,
+                                  str(start),
+                                  cigar,
+                                  strand,
                                   sequence]
                                   ) + "\n"
 

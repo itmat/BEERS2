@@ -150,3 +150,41 @@ class GenomeAlignmentStep():
             raise NotImplementedError("dispatcher mode must be serial, parallel, or lsf")
 
         return job_id
+
+    @staticmethod
+    def is_output_valid(job_attributes):
+        """
+        Check if output of GenomeAlignment for a specific job/execution is
+        correctly formed and valid, given a job's data directory, log directory,
+        and sample id.
+
+        Parameters
+        ----------
+        job_attributes : dict
+            A job's data_directory, log_directory, and sample_id.
+
+        Returns
+        -------
+        boolean
+            True  - GenomeAlignment output files were created and are well formed.
+            False - GenomeAlignment output files do not exist or are missing data.
+        """
+        data_directory = job_attributes['data_directory']
+        log_directory = job_attributes['log_directory']
+        sample_id = job_attributes['sample_id']
+
+        valid_output = False
+
+        alignment_outfile_path = os.path.join(data_directory, f"sample{sample_id}", "genome_alignment.Aligned.sortedByCoord.out.bam")
+        alignment_logfile_path = os.path.join(log_directory, f"sample{sample_id}", "genome_alignment.Log.progress.out")
+        if os.path.isfile(alignment_outfile_path) and \
+           os.path.isfile(alignment_logfile_path):
+            #Read last line in variants_finder log file
+            line = ""
+            with open(alignment_logfile_path, "r") as alignment_log_file:
+                for line in alignment_log_file:
+                    line = line.rstrip()
+            if line == "ALL DONE!":
+                valid_output = True
+
+        return valid_output

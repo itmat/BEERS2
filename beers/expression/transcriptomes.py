@@ -42,6 +42,8 @@ def prep_transcriptomes(samples, data_directory, log_directory, kallisto_file_pa
             stdout_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.out")
             stderr_log = os.path.join(log_directory, f"sample{sample.sample_id}", "Transcriptome.bsub.%J.err")
             bsub_command = (f"bsub -M 40000"
+                            f" -n 7"
+                            f" -R \"span[hosts=1]\""
                             f" -J Prep_Transcriptomes.sample{sample.sample_id}_{sample.sample_name}"
                             f" -oo {stdout_log}"
                             f" -eo {stderr_log}"
@@ -91,7 +93,7 @@ if __name__ == '__main__':
     output_molecule_count = args.output_molecule_count
     fastq_file_1, fastq_file_2 = args.fastq_files
 
-    num_threads = 8
+    num_threads = 7
 
 
     if args.seed is not None:
