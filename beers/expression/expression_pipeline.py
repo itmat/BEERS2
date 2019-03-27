@@ -226,9 +226,14 @@ class ExpressionPipeline:
             (bam_file, system_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
                                                              self.star_file_path, self.dispatcher_mode)
             bam_files[sample.sample_id] = bam_file
-            expression_pipeline_monitor.submit_new_job(f"GenomeAlignment.{sample.sample_id}",
-                                                       sample, 'GenomeAlignmentStep', None,
-                                                       self.output_directory_path, system_id)
+            expression_pipeline_monitor.submit_new_job(job_id=f"GenomeAlignment.{sample.sample_id}",
+                                                       job_command="", sample=sample,
+                                                       step_name='GenomeAlignmentStep',
+                                                       scheduler_arguments=None,
+                                                       validation_attributes=None,
+                                                       output_directory_path=self.output_directory_path,
+                                                       system_id=system_id,
+                                                       dependency_list=None)
             #TODO: This is a hack to handle the cases where the bam files were
             #      already present, or the script was run in serial/multicore mode.
             #      Need to change this to something more legit.
@@ -237,9 +242,13 @@ class ExpressionPipeline:
 
         for sample in self.samples:
             if self.dispatcher_mode == "lsf":
-                expression_pipeline_monitor.submit_new_job(f"GenomeBamIndex.{sample.sample_id}",
-                                                           sample, 'GenomeBamIndexStep', None,
-                                                           self.output_directory_path, system_id=None,
+                expression_pipeline_monitor.submit_new_job(job_id=f"GenomeBamIndex.{sample.sample_id}",
+                                                           job_command="", sample=sample,
+                                                           step_name='GenomeBamIndexStep',
+                                                           scheduler_arguments=None,
+                                                           validation_attributes=None,
+                                                           output_directory_path=self.output_directory_path,
+                                                           system_id=None,
                                                            dependency_list=[f"GenomeAlignment.{sample.sample_id}"])
             else:
                 print(f"Running Bam Index creating in sample {sample.sample_id}")
@@ -279,10 +288,14 @@ class ExpressionPipeline:
             output_directory = os.path.join(self.output_directory_path, f"sample{sample_id}")
             sample = expression_pipeline_monitor.get_sample(sample_id)
             if self.dispatcher_mode == "lsf":
-                expression_pipeline_monitor.submit_new_job(f"IntronQuantificationStep.{sample_id}",
-                                                            sample, 'IntronQuantificationStep', None,
-                                                            output_directory, system_id=None,
-                                                            dependency_list=[f"GenomeBamIndex.{sample_id}"])
+                expression_pipeline_monitor.submit_new_job(job_id=f"IntronQuantificationStep.{sample_id}",
+                                                           job_command="", sample=sample,
+                                                           step_name='IntronQuantificationStep',
+                                                           scheduler_arguments=None,
+                                                           validation_attributes=None,
+                                                           output_directory_path=output_directory,
+                                                           system_id=None,
+                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
                 #TODO: do we need to depend upon the index being done? or just the alignment?
                 #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
                 #      on the same BAM file at the same time, though I don't know why this would be a problem.
@@ -360,7 +373,7 @@ class ExpressionPipeline:
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
                         #Extract job ID from LSF stdout
-                        system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                        system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
 
                         print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
@@ -390,7 +403,7 @@ class ExpressionPipeline:
                         result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                         print(f"\t{result.stdout.rstrip()}")
                         #Extract job ID from LSF stdout
-                        system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                        system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
                         print(f"Finished submitting intron quantification command to {self.dispatcher_mode} for sample {resub_sample.sample_name}")
 
                     # Finish resubmission
@@ -444,7 +457,7 @@ class ExpressionPipeline:
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout
-                            system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                            system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
 
                             print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
@@ -476,7 +489,7 @@ class ExpressionPipeline:
                             result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout
-                            system_id = JobMonitor.lsf_bsub_output_pattern.match(result.stdout).group('job_id')
+                            system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
                             print(f"Finished submitting intron quantification command to {self.dispatcher_mode} for sample {pend_sample.sample_name}")
 
                         # Finish submission
