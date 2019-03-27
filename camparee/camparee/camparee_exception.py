@@ -1,0 +1,2 @@
+class CampareeException(Exception):
+    pass
