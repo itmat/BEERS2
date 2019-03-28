@@ -12,7 +12,7 @@ class JobSchedulerProvider:
 
     Other code cann access the job_scheduler_provider framework using the
     following code:
-        beers.job_scheduler_provider.SCHEDULERS.*
+        beers_utils.job_scheduler_provider.SCHEDULERS.*
 
     Attributes
     ----------

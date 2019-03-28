@@ -426,7 +426,9 @@ class Job:
                         else:
                             job_status = "FAILED"
                     elif self.step_name == "VariantsFinderStep":
-                        module = importlib.import_module(f'.variants_finder', package="beers.expression")
+                        #TODO: make this more general, so a single block of code can call
+                        #the is_output_valid function for an arbitrary function.
+                        module = importlib.import_module(f'.variants_finder', package="camparee")
                         VariantsFinderStep = getattr(module, self.step_name)
                         if VariantsFinderStep.is_output_valid(self.validation_attributes):
                             job_status = "COMPLETED"

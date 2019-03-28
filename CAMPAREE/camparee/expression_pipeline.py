@@ -40,7 +40,7 @@ class ExpressionPipeline:
                                                   " step name written as 'module name.class_name'.")
             module_name, step_name = step["step_name"].rsplit(".")
             parameters = step.get("parameters", dict())
-            module = importlib.import_module(f'.{module_name}', package="beers.expression")
+            module = importlib.import_module(f'.{module_name}', package="camparee")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
             self.__step_paths[step_name] = inspect.getfile(module)
@@ -78,8 +78,8 @@ class ExpressionPipeline:
         :return: a tuple = valid (True/False), reference genome file path, chr ploidy file path and beagle file path
         """
         # TODO a some point STAR and samtools will be in thrid party software and may require validation
-        reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path = \
-            None, None, None, None
+        reference_genome_file_path, chr_ploidy_file_path, annotation_file_path, beagle_file_path, \
+            star_file_path, kallisto_file_path, bowtie2_dir_path = None, None, None, None, None, None, None
         valid = True
         if 'species_model' not in resources:
             print("The species_model must be listed in the resources section of the configuration file.",

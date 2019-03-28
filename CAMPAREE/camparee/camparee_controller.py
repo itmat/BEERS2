@@ -21,6 +21,11 @@ class CampareeController:
     are helper methods.
     """
 
+    """
+    Get CAMPAREE root directory. Used to determin path the 'resources' subdirectory.
+    """
+    CAMPAREE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
     def __init__(self):
         """
         These attributes have no value at the time of instantiation.  They are populated by the helper methods.
@@ -104,7 +109,7 @@ class CampareeController:
             self.configuration = json.load(configuration_file)
         self.controller_configuration = self.configuration[self.controller_name]
         self.resources = self.configuration[self.resources_name]
-        self.resources['resources_folder'] = os.path.join(CONSTANTS.ROOT_DIR, "resources")
+        self.resources['resources_folder'] = os.path.join(CampareeController.CAMPAREE_ROOT_DIR, "resources")
 
     def set_run_id(self, run_id):
         """
