@@ -7,7 +7,7 @@ __pycache__
 beers/personal/
 resources/index_files/
 venv*
-beers.egg-info
+*.egg-info
 config/*_config.json
 Log.out
 
