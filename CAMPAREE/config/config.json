@@ -1,10 +1,9 @@
 {
-  "controller": {
+  "camparee_controller": {
     "run_id": null,
     "seed": 100,
     "dispatcher_mode": "lsf",
-    "output_directory_path": "/home/thobr/BEERS2.0/data/",
-    }
+    "output_directory_path": "/home/thobr/BEERS2.0/data/"
   },
   "expression_pipeline": {
     "input": {
@@ -96,7 +95,6 @@
     "species_model": "Mus_musculus.GRCm38",
     "reference_genome_filename": "Mus_musculus.GRCm38.dna.oneline_seqs.fa",
     "chr_ploidy_filename": "Mus_musculus.GRCm38.chr_ploidy.txt",
-    "annotation_filename": "Mus_musculus.GRCm38.93.annotation.txt",
-    "adapter_kit": "TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa"
+    "annotation_filename": "Mus_musculus.GRCm38.93.annotation.txt"
   }
 }

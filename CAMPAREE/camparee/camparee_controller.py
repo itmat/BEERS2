@@ -25,9 +25,9 @@ class CampareeController:
         """
         These attributes have no value at the time of instantiation.  They are populated by the helper methods.
         """
-        self.controller_name = 'controller'
+        self.controller_name = 'camparee_controller'
         self.resources_name = 'resources'
-        self.controller_log_filename = 'controller.log'
+        self.controller_log_filename = 'camparee_controller.log'
         # The following attributes are defined following instantiation
         self.debug = False
         self.run_id = None
