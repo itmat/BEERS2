@@ -6,7 +6,7 @@ from contextlib import closing
 from beers.utilities.general_utils import GeneralUtils
 from beers.flowcell_lane import LaneCoordinates
 from beers.molecule import Molecule
-from beers.constants import CONSTANTS
+from beers_utils.constants import CONSTANTS
 
 
 BaseCounts = namedtuple('BaseCounts', ["G", "A", "T", "C"])

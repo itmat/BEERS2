@@ -1,7 +1,7 @@
 import os
 import fcntl
 import time
-from beers.constants import CONSTANTS
+from beers_utils.constants import CONSTANTS
 from beers.beers_exception import BeersException
 
 

@@ -6,7 +6,7 @@ from collections import namedtuple
 from operator import attrgetter, itemgetter
 import math
 from io import StringIO
-from beers.constants import CONSTANTS
+from beers_utils.constants import CONSTANTS
 from prettytable import PrettyTable
 #Imports required for main() method.
 import argparse

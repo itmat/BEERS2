@@ -2,7 +2,7 @@ import os
 import re
 import importlib
 import subprocess
-from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
+from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers_utils.general_utils import BeersUtilsException
 import beers_utils.job_scheduler_provider
 

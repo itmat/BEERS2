@@ -7,7 +7,7 @@ import sys
 import traceback
 import copy
 from datetime import datetime
-from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
+from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers.utilities.general_utils import GeneralUtils
 from beers.expression.expression_pipeline import ExpressionPipeline
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline

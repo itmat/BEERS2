@@ -7,7 +7,7 @@ from collections import namedtuple
 import itertools
 from camparee.camparee_utils import CampareeUtils, CampareeException
 from beers_utils.sample import Sample
-from beers.constants import CONSTANTS
+from beers_utils.constants import CONSTANTS
 
 
 SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'position', 'description'])

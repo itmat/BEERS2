@@ -17,8 +17,8 @@ import pickle
 
 import numpy
 
-from beers.constants import MAX_SEED
-from beers.personal.gene_files_preparation import GeneFilesPreparation
+from beers_utils.constants import MAX_SEED
+from camparee.gene_files_preparation import GeneFilesPreparation
 from camparee.transcript_gene_quant import TranscriptGeneQuantificationStep
 from camparee.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
 from camparee.molecule_maker import MoleculeMaker

@@ -2,7 +2,7 @@ import sys
 import os
 import importlib
 import time
-from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
+from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
 from beers_utils.job_monitor import JobMonitor
 from camparee.camparee_utils import CampareeUtils, CampareeException
 #To enable export of config parameter dictionaries to command line

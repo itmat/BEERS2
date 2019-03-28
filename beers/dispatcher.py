@@ -6,7 +6,7 @@ from beers.utilities.general_utils import GeneralUtils
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sequence.sequence_pipeline import SequencePipeline
 from multiprocessing import Pool
-from beers.constants import CONSTANTS
+from beers_utils.constants import CONSTANTS
 
 
 class Dispatcher:
