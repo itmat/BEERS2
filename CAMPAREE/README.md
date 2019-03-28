@@ -49,6 +49,13 @@ This takes the current directory, packages it and creates a link to the packaged
 <virtualenv>/lib/python3.6/site-packages.  The file name is camparee.egg-link.  This allows
 python to find the CAMPAREE package and subpackages while we can continue to edit them in place.
 
+Similarly, we need to point the python toward the BEERS_UTILS package as well. Again, from the
+top-level CAMPAREE directory, run the following:
+
+```bash
+pip install -e /path/to/BEERS_UTILS
+```
+
 Next go to the configuration directory and cp config.json to personal config file
 (_e.g._, my_config.json).  You can put it anywhere you like.  You will have to reference it
 when running CAMPAREE.  Open your version and modify all the absolute pathnames to conform to
