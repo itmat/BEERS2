@@ -12,9 +12,9 @@ from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers_utils.general_utils import GeneralUtils
 from camparee.expression_pipeline import ExpressionPipeline,CampareeValidationException
 from beers_utils.sample import Sample
-from beers.dispatcher import Dispatcher
 
-class Controller:
+
+class CampareeController:
     """
     The object essentially controls the flow of the pipeline.  The run_camparee.py command instantiates a controller and
     calls one of the controller methods depending upon the pipeline-stage requested.  The other methods in the class
@@ -92,34 +92,6 @@ class Controller:
         self.plant_seed()
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
-
-    def setup_dispatcher(self, dispatcher_mode, stage_name, input_directory_path, output_directory_path, nested_depth):
-        """
-        The dispatcher is now instantiated and prepared.  If no dispatcher mode (lsf, serial, multicore) is set, it is
-        read from the configuration file.  If the mode is not present there, an exception is raised.  The dispatcher
-        is then instantiated and and attached to the controller as an attribute.
-        :param dispatcher_mode: The type of dispatch to perform (serial, lsf, multicore)
-        :param stage_name: The name of the pipeline stage (library_prep_pipeline or sequence_pipeline)
-        :param input_directory_path: The top level directory where the input packets are found
-        :param output_directory_path: The top level ouptut directory path
-        :param nested_depth: nesting data the pipelines need to write data and log files to their proper locations.
-        """
-        if not dispatcher_mode:
-            if not self.controller_configuration.get('dispatcher_mode', None):
-                raise CampareeValidationException('No dispatcher_mode given either on the command line'
-                                                  ' or in the configuration file')
-            dispatcher_mode = self.controller_configuration['dispatcher_mode']
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise CampareeValidationException(f'{dispatcher_mode} is not a supported mode.\n'
-                                              'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
-        self.dispatcher = Dispatcher(self.run_id,
-                                     dispatcher_mode,
-                                     self.seed,
-                                     stage_name,
-                                     self.configuration,
-                                     input_directory_path,
-                                     output_directory_path,
-                                     nested_depth)
 
     def retrieve_configuration(self, configuration_file_path):
         """

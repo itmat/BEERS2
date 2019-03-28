@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import argparse
-from camparee.controller import Controller
+from camparee.camparee_controller import CampareeController
 
-controller = Controller()
+controller = CampareeController()
 
 parser = argparse.ArgumentParser(description='CAMPAREE - RNA molecule simulator')
 required_named = parser.add_argument_group('required named arguments')
