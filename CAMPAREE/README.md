@@ -51,15 +51,15 @@ python to find the CAMPAREE package and subpackages while we can continue to edi
 
 Next go to the configuration directory and cp config.json to personal config file
 (_e.g._, my_config.json).  You can put it anywhere you like.  You will have to reference it
-when running beers.  Open your version and modify all the absolute pathnames to conform to your
-directory structure.  Modify any parameters you wish to alter and save it.
+when running CAMPAREE.  Open your version and modify all the absolute pathnames to conform to
+your directory structure.  Modify any parameters you wish to alter and save it.
 
 There is 1 command that you can find in the bin directory under the top level, called run_camparee.py.
 Calling help on it will show you what is currently possible.
 
 ```bash
  ./run_camparee.py -h
-usage: run_beers.py [-h] -c CONFIG [-r RUN_ID] [-d]
+usage: run_camparee.py [-h] -c CONFIG [-r RUN_ID] [-d]
                     {expression_pipeline,library_prep_pipeline,sequence_pipeline}
                     ...
 
