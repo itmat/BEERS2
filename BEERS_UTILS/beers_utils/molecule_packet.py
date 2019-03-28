@@ -1,5 +1,5 @@
-from beers.sample import Sample
-from beers.molecule import Molecule
+from beers_utils.sample import Sample
+from beers_utils.molecule import Molecule
 import os
 import resource
 

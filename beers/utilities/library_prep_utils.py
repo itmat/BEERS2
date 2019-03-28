@@ -2,7 +2,7 @@ import os
 import re
 import sys
 import pandas as pd
-from beers.molecule import Molecule
+from beers_utils.molecule import Molecule
 
 class Utils:
     """

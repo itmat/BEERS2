@@ -14,7 +14,7 @@ from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sample import Sample
 from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
-from beers.molecule_packet import MoleculePacket
+from beers_utils.molecule_packet import MoleculePacket
 from beers.dispatcher import Dispatcher
 from beers.fast_q import FastQ
 from beers.auditor import Auditor

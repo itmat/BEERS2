@@ -1,4 +1,4 @@
-from beers.molecule import Molecule
+from beers_utils.molecule import Molecule
 from beers.utilities.library_prep_utils import Utils
 
 

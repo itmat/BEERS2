@@ -2,7 +2,7 @@ import sys
 import pickle
 from timeit import default_timer as timer
 import numpy as np
-from beers.molecule import Molecule
+from beers_utils.molecule import Molecule
 
 class PolyAStep:
     """

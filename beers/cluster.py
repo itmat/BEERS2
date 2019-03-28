@@ -5,7 +5,7 @@ import math
 from contextlib import closing
 from beers.utilities.general_utils import GeneralUtils
 from beers.flowcell_lane import LaneCoordinates
-from beers.molecule import Molecule
+from beers_utils.molecule import Molecule
 from beers_utils.constants import CONSTANTS
 
 

@@ -1,4 +1,4 @@
-from beers.molecule import Molecule
+from beers_utils.molecule import Molecule
 import numpy as np
 import pickle
 from timeit import default_timer as timer
