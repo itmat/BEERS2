@@ -4,18 +4,6 @@
     "seed": 100,
     "dispatcher_mode": "lsf",
     "output_directory_path": "/home/thobr/BEERS2.0/data/",
-    "flowcell": {
-      "flowcell_geometry": {
-        "min_x": 1012,
-        "max_x": 32816,
-        "min_y": 998,
-        "max_y": 49247,
-        "min_tile": 1101,
-        "max_tile": 2228,
-        "min_lane": 1,
-        "max_lane": 8
-      },
-      "lanes_to_use": [1,2,8]
     }
   },
   "expression_pipeline": {
