@@ -4,7 +4,7 @@ import os
 import collections
 import bisect
 from timeit import default_timer as timer
-from beers.utilities.expression_utils import ExpressionUtils
+from camparee.camparee_utils import CampareeUtils
 
 class UpdateAnnotationForGenomeStep:
     """Updates a gene annotation's coordinates to account for insertions &
@@ -94,7 +94,7 @@ class UpdateAnnotationForGenomeStep:
                 open(self.log_file_path, 'w') as log_file:
 
             #Print header for annotation file
-            updated_annot_file.write("#" + ExpressionUtils.annot_output_format.replace('{', '').replace('}', ''))
+            updated_annot_file.write("#" + CampareeUtils.annot_output_format.replace('{', '').replace('}', ''))
 
             current_chrom = ""
 
@@ -204,7 +204,7 @@ class UpdateAnnotationForGenomeStep:
 
                     #Format updated annotation data and output
                     updated_annot_file.write(
-                        ExpressionUtils.annot_output_format.format(
+                        CampareeUtils.annot_output_format.format(
                             chrom=line_data[0],
                             strand=line_data[1],
                             txStart=updated_tx_start,
@@ -300,7 +300,7 @@ class UpdateAnnotationForGenomeStep:
 
     @staticmethod
     def main():
-        from beers.sample import Sample
+        from beers_utils.sample import Sample
         """Entry point into script when called directly.
 
         Parses arguments, gathers input and output filenames, and calls scripts

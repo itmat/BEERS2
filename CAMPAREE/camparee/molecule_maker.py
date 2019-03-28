@@ -3,8 +3,8 @@ import numpy
 
 from beers.molecule_packet import MoleculePacket
 from beers.molecule import Molecule
-from beers.sample import Sample
-from beers.utilities.general_utils import GeneralUtils
+from beers_utils.sample import Sample
+from beers_utils.general_utils import GeneralUtils
 
 class MoleculeMaker:
     """

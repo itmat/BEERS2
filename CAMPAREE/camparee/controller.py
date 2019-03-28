@@ -8,10 +8,10 @@ import traceback
 import copy
 from datetime import datetime
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
-from beers.utilities.general_utils import GeneralUtils
-from beers.expression.expression_pipeline import ExpressionPipeline
+from beers_utils.general_utils import GeneralUtils
+from camparee.expression_pipeline import ExpressionPipeline
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
-from beers.sample import Sample
+from beers_utils.sample import Sample
 from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
 from beers.molecule_packet import MoleculePacket

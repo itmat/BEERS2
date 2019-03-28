@@ -99,7 +99,7 @@ class GeneralUtils:
         return subdirectory_list
 
 class BeersUtilsException(Exception):
-    """Base class for other Utils exceptions."""
+    """Base class for other exceptions in this package."""
     pass
 
 if __name__ == "__main__":

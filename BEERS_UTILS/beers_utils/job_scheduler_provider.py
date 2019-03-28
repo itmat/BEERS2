@@ -1,7 +1,7 @@
-from beers.beers_exception import BeersException
-from beers.abstract_job_scheduler import AbstractJobScheduler
+from beers_utils.general_utils import BeersUtilsException
+from beers_utils.abstract_job_scheduler import AbstractJobScheduler
 #Add classes supporting additional job schedulers here.
-from beers.lsf_job_scheduler import LsfJobScheduler
+from beers_utils.lsf_job_scheduler import LsfJobScheduler
 
 class JobSchedulerProvider:
     """
@@ -85,7 +85,7 @@ class JobSchedulerProvider:
                                         'Please select one of {",".join(self._schedulers.keys())}.\n')
         return scheduler
 
-class JobSchedulerException(BeersException):
+class JobSchedulerException(BeersUtilsException):
     pass
 
 #As new job schedulers are implemented, they must be imported above and registered

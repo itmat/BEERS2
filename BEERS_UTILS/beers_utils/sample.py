@@ -74,4 +74,4 @@ class Sample:
         sample_id, sample_name, gender, fastq_file_paths_str, bam_file, adapter_sequences_str = data.rstrip().split('\t')
         adapter_labels = tuple(str(adapter_label) for adapter_label in adapter_sequences_str.split(','))
         fastq_file_paths = tuple(str(input_file_path) for input_file_path in fastq_file_paths_str.split(','))
-        return Sample(sample_id, sample_name, fastq_file_paths, adapter_labels, gender, bam_file_path=bam_file)
+        return Sample(sample_id, sample_name, fastq_file_paths, adapter_labels, gender=gender, bam_file_path=bam_file)

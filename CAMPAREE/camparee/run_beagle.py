@@ -12,6 +12,8 @@ import subprocess
 
 BEAGLE_JAR = "beagle.28Sep18.793.jar"
 
+#TODO: move this method to the camparee utilities (it's also defined and used in
+#the variants_compilation.py script).
 def parse_line(line):
     ''' reads a line of a variant file from BEERS2'''
     # sample line is: (note tabs and spaces both used)
@@ -56,7 +58,7 @@ if __name__ == "__main__":
                     sequence = ''.join(working_sequence_list)
                     reference[working_name] = sequence
                     contig_order.append(working_name)
-                    
+
                 working_name = line.split()[0][1:]
                 working_sequence_list = []
             else:
@@ -96,7 +98,7 @@ if __name__ == "__main__":
                         print("ERROR: Need chromosomes to be in alphabetical order (i.e. 1, 10, 11, 12, .., 19, 2, 20, 21, 22, 3, .., MT, X,Y")
                         #TODO: probably will need to use an alternative means of sorting them since alphabetical is terrible but what we currently use in the test files
                 last_chromosome = chromosome
-                
+
 
             ref_base = reference[chromosome][position-1]
 
@@ -192,8 +194,8 @@ if __name__ == "__main__":
                     sample_descriptions.append(f"{idx}/{idx}") # alt-alt
                 else:
                     sample_descriptions.append(f"0/{idx}") # ref-alt
-                    
-            
+
+
             line = "\t".join([chromosome,
                             str(position),
                             ".",

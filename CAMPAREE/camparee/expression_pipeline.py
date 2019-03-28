@@ -3,15 +3,15 @@ import os
 import importlib
 import time
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
-from beers.job_monitor import JobMonitor
-from beers.utilities.expression_utils import ExpressionUtils
+from beers_utils.job_monitor import JobMonitor
+from camparee.camparee_utils import CampareeUtils, CampareeException
 #To enable export of config parameter dictionaries to command line
 import json
 import subprocess
 import inspect
 import numpy
 
-import beers.expression.transcriptomes as transcriptomes
+import camparee.transcriptomes as transcriptomes
 
 
 class ExpressionPipeline:
@@ -36,8 +36,8 @@ class ExpressionPipeline:
         self.__step_paths = {}
         for step in configuration['steps']:
             if "step_name" not in step:
-                raise ExpressionPipelineValidationException("Every step in the configuration must have an associated"
-                                                            " step name written as 'module name.class_name'.")
+                raise CampareeValidationException("Every step in the configuration must have an associated"
+                                                  " step name written as 'module name.class_name'.")
             module_name, step_name = step["step_name"].rsplit(".")
             parameters = step.get("parameters", dict())
             module = importlib.import_module(f'.{module_name}', package="beers.expression")
@@ -47,10 +47,10 @@ class ExpressionPipeline:
         valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, \
             kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path = self.validate_and_gather_resources(resources)
         if not valid:
-            raise ExpressionPipelineValidationException("The resources data is not completely valid."
-                                                        "  Consult the standard error file for details.")
-        self.reference_genome = ExpressionUtils.create_genome(reference_genome_file_path)
-        self.chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(chr_ploidy_file_path)
+            raise CampareeValidationException("The resources data is not completely valid."
+                                              "  Consult the standard error file for details.")
+        self.reference_genome = CampareeUtils.create_genome(reference_genome_file_path)
+        self.chr_ploidy_data = CampareeUtils.create_chr_ploidy_data(chr_ploidy_file_path)
         self.beagle_file_path = beagle_file_path
         self.annotation_file_path = annotation_file_path
         self.star_file_path = star_file_path
@@ -503,7 +503,7 @@ class ExpressionPipeline:
         beagle = self.steps['BeagleStep']
         outcome = beagle.execute(self.beagle_file_path, seeds["beagle"])
         if outcome != 0:
-            raise ExpressionPipelineException("Beagle process failed.")
+            raise CampareeException("Beagle process failed.")
 
         for sample in self.samples:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
@@ -560,13 +560,10 @@ class ExpressionPipeline:
     def main(configuration, dispatcher_mode, resources, output_directory_path, input_samples):
         pipeline = ExpressionPipeline(configuration, dispatcher_mode, resources, output_directory_path, input_samples)
         if not pipeline.validate():
-            raise ExpressionPipelineValidationException("Expression Pipeline Validation Failed.  "
+            raise CampareeValidationException("Expression Pipeline Validation Failed.  "
                                               "Consult the standard error file for details.")
         pipeline.execute()
 
 
-class ExpressionPipelineValidationException(Exception):
-    pass
-
-class ExpressionPipelineException(Exception):
+class CampareeValidationException(CampareeException):
     pass

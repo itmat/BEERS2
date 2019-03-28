@@ -4,11 +4,10 @@ import os
 import gzip
 import itertools
 import pandas as pd
-from beers.utilities.general_utils import BeersUtilsException
 
-class ExpressionUtils:
+class CampareeUtils:
     """
-    Utilities that have a more limited applicability - essentially useful for steps in the expression pipeline.
+    Utilities for steps in the CAMPAREE expression pipeline.
     """
 
     # Line format definition for annotation file
@@ -62,7 +61,7 @@ class ExpressionUtils:
                 for chr, seq in itertools.zip_longest(*[genome_file] * 2):
                     chr_match = re.match(chr_pattern, chr.decode("ascii"))
                     if not chr_match:
-                        raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
+                        raise CampareeUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
                     chr = chr_match.group(1)
                     genome[chr] = seq.decode("ascii").rstrip().upper()
         else:
@@ -71,7 +70,7 @@ class ExpressionUtils:
                     for chr, seq in itertools.zip_longest(*[genome_file] * 2):
                         chr_match = re.match(chr_pattern, chr)
                         if not chr_match:
-                            raise BeersUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
+                            raise CampareeUtilsException(f'Cannot parse the chromosome from the fasta line {chr}.')
                         chr = chr_match.group(1)
                         genome[chr] = seq.rstrip().upper()
         return genome
@@ -94,14 +93,14 @@ class ExpressionUtils:
     @staticmethod
     def compare_genome_sequence_lengths(reference_file_path, genome_1_file_path, genome_2_file_path, chromosomes):
         comparison = {chromosome:[] for chromosome in chromosomes}
-        genome = ExpressionUtils.create_genome(reference_file_path)
+        genome = CampareeUtils.create_genome(reference_file_path)
         [comparison[chromosome].append(len(sequence)) for chromosome, sequence
         in genome.items() if chromosome in chromosomes]
-        genome = ExpressionUtils.create_genome(genome_1_file_path)
+        genome = CampareeUtils.create_genome(genome_1_file_path)
         for chromosome in chromosomes:
             seqeunce_length = len(genome.get(chromosome, ''))
             comparison[chromosome].append(seqeunce_length)
-        genome = ExpressionUtils.create_genome(genome_2_file_path)
+        genome = CampareeUtils.create_genome(genome_2_file_path)
         for chromosome in chromosomes:
             seqeunce_length = len(genome.get(chromosome, ''))
             comparison[chromosome].append(seqeunce_length)
@@ -154,7 +153,7 @@ class ExpressionUtils:
                 open(output_annot_filename, 'w') as output_annot_file:
 
             #Print annot file header (note the '#' prefix)
-            output_annot_file.write("#" + ExpressionUtils.annot_output_format.replace('{', '').replace('}', ''))
+            output_annot_file.write("#" + CampareeUtils.annot_output_format.replace('{', '').replace('}', ''))
 
             #Regex patterns used to extract individual attributes from the 9th
             #column in the GTF file (the "attributes" column)
@@ -222,7 +221,7 @@ class ExpressionUtils:
 
                         #Format data from previous transcript and write to annotation file
                         output_annot_file.write(
-                            ExpressionUtils.annot_output_format.format(
+                            CampareeUtils.annot_output_format.format(
                                 chrom=chrom,
                                 strand=strand,
                                 txStart=ex_starts[0],
@@ -269,7 +268,7 @@ class ExpressionUtils:
 
             #Format data from last transcript and write to annotation file
             output_annot_file.write(
-                ExpressionUtils.annot_output_format.format(
+                CampareeUtils.annot_output_format.format(
                     chrom=chrom,
                     strand=strand,
                     txStart=ex_starts[0],
@@ -288,21 +287,29 @@ class ExpressionUtils:
 
 
 
-class NoExonsInGTF(BeersUtilsException):
+class NoExonsInGTF(CampareeUtilsException):
     """Raised when GTF file contains no lines with "exon" in the 3rd column (feature_type)."""
     pass
 
 
 
 if __name__ == "__main__":
-    #ExpressionUtils.create_genome("../../resources/index_files/hg38/Homo_sapiens.GRCh38.reference_genome.fa")
-    chr_ploidy_data_ = ExpressionUtils.create_chr_ploidy_data('../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt')
+    #CampareeUtils.create_genome("../../resources/index_files/hg38/Homo_sapiens.GRCh38.reference_genome.fa")
+    chr_ploidy_data_ = CampareeUtils.create_chr_ploidy_data('../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt')
     reference_genome_file_path = '../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz'
     data_directory_path = '../../data/pipeline_results_run89/expression_pipeline/data'
     sample_data_folder = os.path.join(data_directory_path, f'sample1')
-    results = ExpressionUtils.compare_genome_sequence_lengths(reference_genome_file_path,
+    results = CampareeUtils.compare_genome_sequence_lengths(reference_genome_file_path,
                                                               os.path.join(sample_data_folder, 'custom_genome_1.fa'),
                                                               os.path.join(sample_data_folder, 'custom_genome_2.fa'),
                                                               chr_ploidy_data_.keys())
     df = pd.DataFrame.from_dict(results, orient='index', columns=['Reference Genome', 'Genome 1', 'Genome 2'])
     print(df)
+
+class CampareeException(Exception):
+    """Base class for other Camparee exceptions."""
+    pass
+
+class CampareeUtilsException(CampareeException):
+    """Base class for Camparee Utils exceptions."""
+    pass

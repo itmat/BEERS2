@@ -12,6 +12,8 @@ class VariantsCompilationStep():
     def validate(self):
         return True
 
+    #TODO: move this method to the camparee utilities (it's also defined and used in
+    #the run_beagle.py script).
     def parse_line(line):
         ''' reads a line of a variant file from BEERS2'''
         # sample line is: (note tabs and spaces both used)

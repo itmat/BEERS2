@@ -1,6 +1,6 @@
 import re
 import subprocess
-from beers.abstract_job_scheduler import AbstractJobScheduler
+from beers_utils.abstract_job_scheduler import AbstractJobScheduler
 
 class LsfJobScheduler(AbstractJobScheduler):
     """

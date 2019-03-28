@@ -11,8 +11,8 @@ from prettytable import PrettyTable
 #Imports required for main() method.
 import argparse
 import json
-from beers.sample import Sample
-from beers.utilities.expression_utils import ExpressionUtils
+from beers_utils.sample import Sample
+from camparee.camparee_utils import CampareeUtils
 import numpy
 
 
@@ -406,8 +406,8 @@ class VariantsFinderStep:
                                              args.data_directory_path,
                                              config_parameters)
         sample = eval(args.sample)
-        reference_genome = ExpressionUtils.create_genome(args.reference_genome_file_path)
-        chr_ploidy_data = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
+        reference_genome = CampareeUtils.create_genome(args.reference_genome_file_path)
+        chr_ploidy_data = CampareeUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
         variants_finder.execute(sample,
                                 args.bam_filename,
                                 chr_ploidy_data,

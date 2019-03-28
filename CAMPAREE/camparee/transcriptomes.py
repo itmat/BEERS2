@@ -19,10 +19,10 @@ import numpy
 
 from beers.constants import MAX_SEED
 from beers.personal.gene_files_preparation import GeneFilesPreparation
-from beers.expression.transcript_gene_quant import TranscriptGeneQuantificationStep
-from beers.expression.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
-from beers.expression.molecule_maker import MoleculeMaker
-from beers.sample import Sample
+from camparee.transcript_gene_quant import TranscriptGeneQuantificationStep
+from camparee.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
+from camparee.molecule_maker import MoleculeMaker
+from beers_utils.sample import Sample
 
 MOLECULES_PER_PACKET = 10_000
 

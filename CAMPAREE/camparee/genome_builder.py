@@ -4,10 +4,9 @@ import os
 import gzip
 import argparse
 from collections import namedtuple
-from beers.expression.expression_pipeline import ExpressionPipelineException
 import itertools
-from beers.utilities.expression_utils import ExpressionUtils
-from beers.sample import Sample
+from camparee.camparee_utils import CampareeUtils, CampareeException
+from beers_utils.sample import Sample
 from beers.constants import CONSTANTS
 
 
@@ -149,14 +148,13 @@ class GenomeBuilderStep:
                     field_headings = line.rstrip('\n').split('\t')
                     sample_ids = field_headings[9:]
                     if self.sample_id not in sample_ids:
-                        raise ExpressionPipelineException(
-                            f"Sample {self.sample_id} not found in the provided VCF file")
+                        raise CampareeException(f"Sample {self.sample_id} not found in the provided VCF file")
                     sample_index = field_headings.index(self.sample_id)
                     break
                 elif line[0:2] == "##":
                     continue
                 else:
-                    raise ExpressionPipelineException(f"No sample data found.")
+                    raise CampareeException(f"No sample data found.")
         return sample_index
 
     def execute(self, sample, chr_ploidy_data, reference_genome, chromosome_list=[]):
@@ -457,8 +455,8 @@ if __name__ == "__main__":
     test_parameters = {"ignore_snps": args.ignore_snps,
                        "ignore_indels": args.ignore_indels}
     test_sample = Sample(args.sample_id, "debug sample", None, None, args.gender)
-    reference_genome_ = ExpressionUtils.create_genome(args.reference_genome_file_path)
-    chr_ploidy_data_ = ExpressionUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
+    reference_genome_ = CampareeUtils.create_genome(args.reference_genome_file_path)
+    chr_ploidy_data_ = CampareeUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
 
     # Remove old genome data and log files if present
     sample_data_folder = os.path.join(args.data_directory_path, f'sample{test_sample.sample_id}')
@@ -473,10 +471,10 @@ if __name__ == "__main__":
     genome_builder = GenomeBuilderStep(args.log_directory_path, args.data_directory_path, test_parameters)
     genome_builder.execute(test_sample, chr_ploidy_data_, reference_genome_, args.chromosomes)
 
-    results = ExpressionUtils.compare_genome_sequence_lengths(args.reference_genome_file_path,
-                                                              os.path.join(sample_data_folder, 'custom_genome_1.fa'),
-                                                              os.path.join(sample_data_folder, 'custom_genome_2.fa'),
-                                                              args.chromosomes or chr_ploidy_data_.keys())
+    results = CampareeUtils.compare_genome_sequence_lengths(args.reference_genome_file_path,
+                                                            os.path.join(sample_data_folder, 'custom_genome_1.fa'),
+                                                            os.path.join(sample_data_folder, 'custom_genome_2.fa'),
+                                                            args.chromosomes or chr_ploidy_data_.keys())
     df = pd.DataFrame.from_dict(results, orient='index', columns=['Reference Genome', 'Genome 1', 'Genome 2'])
     print(df)
 

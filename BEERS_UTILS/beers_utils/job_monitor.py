@@ -3,8 +3,8 @@ import re
 import importlib
 import subprocess
 from beers.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
-from beers.beers_exception import BeersException
-import beers.job_scheduler_provider
+from beers_utils.general_utils import BeersUtilsException
+import beers_utils.job_scheduler_provider
 
 class JobMonitor:
     """
@@ -40,7 +40,7 @@ class JobMonitor:
         self.samples_by_ids = {}
 
         self.dispatcher_mode = dispatcher_mode
-        self.job_scheduler = beers.job_scheduler_provider.SCHEDULERS.get(dispatcher_mode)
+        self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(dispatcher_mode)
 
     def is_processing_complete(self):
         """
@@ -327,8 +327,8 @@ class Job:
         self.data_directory = os.path.join(self.output_directory, CONSTANTS.DATA_DIRECTORY_NAME)
 
         if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise BeersException(f'{dispatcher_mode} is not a supported mode.\n'
-                                 'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
+            raise BeersUtilsException(f'{dispatcher_mode} is not a supported mode.\n'
+                                      'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         else:
             self.dispatcher_mode = dispatcher_mode
 
@@ -434,7 +434,7 @@ class Job:
                             job_status = "FAILED"
                     elif self.step_name == "IntronQuantificationStep":
                         # TODO: do proper validation here
-                        from beers.expression.intron_quant import IntronQuantificationStep
+                        from camparee.intron_quant import IntronQuantificationStep
                         status = IntronQuantificationStep.is_output_valid({})
                         if status:
                             job_status = "COMPLETED"
@@ -463,5 +463,5 @@ class Job:
         return job_status
 
 
-class JobMonitorException(BeersException):
+class JobMonitorException(BeersUtilsException):
     pass
