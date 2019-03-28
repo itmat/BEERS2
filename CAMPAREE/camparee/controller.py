@@ -255,8 +255,6 @@ class Controller:
         # The kit is really only needed for library prep.  So if the expression pipeline does not generate
         # molecule packets, we could postpone this step until when that assembly occurs.  But we don't want to
         # make the addition to thousands of molecule packets after the fact.
-        adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
-        AdapterGenerator.generate_adapters(adapter_kit_file_path)
         for sample_name, input_sample in self.configuration['expression_pipeline']["input"]["data"].items():
             #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
             fastq_file_paths = [os.path.join(input_directory_path, filename)
@@ -266,10 +264,10 @@ class Controller:
             if gender:
                 gender = gender.lower()
             self.input_samples.append(
-                Sample(Sample.next_sample_id,
-                       sample_name,
-                       fastq_file_paths,
-                       AdapterGenerator.get_unique_adapter_sequences(),
+                Sample(sample_id=Sample.next_sample_id,
+                       sample_name=sample_name,
+                       fastq_file_paths=fastq_file_paths,
+                       adapter_sequences="",
                        bam_file_path=bam_file_path,
                        gender=gender))
             Sample.next_sample_id += 1

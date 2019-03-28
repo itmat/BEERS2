@@ -14,11 +14,7 @@ optional_named.add_argument('-d', '--debug', action='store_true',
 optional_named.add_argument('-m', '--dispatcher_mode', choices=['serial', 'multicore', 'lsf'],
                             help='Indicates whether to dispatch jobs serially, using multicore, or using lsf')
 
-subparsers = parser.add_subparsers(help='pipeline subcommand', dest="subcommand")
-subparsers.required = True
-
-parser_expression_pipeline = subparsers.add_parser('expression_pipeline', help='Run the expression pipeline only')
-parser_expression_pipeline.set_defaults(func=controller.run_expression_pipeline)
+parser.set_defaults(func=controller.run_camparee_pipeline)
 
 args = parser.parse_args()
 args.func(args)
