@@ -189,7 +189,7 @@ class CampareeUtils:
                     break
 
             if not exon_found:
-                raise NoExonsInGTF('ERROR: {gtf_file} contains no lines with exon feature_type.\n'.format(gtf_file=gtf_filename))
+                raise CampareeUtilsException('ERROR: {gtf_file} contains no lines with exon feature_type.\n'.format(gtf_file=gtf_filename))
 
             #Prime variables with data from first exon
             chrom = line_data[0]
@@ -286,11 +286,13 @@ class CampareeUtils:
         return output_annot_filename
 
 
-
-class NoExonsInGTF(CampareeUtilsException):
-    """Raised when GTF file contains no lines with "exon" in the 3rd column (feature_type)."""
+class CampareeException(Exception):
+    """Base class for other Camparee exceptions."""
     pass
 
+class CampareeUtilsException(CampareeException):
+    """Base class for Camparee Utils exceptions."""
+    pass
 
 
 if __name__ == "__main__":
@@ -305,11 +307,3 @@ if __name__ == "__main__":
                                                               chr_ploidy_data_.keys())
     df = pd.DataFrame.from_dict(results, orient='index', columns=['Reference Genome', 'Genome 1', 'Genome 2'])
     print(df)
-
-class CampareeException(Exception):
-    """Base class for other Camparee exceptions."""
-    pass
-
-class CampareeUtilsException(CampareeException):
-    """Base class for Camparee Utils exceptions."""
-    pass
