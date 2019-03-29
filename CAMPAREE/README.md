@@ -67,8 +67,7 @@ Calling help on it will show you what is currently possible.
 ```bash
  ./run_camparee.py -h
 usage: run_camparee.py [-h] -c CONFIG [-r RUN_ID] [-d]
-                    {expression_pipeline,library_prep_pipeline,sequence_pipeline}
-                    ...
+
 
 CAMPAREE - RNA molecule simulator
 
