@@ -5,6 +5,115 @@ import argparse
 import json
 import numpy
 
+##### "Plain old data" classes representing the elements inside a gene info file
+
+class Gene:
+    """Representation of a gene, including it's transcripts.
+
+    start, end coordinates indicate the min/max of the start/end coordinates of all its transcripts
+    """
+    def __init__(self, info, gene_id, chrom, strand, start, end, transcripts=None):
+        if transcripts is None:
+            transcripts = []
+        self.info = info
+        self.chrom = chrom
+        self.strand = strand
+        self.gene_id = gene_id
+        self.start = start
+        self.end = end
+        self.transcripts = transcripts
+
+    def __eq__(self, other):
+        return self.gene_id == other.gene_id
+
+    def __repr__(self):
+        return f"Gene({self.gene_id}, {self.chrom}, {self.strand}, {self.start}, {self.end})"
+
+
+class Transcript:
+    """ Transcript of a gene, tracks its introns, exons
+    """
+    def __init__(self, info, gene_id, transcript_id, chrom, strand, start, end, exons=None, introns=None):
+        if introns is None:
+            introns = []
+        if exons is None:
+            exons = []
+        self.info = info
+        self.chrom = chrom
+        self.strand = strand
+        self.gene_id = gene_id
+        self.transcript_id = transcript_id
+        self.start = start
+        self.end = end
+        self.exons = exons
+        self.introns = introns
+
+    def get_gene(self):
+        return self.info.genes[self.gene_id]
+
+    def __repr__(self):
+        return f"Transcript({self.gene_id}, {self.transcript_id}, {self.chrom}, {self.strand}, {self.start}, {self.end})"
+
+    gene = property(get_gene)
+
+
+class Region:
+    """ Any genomic span of a chromosome
+    strand = +,-, or . if not strand-specific region (eg: an intergenic region)
+    'comment' is any extra information to carry along, for the purposes of debugging/printing
+    """
+    def __init__(self, info, chrom, strand, start, end, comment=None):
+        self.info = info
+        self.chrom = chrom
+        self.strand = strand
+        self.start = start
+        self.end = end
+        self.comment = comment
+
+    def __repr__(self):
+        return f"{type(self).__name__}({self.chrom}, {self.strand}, {self.start}, {self.end}, {self.comment})"
+
+
+class TranscriptRegion(Region):
+    """ Region that is part of a transcript (eg: intron or exon)
+    """
+    def __init__(self, info, gene_id, transcript_id, *args):
+        self.gene_id = gene_id
+        self.transcript_id = transcript_id
+        self.effective_length = 0
+        self.antisense_effective_length = 0
+        Region.__init__(self, info, *args)
+
+    def get_gene(self):
+        return self.info.genes[self.gene_id]
+
+    def get_transcript(self):
+        return self.info.transcripts[self.transcript_id]
+
+    gene = property(get_gene)
+    transcript = property(get_transcript)
+
+
+class Intron(TranscriptRegion):
+    def __init__(self, *args):
+        TranscriptRegion.__init__(self, *args)
+        self.mintrons = [] # List of all mintrons that this overlaps
+        self.antisense_mintrons = [] # List of mintrons on the other strand that aren't sense for something else
+
+
+class Mintron(Region):
+    def __init__(self, info, *args):
+        Region.__init__(self, info, *args)
+        self.introns = []
+        self.primary_introns = []
+        self.primary_gene = None
+        self.primary_antisense_introns = []
+        self.antisense_introns = []
+
+    def __repr__(self):
+        return f"Mintron({self.chrom}, {self.strand}, {self.start}, {self.end}, {self.primary_introns}, {self.primary_gene})"
+
+
 class AnnotationInfo:
     """ Data structure containing all the information in a gene info file.
 
@@ -356,112 +465,3 @@ class AnnotationInfo:
             else:
                 complements_by_chrom[chrom] = complements
         return complements_by_chrom
-
-
-##### "Plain old data" classes representing the elements inside a gene info file
-
-class Gene:
-    """Representation of a gene, including it's transcripts.
-
-    start, end coordinates indicate the min/max of the start/end coordinates of all its transcripts
-    """
-    def __init__(self, info, gene_id, chrom, strand, start, end, transcripts=None):
-        if transcripts is None:
-            transcripts = []
-        self.info = info
-        self.chrom = chrom
-        self.strand = strand
-        self.gene_id = gene_id
-        self.start = start
-        self.end = end
-        self.transcripts = transcripts
-
-    def __eq__(self, other):
-        return self.gene_id == other.gene_id
-
-    def __repr__(self):
-        return f"Gene({self.gene_id}, {self.chrom}, {self.strand}, {self.start}, {self.end})"
-
-
-class Transcript:
-    """ Transcript of a gene, tracks its introns, exons
-    """
-    def __init__(self, info, gene_id, transcript_id, chrom, strand, start, end, exons=None, introns=None):
-        if introns is None:
-            introns = []
-        if exons is None:
-            exons = []
-        self.info = info
-        self.chrom = chrom
-        self.strand = strand
-        self.gene_id = gene_id
-        self.transcript_id = transcript_id
-        self.start = start
-        self.end = end
-        self.exons = exons
-        self.introns = introns
-
-    def get_gene(self):
-        return self.info.genes[self.gene_id]
-
-    def __repr__(self):
-        return f"Transcript({self.gene_id}, {self.transcript_id}, {self.chrom}, {self.strand}, {self.start}, {self.end})"
-
-    gene = property(get_gene)
-
-
-class Region:
-    """ Any genomic span of a chromosome
-    strand = +,-, or . if not strand-specific region (eg: an intergenic region)
-    'comment' is any extra information to carry along, for the purposes of debugging/printing
-    """
-    def __init__(self, info, chrom, strand, start, end, comment=None):
-        self.info = info
-        self.chrom = chrom
-        self.strand = strand
-        self.start = start
-        self.end = end
-        self.comment = comment
-
-    def __repr__(self):
-        return f"{type(self).__name__}({self.chrom}, {self.strand}, {self.start}, {self.end}, {self.comment})"
-
-
-class TranscriptRegion(Region):
-    """ Region that is part of a transcript (eg: intron or exon)
-    """
-    def __init__(self, info, gene_id, transcript_id, *args):
-        self.gene_id = gene_id
-        self.transcript_id = transcript_id
-        self.effective_length = 0
-        self.antisense_effective_length = 0
-        Region.__init__(self, info, *args)
-
-    def get_gene(self):
-        return self.info.genes[self.gene_id]
-
-    def get_transcript(self):
-        return self.info.transcripts[self.transcript_id]
-
-    gene = property(get_gene)
-    transcript = property(get_transcript)
-
-
-class Intron(TranscriptRegion):
-    def __init__(self, *args):
-        TranscriptRegion.__init__(self, *args)
-        self.mintrons = [] # List of all mintrons that this overlaps
-        self.antisense_mintrons = [] # List of mintrons on the other strand that aren't sense for something else
-
-
-class Mintron(Region):
-    def __init__(self, info, *args):
-        Region.__init__(self, info, *args)
-        self.introns = []
-        self.primary_introns = []
-        self.primary_gene = None
-        self.primary_antisense_introns = []
-        self.antisense_introns = []
-
-    def __repr__(self):
-        return f"Mintron({self.chrom}, {self.strand}, {self.start}, {self.end}, {self.primary_introns}, {self.primary_gene})"
