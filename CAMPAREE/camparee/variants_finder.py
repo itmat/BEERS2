@@ -13,6 +13,7 @@ import argparse
 import json
 from beers_utils.sample import Sample
 from camparee.camparee_utils import CampareeUtils
+from camparee.abstract_camparee_step import AbstractCampareeStep
 import numpy
 
 
@@ -26,7 +27,7 @@ description: description of the variant (e.g., C, IAA, D5, etc.)
 """
 
 
-class VariantsFinderStep:
+class VariantsFinderStep(AbstractCampareeStep):
     """
     This class creates a text file listing variants for those locations in the reference genome having variants.
     The variants include snps and indels with the number of reads attributed to each variant.
