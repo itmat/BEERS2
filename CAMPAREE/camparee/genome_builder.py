@@ -255,8 +255,10 @@ class GenomeBuilderStep:
                                        f" {genome.position + genome.offset} for chromosome {chromosome}\n")
                         genome.append_segment(reference_sequence[genome.position + genome.offset: variant.position])
                         reference_base = reference_sequence[genome.position + genome.offset: variant.position]
-                        self.build_sequence_from_variant(genome, variant.description, reference_base)
-                        log_file.write(f"Currently: {genome}\n")
+                    # At this point, the nascent genome seq position is at that of the variant.  So change introduced
+                    # by the variant can be incorporated.
+                    self.build_sequence_from_variant(genome, variant.description, reference_base)
+                    log_file.write(f"Currently: {genome}\n")
             log_file.write(f"Appending"
                            f" {len(reference_sequence[genome.position + genome.offset:])}"
                            f" bases of reference sequence at reference position "
