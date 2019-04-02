@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from BEERS_UTILS.beers_utils.abstract_pipeline_step import AbstractPipelineStep
+from beers_utils.abstract_pipeline_step import AbstractPipelineStep
 
 class AbstractCampareeStep(AbstractPipelineStep):
     """
