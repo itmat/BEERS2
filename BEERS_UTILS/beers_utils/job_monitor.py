@@ -424,7 +424,7 @@ class Job:
                         job_status = "COMPLETED"
                     else:
                         job_status = "FAILED"
-                elif self.step_name == "VariantsFinderStep":
+                elif self.step_name == "VariantsFinderStep" or self.step_name == "IntronQuantificationStep":
 
                     pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 
@@ -433,14 +433,6 @@ class Job:
                     else:
                         job_status="FAILED"
 
-                elif self.step_name == "IntronQuantificationStep":
-                    # TODO: do proper validation here
-                    from camparee.intron_quant import IntronQuantificationStep
-                    status = IntronQuantificationStep.is_output_valid(self.validation_attributes)
-                    if status:
-                        job_status = "COMPLETED"
-                    else:
-                        job_status = "FAILED"
                 else:
                     raise NotImplementedError()
 
