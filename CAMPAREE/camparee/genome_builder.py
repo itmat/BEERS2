@@ -271,7 +271,16 @@ class GenomeBuilderStep:
     def make_paired_chromosome(self, chromosome, sample_index):
         """
         Here, the beagle data for the given sample is threaded together with the reference sequence to create a
-        custom sequence for the given chromosome
+        custom sequence for the given chromosome.  Below is a snippet of a beagle vcf file for 6 samples along with
+        a header.
+
+        #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample1 sample2 sample3 sample4 sample5 sample6
+        ...
+        chr1    257558  .       A       G       .       PASS    .       GT      0|1     0|0     0|0     0|0     0|0     0|0
+        chr1    257559  .       G       C,GAG   .       PASS    .       GT      0|1     0|2     0|0     0|0     0|0     0|0
+        chr1    257560  .       C       A       .       PASS    .       GT      1|0     1|0     0|0     1|0     0|0     0|0
+        chr1    257570  .       C       CAA,CA  .       PASS    .       GT      1|0     0|0     0|0     0|0     0|1     2|0
+
         :param chromosome: The chromosome for which the reference sequence is altered by beagle data.
         :param sample_index: identifies the position of the subject sample in the beagle data.
         """
@@ -298,6 +307,9 @@ class GenomeBuilderStep:
                     beagle_chromosome, position, _, ref, alts, *others = fields
                     position = int(position)
                     alts = alts.split(',')
+
+                    # Collect alt, ref selections for this sample where 0 = ref and > 0 = alt (i.e., 0/1 = ref for 1st
+                    # parent chr and alt for 2nd while 1/2 = 1st alt for 1st parent chr and 2nd alt for 2nd, etc.)
                     sample = fields[sample_index].strip().split('|')
                     alt_indexes = [int(s) for s in sample]
 
@@ -319,17 +331,23 @@ class GenomeBuilderStep:
                                            f" {genome.position + genome.offset} to genome_{genome.name}\n")
                             genome.append_segment(reference_sequence[genome.position + genome.offset: position])
 
+                        # Identify alt or ref for current parent
                         alt_index = alt_indexes[genome_index]
+
+                        # Apply the ref or alt as appropriate
                         if alt_index == 0:
                             genome.append_segment(ref)
                         else:
+                            # Get the appropriate alt as given by the index - 1 (since the 1st alt is given by 1)
                             alt = alts[alt_index-1]
 
+                            # Apply a snp alt only if the ignore_snps parameter is not set
                             if len(alt) == len(ref):
                                 if self.ignore_snps:
                                     genome.append_segment(ref)
                                 else:
                                     genome.append_segment(alt)
+                            # Otherwise, apply only if the ignore_indels parameter is not set
                             else:
                                 if self.ignore_indels:
                                     genome.append_segment(ref)
