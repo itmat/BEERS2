@@ -390,7 +390,7 @@ class Genome:
         self.genome_output_filename = genome_output_file_stem + '_' + self.name + ".fa"
         self.genome_indels_filename = genome_output_file_stem + '_indels_' + self.name + ".txt"
         self.indels_file = open(self.genome_indels_filename, 'a')
-        self.genome_mapper_filename = genome_output_file_stem + '_genome_coordinate_mapping_' + self.name + ".txt"
+        self.genome_mapper_filename = genome_output_file_stem + '_to_parental_coordinate_mapping_' + self.name + ".txt"
         self.mapper_file = open(self.genome_mapper_filename, 'a')
         self.mapper_file.write("#CHR\tREF GENOME\tNEW GENOME\n")
         self.ref_placeholder = 0
