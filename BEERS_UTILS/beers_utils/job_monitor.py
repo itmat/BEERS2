@@ -19,7 +19,7 @@ class JobMonitor:
     #job output.
     PIPELINE_STEPS = {}
 
-    def __init__(self, output_directory_path, dispatcher_mode):
+    def __init__(self, output_directory_path, scheduler_name):
         """
         Initialize the monitor to track a specific set of jobs/processes running on
         a list of corresponding samples.
@@ -28,7 +28,7 @@ class JobMonitor:
         ----------
         output_directory_path : string
             Path to data directory where job/process output is being stored.
-        dispatcher_mode : string
+        scheduler_name : string
             The mode used to submit the jobs/processes to the scheduler.
         """
         self.output_directory = output_directory_path
@@ -45,8 +45,8 @@ class JobMonitor:
         #Stores list of samples in dictionary indexed by sample ID.
         self.samples_by_ids = {}
 
-        self.dispatcher_mode = dispatcher_mode
-        self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(dispatcher_mode)
+        self.scheduler_name = scheduler_name
+        self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
 
     def is_processing_complete(self):
         """
@@ -142,7 +142,7 @@ class JobMonitor:
         """
         submitted_job = Job(job_id, job_command, sample.sample_id, step_name,
                             scheduler_arguments, validation_attributes,
-                            output_directory_path, self.dispatcher_mode,
+                            output_directory_path, self.scheduler_name,
                             system_id, dependency_list)
         #TODO: Condsider whether to add a check to see if both a system_id and
         #      a dependency list is provided (and throw an expection if both or
@@ -270,7 +270,7 @@ class Job:
                           'WAITING_FOR_DEPENDENCY'] #job not submitted and waiting for dependency to complete.
 
     def __init__(self, job_id, job_command, sample_id, step_name, scheduler_arguments,
-                 validation_attributes, output_directory_path, dispatcher_mode,
+                 validation_attributes, output_directory_path, scheduler_name,
                  system_id=None, dependency_list=None):
         """
         Initialize job to track the status of a step/operation running on the
@@ -304,7 +304,7 @@ class Job:
             of any output files or parameters.
         output_directory_path : string
             Path to data directory where job/process output is being stored.
-        dispatcher_mode : string
+        scheduler_name : string
             The mode used to submit the jobs/processes. Currently supports
             {",".join(SUPPORTED_DISPATCHER_MODES)}.
         system_id : string
@@ -330,11 +330,11 @@ class Job:
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
         self.data_directory = os.path.join(self.output_directory, CONSTANTS.DATA_DIRECTORY_NAME)
 
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise BeersUtilsException(f'{dispatcher_mode} is not a supported mode.\n'
+        if scheduler_name not in SUPPORTED_DISPATCHER_MODES:
+            raise BeersUtilsException(f'{scheduler_name} is not a supported mode.\n'
                                       'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         else:
-            self.dispatcher_mode = dispatcher_mode
+            self.scheduler_name = scheduler_name
 
         self.system_id = system_id
         self.dependency_list = set()
@@ -388,7 +388,7 @@ class Job:
 
         if self.system_id is None:
             job_status = "WAITING_FOR_DEPENDENCY"
-        elif self.dispatcher_mode == "serial" or self.dispatcher_mode == "parallel" or not scheduler:
+        elif self.scheduler_name == "serial" or self.scheduler_name == "parallel" or not scheduler:
             job_status = "COMPLETED"
         else:
 

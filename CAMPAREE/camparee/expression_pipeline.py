@@ -428,6 +428,8 @@ class ExpressionPipeline:
                             system_id = genome_alignment.index(pend_sample, bam_filename, self.dispatcher_mode)
                         elif pend_job.step_name == "VariantsFinderStep":
                             print(f"Submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
+
+                            """
                             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
                             variants_finder = self.steps['VariantsFinderStep']
                             variant_finder_path = self.__step_paths['VariantsFinderStep']
@@ -459,6 +461,18 @@ class ExpressionPipeline:
                             print(f"\t{result.stdout.rstrip()}")
                             #Extract job ID from LSF stdout
                             system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
+                            """
+                            #Use unpacking to provide arguments for job submission
+                            system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=pend_job.job_command,
+                                                                                             **pend_job.scheduler_arguments)
+                            if system_id == "ERROR":
+                                print(f"Job submission failed for {pend_job.step_name}:\n",
+                                      f"   Job sample: {pend_sample.sample_name}\n",
+                                      f"   Scheduler parameters: {pend_job.scheduler_arguments}\n",
+                                      f"   Job command: {pend_job.job_command}\n",
+                                      file=sys.stderr)
+                                raise CampareeException(f"Job submission failed for {pend_job.step_name}. ",
+                                                        "See expression pipeline log file for full details.")
 
                             print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
