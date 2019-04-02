@@ -44,6 +44,7 @@ class ExpressionPipeline:
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
             self.__step_paths[step_name] = inspect.getfile(module)
+            JobMonitor.PIPELINE_STEPS[step_name] = step_class
         valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, \
             kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path = self.validate_and_gather_resources(resources)
         if not valid:

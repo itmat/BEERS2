@@ -13,6 +13,12 @@ class JobMonitor:
     (either due to success or error/failure).
     """
 
+    #Hash mapping step names (keys) to AbstractPipelineStep objects (values).
+    #Used in code checking job output validity. Provides generalized way of
+    #retrieving job-specific Class objects to run static methods when validating
+    #job output.
+    PIPELINE_STEPS = {}
+
     def __init__(self, output_directory_path, dispatcher_mode):
         """
         Initialize the monitor to track a specific set of jobs/processes running on
@@ -419,18 +425,18 @@ class Job:
                     else:
                         job_status = "FAILED"
                 elif self.step_name == "VariantsFinderStep":
-                    #TODO: make this more general, so a single block of code can call
-                    #the is_output_valid function for an arbitrary function.
-                    module = importlib.import_module(f'.variants_finder', package="camparee")
-                    VariantsFinderStep = getattr(module, self.step_name)
-                    if VariantsFinderStep.is_output_valid(self.validation_attributes):
+
+                    pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
+
+                    if pipeline_step.is_output_valid(self.validation_attributes):
                         job_status = "COMPLETED"
                     else:
-                        job_status = "FAILED"
+                        job_status="FAILED"
+
                 elif self.step_name == "IntronQuantificationStep":
                     # TODO: do proper validation here
                     from camparee.intron_quant import IntronQuantificationStep
-                    status = IntronQuantificationStep.is_output_valid({})
+                    status = IntronQuantificationStep.is_output_valid(self.validation_attributes)
                     if status:
                         job_status = "COMPLETED"
                     else:
