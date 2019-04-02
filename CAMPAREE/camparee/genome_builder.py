@@ -390,6 +390,11 @@ class Genome:
         self.genome_output_filename = genome_output_file_stem + '_' + self.name + ".fa"
         self.genome_indels_filename = genome_output_file_stem + '_indels_' + self.name + ".txt"
         self.indels_file = open(self.genome_indels_filename, 'a')
+        self.genome_mapper_filename = genome_output_file_stem + '_mapper_' + self.name + ".txt"
+        self.mapper_file = open(self.genome_mapper_filename, 'a')
+        self.mapper_file.write("#CHR\tREF GENOME\tNEW GENOME\n")
+        self.ref_placeholder = 0
+        self.placeholder = 0
 
     def append_segment(self, sequence):
         """
@@ -413,6 +418,13 @@ class Genome:
         :param sequence: sequence segment to insert
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tI\t{len(sequence)}\n")
+        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset + 1}"
+        genome_span = f"{self.placeholder + 1}-{self.position + 1}"
+        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+        genome_span = f"{self.position + 1}-{self.position + 1 + len(sequence)}"
+        self.mapper_file.write(f"{self.chromosome}\t*\t{genome_span}\n")
+        self.ref_placeholder = self.position + self.offset + 1
+        self.placeholder = self.position + 1 + len(sequence)
         self.sequence.write(sequence)
         self.position += len(sequence)
         self.offset += -1 * len(sequence)
@@ -426,6 +438,13 @@ class Genome:
         :param length: number of bases in the reference sequence to skip over.
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tD\t{length}\n")
+        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset + 1}"
+        genome_span = f"{self.placeholder + 1}-{self.position + 1}"
+        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset + 1 + length}"
+        self.ref_placeholder = self.position + self.offset + 1 + length
+        self.placeholder = self.position + 1
+        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t*\n")
         self.offset += length
 
     def save_to_file(self):
@@ -443,6 +462,7 @@ class Genome:
 
         # TODO might be a better place for this - say using a context manager?
         self.indels_file.close()
+        self.mapper_file.close()
 
     def __str__(self):
         """
@@ -511,9 +531,9 @@ python genome_builder.py \
 
 python genome_builder.py \
 -s 1 \
--d ../../data/pipeline_results_run89/expression_pipeline/data \
--r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
--p ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt \
--l ../../data/pipeline_results_run89/expression_pipeline/logs \
--x female
+-d ../../data/_run600/expression_pipeline/data \
+-r ../resources/index_files/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa \
+-p ../resources/index_files/baby_genome.mm10/baby_genome.mm10.chr_ploidy.txt \
+-l ../../data/_run600/expression_pipeline/logs \
+-x male
 '''
