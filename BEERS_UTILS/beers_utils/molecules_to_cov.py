@@ -62,12 +62,14 @@ with open(args.output_file + ".forward.cov", "w") as fwd_file, open(args.output_
             height = coverage[i]
             if block_height is None:
                 # Start our first block
-                block_start = i
+                block_start = i - 1 # Convert to 0-based for UCSC browser
                 block_height = height
             elif block_height == height:
                 # Still part of the existing block
                 continue
             else:
+                # Convert to 0-based for UCSC, so this gives the interval (block_start, block_end)
+                # which is half-open 0 based and hence goes up to but not including the 1-based position i
                 block_end = i - 1
                 # Write out the block to the bed file
                 cov_file.write('\t'.join([chrom,
@@ -76,12 +78,12 @@ with open(args.output_file + ".forward.cov", "w") as fwd_file, open(args.output_
                                         str(block_height)]) + "\n")
 
                 # Start a new block
-                block_start = i
+                block_start = i - 1# Convert to 0-based for UCSC browser
                 block_height = height
 
         if block_height is not None:
             # Output the last block
-                block_end = i
+                block_end = i - 1 # Convert to 0-based for UCSC browser
                 # Write out the block to the bed file
                 cov_file.write('\t'.join([chrom,
                                         str(block_start),
