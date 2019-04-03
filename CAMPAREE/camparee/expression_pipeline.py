@@ -241,6 +241,9 @@ class ExpressionPipeline:
             if system_id == "ALREADY_ALIGNED" or self.dispatcher_mode != "lsf":
                 expression_pipeline_monitor.mark_job_completed(f"GenomeAlignment.{sample.sample_id}")
 
+
+        genome_index = self.steps['GenomeBamIndexStep']
+
         for sample in self.samples:
             if self.dispatcher_mode == "lsf":
                 expression_pipeline_monitor.submit_new_job(job_id=f"GenomeBamIndex.{sample.sample_id}",
@@ -254,7 +257,7 @@ class ExpressionPipeline:
             else:
                 print(f"Running Bam Index creating in sample {sample.sample_id}")
                 bam_filename = bam_files[sample.sample_id]
-                genome_alignment.index(sample, bam_filename, self.dispatcher_mode)
+                genome_index.execute(sample, bam_filename, self.dispatcher_mode)
 
         for sample_id, bam_file in bam_files.items():
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
@@ -346,7 +349,7 @@ class ExpressionPipeline:
                                                                          self.resources_index_files_directory_path,
                                                                          self.star_file_path, self.dispatcher_mode)
                     elif resub_job.step_name == "GenomeBamIndexStep":
-                        system_id = genome_alignment.index(resub_sample, bam_filename, self.dispatcher_mode)
+                        system_id = genome_index.execute(resub_sample, bam_filename, self.dispatcher_mode)
                     elif resub_job.step_name == "VariantsFinderStep" or \
                          resub_job.step_name == "IntronQuantificationStep":
                         print(f"Submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
@@ -384,7 +387,7 @@ class ExpressionPipeline:
                                                                              self.resources_index_files_directory_path,
                                                                              self.star_file_path, self.dispatcher_mode)
                         elif pend_job.step_name == "GenomeBamIndexStep":
-                            system_id = genome_alignment.index(pend_sample, bam_filename, self.dispatcher_mode)
+                            system_id = genome_index.execute(pend_sample, bam_filename, self.dispatcher_mode)
                         elif pend_job.step_name == "VariantsFinderStep" or \
                              pend_job.step_name == "IntronQuantificationStep":
                             print(f"Submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")

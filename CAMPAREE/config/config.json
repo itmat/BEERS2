@@ -60,6 +60,9 @@
         }
       },
       {
+        "step_name": "genome_alignment.GenomeBamIndexStep"
+      },
+      {
         "step_name": "variants_finder.VariantsFinderStep",
         "parameters": {
           "sort_by_entropy": false,
