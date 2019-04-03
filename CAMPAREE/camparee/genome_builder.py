@@ -392,7 +392,13 @@ class Genome:
         self.indels_file = open(self.genome_indels_filename, 'a')
         self.genome_mapper_filename = genome_output_file_stem + '_to_parental_coordinate_mapping_' + self.name + ".txt"
         self.mapper_file = open(self.genome_mapper_filename, 'a')
+
+        # These variables are used to control the mapper.  The last construct indicates what the last construct event
+        # was (A = append, I = insert, D = delete).  The placeholders for the reference and this genome indicate where
+        # the last append after an insert or delete started so we can mash all consecutive appends (due to snps)
+        # together.
         #self.mapper_file.write("#CHR\tREF GENOME\tNEW GENOME\n")
+        self.last_construct = "A"
         self.ref_placeholder = 0
         self.gen_placeholder = 0
 
@@ -405,6 +411,10 @@ class Genome:
         remains unchangeed.
         :param sequence: sequence segment to append
         """
+
+        # Last construct now was an append
+        self.last_construct = "A"
+
         self.sequence.write(sequence)
         self.position += len(sequence)
 
@@ -419,20 +429,25 @@ class Genome:
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tI\t{len(sequence)}\n")
 
-        # Spans just before this insert
-        # Starts bumped for 1 index, ends not bumped because we are 1 base prior to insert
-        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
-        genome_span = f"{self.gen_placeholder + 1}-{self.position}"
-        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+        # Spans just before this insert (only done if the last construct was an append)
+        if self.last_construct == "A":
+
+            # Starts bumped for 1 index, ends not bumped because we are 1 base prior to insert
+            reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+            genome_span = f"{self.gen_placeholder + 1}-{self.position}"
+            self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
 
         # Span for this insert
         # Genome start bumped for 1 index but end not bumped because length includes starting base.
         genome_span = f"{self.position + 1}-{self.position + len(sequence)}"
-        self.mapper_file.write(f"{self.chromosome}\t*\t{genome_span}\n")
+        self.mapper_file.write(f"{self.chromosome}\t*-*\t{genome_span}\n")
 
         # Placeholders set to last positions after insert
         self.ref_placeholder = self.position + self.offset
         self.gen_placeholder = self.position + len(sequence)
+
+        # Last construct now was an insert
+        self.last_construct = "I"
 
         # This does the real insert work
         self.sequence.write(sequence)
@@ -449,20 +464,25 @@ class Genome:
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tD\t{length}\n")
 
-        # Spans just before this delete
-        # Starts bumped for 1 index, ends not bumped because we are 1 base prior to delete
-        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
-        genome_span = f"{self.gen_placeholder + 1}-{self.position}"
-        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+        # Spans just before this delete (only done if the last construct was an append)
+        if self.last_construct == "A":
+
+            # Starts bumped for 1 index, ends not bumped because we are 1 base prior to delete
+            reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+            genome_span = f"{self.gen_placeholder + 1}-{self.position}"
+            self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
 
         # Span for this delete
         # Ref start bumped for 1 index but end not bumped because length includes starting base
         reference_span = f"{self.position + self.offset + 1}-{self.position + self.offset + length}"
-        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t*\n")
+        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t*-*\n")
 
         # Placeholders set to last positions after delete
         self.ref_placeholder = self.position + self.offset + length
         self.gen_placeholder = self.position
+
+        # Last construct now was a delete
+        self.last_construct = "D"
 
         # This does the real delete work
         self.offset += length
