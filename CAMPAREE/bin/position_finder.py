@@ -18,7 +18,7 @@ def main():
     df.gstart = df.gstart.astype(int)
     df.gend = df.gend.astype(int)
     print("The data looks like this:")
-    print(df.head)g
+    print(df.head)
 
     while(True):
         position = input("Indicate positions as chr:start-end or type 'end': ")
