@@ -392,9 +392,9 @@ class Genome:
         self.indels_file = open(self.genome_indels_filename, 'a')
         self.genome_mapper_filename = genome_output_file_stem + '_to_parental_coordinate_mapping_' + self.name + ".txt"
         self.mapper_file = open(self.genome_mapper_filename, 'a')
-        self.mapper_file.write("#CHR\tREF GENOME\tNEW GENOME\n")
+        #self.mapper_file.write("#CHR\tREF GENOME\tNEW GENOME\n")
         self.ref_placeholder = 0
-        self.placeholder = 0
+        self.gen_placeholder = 0
 
     def append_segment(self, sequence):
         """
@@ -418,13 +418,23 @@ class Genome:
         :param sequence: sequence segment to insert
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tI\t{len(sequence)}\n")
-        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset + 1}"
-        genome_span = f"{self.placeholder + 1}-{self.position + 1}"
+
+        # Spans just before this insert
+        # Starts bumped for 1 index, ends not bumped because we are 1 base prior to insert
+        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+        genome_span = f"{self.gen_placeholder + 1}-{self.position}"
         self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
-        genome_span = f"{self.position + 1}-{self.position + 1 + len(sequence)}"
+
+        # Span for this insert
+        # Genome start bumped for 1 index but end not bumped because length includes starting base.
+        genome_span = f"{self.position + 1}-{self.position + len(sequence)}"
         self.mapper_file.write(f"{self.chromosome}\t*\t{genome_span}\n")
-        self.ref_placeholder = self.position + self.offset + 1
-        self.placeholder = self.position + 1 + len(sequence)
+
+        # Placeholders set to last positions after insert
+        self.ref_placeholder = self.position + self.offset
+        self.gen_placeholder = self.position + len(sequence)
+
+        # This does the real insert work
         self.sequence.write(sequence)
         self.position += len(sequence)
         self.offset += -1 * len(sequence)
@@ -438,13 +448,23 @@ class Genome:
         :param length: number of bases in the reference sequence to skip over.
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tD\t{length}\n")
-        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset + 1}"
-        genome_span = f"{self.placeholder + 1}-{self.position + 1}"
+
+        # Spans just before this delete
+        # Starts bumped for 1 index, ends not bumped because we are 1 base prior to delete
+        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+        genome_span = f"{self.gen_placeholder + 1}-{self.position}"
         self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
-        reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset + 1 + length}"
-        self.ref_placeholder = self.position + self.offset + 1 + length
-        self.placeholder = self.position + 1
+
+        # Span for this delete
+        # Ref start bumped for 1 index but end not bumped because length includes starting base
+        reference_span = f"{self.position + self.offset + 1}-{self.position + self.offset + length}"
         self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t*\n")
+
+        # Placeholders set to last positions after delete
+        self.ref_placeholder = self.position + self.offset + length
+        self.gen_placeholder = self.position
+
+        # This does the real delete work
         self.offset += length
 
     def save_to_file(self):
