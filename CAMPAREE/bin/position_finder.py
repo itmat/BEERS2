@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import re
+from prettytable import PrettyTable
 
 def main():
     parser = argparse.ArgumentParser(description='Genome Position Finder')
@@ -18,7 +19,7 @@ def main():
     df.gstart = df.gstart.astype(int)
     df.gend = df.gend.astype(int)
     print("The data looks like this:")
-    print(df.head)
+    print(df.head())
 
     while(True):
         position = input("Indicate positions as chr:start-end or type 'end': ")
@@ -33,11 +34,14 @@ def main():
             if chr_df.empty:
                 print("That chr is not found")
                 continue
+            output_table = PrettyTable()
+            output_table.field_names = ['Starting from', 'Given span', 'Mapped span',
+                                        "# Based Inserted/Deleted"]
             os, oe = mapping_span(['rstart','rend'], ['gstart', 'gend'], start, end, chr_df)
-            print(f"Reference {chr}:{start}-{end} -> {chr}:{os}-{oe} #bases changed {(oe-os) - (end-start)}")
+            output_table.add_row(["Reference", f"{chr}:{start}-{end}", f"{chr}:{os}-{oe}", (oe-os) - (end-start)])
             os, oe = mapping_span(['gstart', 'gend'], ['rstart', 'rend'], start, end, chr_df)
-            print(f"Genome {chr}:{start}-{end} -> {chr}:{os}-{oe} #bases changed {(oe-os) - (end-start)}")
-
+            output_table.add_row(["Genome", f"{chr}:{start}-{end}", f"{chr}:{os}-{oe}", (oe - os) - (end - start)])
+            print(output_table)
 
 def mapping_span(i,o, start, end, chr_df):
         os = None
