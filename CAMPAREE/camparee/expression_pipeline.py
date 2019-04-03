@@ -429,39 +429,6 @@ class ExpressionPipeline:
                         elif pend_job.step_name == "VariantsFinderStep":
                             print(f"Submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
-                            """
-                            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
-                            variants_finder = self.steps['VariantsFinderStep']
-                            variant_finder_path = self.__step_paths['VariantsFinderStep']
-                            stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variants_Finder.bsub.%J.out")
-                            stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{pend_sample.sample_id}", "Variants_Finder.bsub.%J.err")
-
-                            #Recreate parameter dictionary for VariantsFinderStep
-                            variant_finder_params = {}
-                            variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
-                            variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
-
-                            seed = seeds[f"variant_finder.{pend_sample.sample_id}"]
-
-                            bsub_command = (f"bsub"
-                                            f" -J Variant_Finder.sample{pend_sample.sample_id}_{pend_sample.sample_name}"
-                                            f" -oo {stdout_log}"
-                                            f" -eo {stderr_log}"
-                                            f" python {variant_finder_path}"
-                                            f" --log_directory_path {variants_finder.log_directory_path}"
-                                            f" --data_directory_path {variants_finder.data_directory_path}"
-                                            f" --config_parameters '{json.dumps(variant_finder_params)}'"
-                                            f" --sample '{repr(pend_sample)}'"
-                                            f" --bam_filename {bam_filename}"
-                                            f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
-                                            f" --reference_genome_file_path {self.reference_genome_file_path}"
-                                            f" --seed {seed}")
-
-                            result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
-                            print(f"\t{result.stdout.rstrip()}")
-                            #Extract job ID from LSF stdout
-                            system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
-                            """
                             #Use unpacking to provide arguments for job submission
                             system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=pend_job.job_command,
                                                                                              **pend_job.scheduler_arguments)
@@ -481,8 +448,6 @@ class ExpressionPipeline:
 
                             stdout_log = os.path.join(intron_quant.log_directory_path, f"sample{pend_sample.sample_id}", "IntronQuantification.bsub.%J.out")
                             stderr_log = os.path.join(intron_quant.log_directory_path, f"sample{pend_sample.sample_id}", "IntronQuantification.bsub.%J.err")
-
-                            print(stderr_log)
 
                             intron_quant_path = self.__step_paths["IntronQuantificationStep"]
                             output_directory = os.path.join(intron_quant.data_directory_path, f"sample{pend_sample.sample_id}")
