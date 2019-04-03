@@ -335,48 +335,21 @@ class ExpressionPipeline:
                     elif resub_job.step_name == "GenomeBamIndexStep":
                         system_id = genome_alignment.index(resub_sample, bam_filename, self.dispatcher_mode)
                     elif resub_job.step_name == "VariantsFinderStep":
-                        print(f"Submitting variant finder command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
-                        # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
-                        variants_finder = self.steps['VariantsFinderStep']
-                        variant_finder_path = self.__step_paths['VariantsFinderStep']
-                        stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variants_Finder.bsub.%J.out")
-                        stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{resub_sample.sample_id}", "Variants_Finder.bsub.%J.err")
+                        print(f"Submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
-                        #TODO: Modify code to maintain access to step parameters.
-                        #      Need these parameters to instantiate these objects
-                        #      inside the main methods (like the variant_finder.py
-                        #      script below). If I store this somewhere, it means
-                        #      I won't have to manually recreate it below (which
-                        #      we'll need to update here in the code every time we
-                        #      update the config file).
+                        #Use unpacking to provide arguments for job submission
+                        system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=resub_job.job_command,
+                                                                                         **resub_job.scheduler_arguments)
+                        if system_id == "ERROR":
+                            print(f"Job submission failed for {resub_job.step_name}:\n",
+                                  f"   Job sample: {resub_sample.sample_name}\n",
+                                  f"   Scheduler parameters: {resub_job.scheduler_arguments}\n",
+                                  f"   Job command: {resub_job.job_command}\n",
+                                  file=sys.stderr)
+                            raise CampareeException(f"Job submission failed for {resub_job.step_name}. ",
+                                                    "See expression pipeline log file for full details.")
 
-                        #Recreate parameter dictionary for VariantsFinderStep
-                        variant_finder_params = {}
-                        variant_finder_params['sort_by_entropy'] = variants_finder.entropy_sort
-                        variant_finder_params['min_threshold'] = variants_finder.min_abundance_threshold
-
-                        seed = seeds[f"variant_finder.{resub_sample.sample_id}"]
-
-                        bsub_command = (f"bsub"
-                                        f" -J Variant_Finder.sample{resub_sample.sample_id}_{resub_sample.sample_name}"
-                                        f" -oo {stdout_log}"
-                                        f" -eo {stderr_log}"
-                                        f" python {variant_finder_path}"
-                                        f" --log_directory_path {variants_finder.log_directory_path}"
-                                        f" --data_directory_path {variants_finder.data_directory_path}"
-                                        f" --config_parameters '{json.dumps(variant_finder_params)}'"
-                                        f" --sample '{repr(resub_sample)}'"
-                                        f" --bam_filename {bam_filename}"
-                                        f" --chr_ploidy_file_path {self.chr_ploidy_file_path}"
-                                        f" --reference_genome_file_path {self.reference_genome_file_path}"
-                                        f" --seed {seed}")
-
-                        result = subprocess.run(bsub_command, shell=True, check=True, stdout = subprocess.PIPE, encoding="ascii")
-                        print(f"\t{result.stdout.rstrip()}")
-                        #Extract job ID from LSF stdout
-                        system_id = expression_pipeline_monitor.job_scheduler.LSF_BSUB_OUTPUT_PATTERN.match(result.stdout).group('job_id')
-
-                        print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
+                        print(f"Finished submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
                     elif resub_job.step_name == "IntronQuantificationStep":
                         intron_quant = self.steps["IntronQuantificationStep"]
@@ -427,7 +400,7 @@ class ExpressionPipeline:
                         elif pend_job.step_name == "GenomeBamIndexStep":
                             system_id = genome_alignment.index(pend_sample, bam_filename, self.dispatcher_mode)
                         elif pend_job.step_name == "VariantsFinderStep":
-                            print(f"Submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
+                            print(f"Submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
                             #Use unpacking to provide arguments for job submission
                             system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=pend_job.job_command,
@@ -441,7 +414,7 @@ class ExpressionPipeline:
                                 raise CampareeException(f"Job submission failed for {pend_job.step_name}. ",
                                                         "See expression pipeline log file for full details.")
 
-                            print(f"Finished submitting variant finder command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
+                            print(f"Finished submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
                         elif pend_job.step_name == "IntronQuantificationStep":
                             intron_quant = self.steps["IntronQuantificationStep"]
