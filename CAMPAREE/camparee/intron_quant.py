@@ -292,16 +292,17 @@ class IntronQuantificationStep(AbstractCampareeStep):
         #of "py", strip off "c" so it points to this script.
         intron_quant_path = intron_quant_path.rstrip('c')
 
-        intron_quant_params = {"forward_read_is_sense": self.forward_read_is_sense,
-                               "flank_size": self.flank_size}
+        intron_quant_params = {}
+        intron_quant_params['forward_read_is_sense'] = self.forward_read_is_sense
+        intron_quant_params['flank_size'] = self.flank_size
 
-        command = (f"python {intron_quant_path}",
+        command = (f"python {intron_quant_path}"
                    f" --log_directory_path {self.log_directory_path}"
                    f" --data_directory_path {self.data_directory_path}"
                    f" --bam_file {aligned_file_path}"
                    f" --output_directory {output_directory}"
                    f" --info_file {geneinfo_file_path}"
-                   f" --parameters {json.dumps(intron_quant_params)}")
+                   f" --parameters '{json.dumps(intron_quant_params)}'")
 
         return command
 

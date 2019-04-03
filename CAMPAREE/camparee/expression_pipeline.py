@@ -305,9 +305,9 @@ class ExpressionPipeline:
                                   'stderr_logfile' : stderr_log,
                                   'memory_in_mb' : 6000,
                                   'num_processors' : 1}
-                validation_attributes = variants_finder.get_validation_attributes(output_directory)
+                validation_attributes = intron_quant.get_validation_attributes(output_directory)
                 expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample_id}",
-                                                           job_command="", sample=sample,
+                                                           job_command=command, sample=sample,
                                                            step_name=step_name,
                                                            scheduler_arguments=scheduler_args,
                                                            validation_attributes=validation_attributes,
