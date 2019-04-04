@@ -220,44 +220,65 @@ class ExpressionPipeline:
 
         expression_pipeline_monitor = JobMonitor(self.output_directory_path, self.dispatcher_mode)
 
-        genome_alignment = self.steps['GenomeAlignmentStep']
-
         bam_files = {}
         for sample in self.samples:
-            (bam_file, system_id) = genome_alignment.execute(sample, self.resources_index_files_directory_path,
-                                                             self.star_file_path, self.dispatcher_mode)
+
+            step_name = 'GenomeAlignmentStep'
+            genome_alignment = self.steps[step_name]
+            bam_file = genome_alignment.get_genome_bam_path(sample)
             bam_files[sample.sample_id] = bam_file
-            expression_pipeline_monitor.submit_new_job(job_id=f"GenomeAlignment.{sample.sample_id}",
-                                                       job_command="", sample=sample,
-                                                       step_name='GenomeAlignmentStep',
-                                                       scheduler_arguments=None,
-                                                       validation_attributes=None,
-                                                       output_directory_path=self.output_directory_path,
-                                                       system_id=system_id,
-                                                       dependency_list=None)
-            #TODO: This is a hack to handle the cases where the bam files were
-            #      already present, or the script was run in serial/multicore mode.
-            #      Need to change this to something more legit.
-            if system_id == "ALREADY_ALIGNED" or self.dispatcher_mode != "lsf":
-                expression_pipeline_monitor.mark_job_completed(f"GenomeAlignment.{sample.sample_id}")
 
-
-        genome_index = self.steps['GenomeBamIndexStep']
-
-        for sample in self.samples:
-            if self.dispatcher_mode == "lsf":
-                expression_pipeline_monitor.submit_new_job(job_id=f"GenomeBamIndex.{sample.sample_id}",
-                                                           job_command="", sample=sample,
-                                                           step_name='GenomeBamIndexStep',
-                                                           scheduler_arguments=None,
-                                                           validation_attributes=None,
+            if self.dispatcher_mode == "serial":
+                genome_alignment.execute(sample, self.resources_index_files_directory_path,
+                                         self.star_file_path)
+            else:
+                stdout_log = os.path.join(genome_alignment.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.out")
+                stderr_log = os.path.join(genome_alignment.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.err")
+                command = genome_alignment.get_commandline_call(sample, self.resources_index_files_directory_path,
+                                                                self.star_file_path)
+                scheduler_args = {'job_name' : f"{step_name}.sample{sample.sample_id}_{sample.sample_name}",
+                                  'stdout_logfile' : stdout_log,
+                                  'stderr_logfile' : stderr_log,
+                                  'memory_in_mb' : 40000,
+                                  'num_processors' : 4}
+                validation_attributes = genome_alignment.get_validation_attributes(sample)
+                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample.sample_id}",
+                                                           job_command=command, sample=sample,
+                                                           step_name=step_name,
+                                                           scheduler_arguments=scheduler_args,
+                                                           validation_attributes=validation_attributes,
                                                            output_directory_path=self.output_directory_path,
                                                            system_id=None,
-                                                           dependency_list=[f"GenomeAlignment.{sample.sample_id}"])
+                                                           dependency_list=None)
+
+        for sample in self.samples:
+
+            step_name = 'GenomeBamIndexStep'
+            genome_index = self.steps[step_name]
+            bam_filename = bam_files[sample.sample_id]
+
+            if self.dispatcher_mode == "serial":
+                genome_index.execute(sample, bam_filename)
             else:
-                print(f"Running Bam Index creating in sample {sample.sample_id}")
-                bam_filename = bam_files[sample.sample_id]
-                genome_index.execute(sample, bam_filename, self.dispatcher_mode)
+                stdout_log = os.path.join(genome_index.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.out")
+                stderr_log = os.path.join(genome_index.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.err")
+                command = genome_index.get_commandline_call(sample, bam_filename)
+
+                scheduler_args = {'job_name' : f"{step_name}.sample{sample.sample_id}_{sample.sample_name}",
+                                  'stdout_logfile' : stdout_log,
+                                  'stderr_logfile' : stderr_log,
+                                  'memory_in_mb' : 6000,
+                                  'num_processors' : 1}
+                validation_attributes = genome_index.get_validation_attributes(bam_filename)
+                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample.sample_id}",
+                                                           job_command=command, sample=sample,
+                                                           step_name=step_name,
+                                                           scheduler_arguments=scheduler_args,
+                                                           validation_attributes=validation_attributes,
+                                                           output_directory_path=self.output_directory_path,
+                                                           system_id=None,
+                                                           dependency_list=[f"GenomeAlignmentStep.{sample.sample_id}"])
+
 
         for sample_id, bam_file in bam_files.items():
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
@@ -287,7 +308,7 @@ class ExpressionPipeline:
                                                            validation_attributes=validation_attributes,
                                                            output_directory_path=self.output_directory_path,
                                                            system_id=None,
-                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
+                                                           dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
 
         for sample_id, bam_file in bam_files.items():
             step_name = 'IntronQuantificationStep'
@@ -316,7 +337,7 @@ class ExpressionPipeline:
                                                            validation_attributes=validation_attributes,
                                                            output_directory_path=output_directory,
                                                            system_id=None,
-                                                           dependency_list=[f"GenomeBamIndex.{sample_id}"])
+                                                           dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
                 #TODO: do we need to depend upon the index being done? or just the alignment?
                 #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
                 #      on the same BAM file at the same time, though I don't know why this would be a problem.
@@ -344,6 +365,7 @@ class ExpressionPipeline:
 
                     bam_filename = bam_files[resub_job.sample_id]
 
+                    """
                     if resub_job.step_name == "GenomeAlignmentStep":
                         (bam_file, system_id) = genome_alignment.execute(resub_sample,
                                                                          self.resources_index_files_directory_path,
@@ -352,19 +374,20 @@ class ExpressionPipeline:
                         system_id = genome_index.execute(resub_sample, bam_filename, self.dispatcher_mode)
                     elif resub_job.step_name == "VariantsFinderStep" or \
                          resub_job.step_name == "IntronQuantificationStep":
-                        print(f"Submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
+                    """
+                    print(f"Submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
-                        #Use unpacking to provide arguments for job submission
-                        system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=resub_job.job_command,
-                                                                                         **resub_job.scheduler_arguments)
-                        if system_id == "ERROR":
-                            print(f"Job submission failed for {resub_job.step_name}:\n",
-                                  f"   Job sample: {resub_sample.sample_name}\n",
-                                  f"   Scheduler parameters: {resub_job.scheduler_arguments}\n",
-                                  f"   Job command: {resub_job.job_command}\n",
-                                  file=sys.stderr)
-                            raise CampareeException(f"Job submission failed for {resub_job.step_name}. ",
-                                                    "See expression pipeline log file for full details.")
+                    #Use unpacking to provide arguments for job submission
+                    system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=resub_job.job_command,
+                                                                                     **resub_job.scheduler_arguments)
+                    if system_id == "ERROR":
+                        print(f"Job submission failed for {resub_job.step_name}:\n",
+                              f"   Job sample: {resub_sample.sample_name}\n",
+                              f"   Scheduler parameters: {resub_job.scheduler_arguments}\n",
+                              f"   Job command: {resub_job.job_command}\n",
+                              file=sys.stderr)
+                        raise CampareeException(f"Job submission failed for {resub_job.step_name}. ",
+                                                "See expression pipeline log file for full details.")
 
                         print(f"Finished submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
@@ -382,6 +405,7 @@ class ExpressionPipeline:
 
                         bam_filename = bam_files[pend_job.sample_id]
 
+                        """
                         if pend_job.step_name == "GenomeAlignmentStep":
                             (bam_file, system_id) = genome_alignment.execute(pend_sample,
                                                                              self.resources_index_files_directory_path,
@@ -390,22 +414,22 @@ class ExpressionPipeline:
                             system_id = genome_index.execute(pend_sample, bam_filename, self.dispatcher_mode)
                         elif pend_job.step_name == "VariantsFinderStep" or \
                              pend_job.step_name == "IntronQuantificationStep":
-                            print(f"Submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
+                        """
+                        print(f"Submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
-                            #Use unpacking to provide arguments for job submission
-                            system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=pend_job.job_command,
-                                                                                             **pend_job.scheduler_arguments)
-                            if system_id == "ERROR":
-                                print(f"Job submission failed for {pend_job.step_name}:\n",
-                                      f"   Job sample: {pend_sample.sample_name}\n",
-                                      f"   Scheduler parameters: {pend_job.scheduler_arguments}\n",
-                                      f"   Job command: {pend_job.job_command}\n",
-                                      file=sys.stderr)
-                                raise CampareeException(f"Job submission failed for {pend_job.step_name}. ",
-                                                        "See expression pipeline log file for full details.")
+                        #Use unpacking to provide arguments for job submission
+                        system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=pend_job.job_command,
+                                                                                         **pend_job.scheduler_arguments)
+                        if system_id == "ERROR":
+                            print(f"Job submission failed for {pend_job.step_name}:\n",
+                                  f"   Job sample: {pend_sample.sample_name}\n",
+                                  f"   Scheduler parameters: {pend_job.scheduler_arguments}\n",
+                                  f"   Job command: {pend_job.job_command}\n",
+                                  file=sys.stderr)
+                            raise CampareeException(f"Job submission failed for {pend_job.step_name}. ",
+                                                    "See expression pipeline log file for full details.")
 
-                            print(f"Finished submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
-
+                        print(f"Finished submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
                         # Finish submission
                         expression_pipeline_monitor.submit_pending_job(pend_job_id, system_id)
