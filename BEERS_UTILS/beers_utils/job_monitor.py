@@ -1,7 +1,6 @@
 import os
-import re
-import importlib
-import subprocess
+import sys
+import time
 from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers_utils.general_utils import BeersUtilsException
 import beers_utils.job_scheduler_provider
@@ -87,14 +86,108 @@ class JobMonitor:
         #      function finishes).
 
     def mark_job_completed(self, job_id):
+        """
+        Move job from running queue to completed queue.
+
+        Parameters
+        ----------
+        job_id : string
+            Internal BEERS ID that uniquely identifies this job.
+
+        """
         self.completed_list[job_id] = self.running_list[job_id]
         del self.running_list[job_id]
 
     def mark_job_for_resubmission(self, job_id):
+        """
+        Move job from running queue to resubmission queue.
+
+        Parameters
+        ----------
+        job_id : string
+            Internal BEERS ID that uniquely identifies this job.
+
+        """
         self.resubmission_list[job_id] = self.running_list[job_id]
         #Remove job from the process list so it can be replaced with a new entry
         #in the process list rollowing resubmission.
         del self.running_list[job_id]
+
+    def monitor_until_all_jobs_completed(self, queue_update_interval=10):
+        """
+        Monitor until all jobs in the pending, running, and resubmission queues
+        have completed. This method performs the following job queue operations:
+            1) Submit pending jobs as their dependencies are satisfied
+            2) Mark and resubmit failed jobs.
+            3) Move jobs to completed queue as they finish.
+
+        Parameters
+        ----------
+        queue_update_interval : int
+            Number of second to wait after checking and updating all jobs on the
+            queues, before checking again.
+
+        """
+
+        while not self.is_processing_complete():
+            #Check for jobs requiring resubmission
+            resubmission_jobs = self.resubmission_list.copy()
+            if resubmission_jobs:
+                print(f"Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.")
+                for resub_job_id, resub_job in resubmission_jobs.items():
+                    resub_sample = self.get_sample(resub_job.sample_id)
+
+                    print(f"Submitting {resub_job.step_name} command to {self.scheduler_name} "
+                          f"for sample {resub_sample.sample_name}.")
+
+                    #Use unpacking to provide arguments for job submission
+                    system_id = self.job_scheduler.submit_job(job_command=resub_job.job_command,
+                                                              **resub_job.scheduler_arguments)
+                    if system_id == "ERROR":
+                        print(f"Job submission failed for {resub_job.step_name}:\n",
+                              f"   Job sample: {resub_sample.sample_name}\n",
+                              f"   Scheduler parameters: {resub_job.scheduler_arguments}\n",
+                              f"   Job command: {resub_job.job_command}\n",
+                              file=sys.stderr)
+                        raise JobMonitorException(f"Job submission failed for {resub_job.step_name}. "
+                                                  f"See log files for full details.")
+
+                    print(f"Finished submitting {resub_job.step_name} command to "
+                          f"{self.scheduler_name} for sample {resub_sample.sample_name}.")
+
+
+                    # Finish resubmission
+                    self.resubmit_job(resub_job_id, system_id)
+
+            #Check if pending jobs have satisfied their dependencies
+            pending_jobs = self.pending_list.copy()
+            if pending_jobs:
+                print(f"Check {len(pending_jobs)} pending jobs for satisfied dependencies:")
+                for pend_job_id, pend_job in pending_jobs.items():
+                    if self.are_dependencies_satisfied(pend_job_id):
+                        pend_sample = self.get_sample(pend_job.sample_id)
+
+                        print(f"Submitting {pend_job.step_name} command to {self.scheduler_name} "
+                              f"for sample {pend_sample.sample_name}.")
+
+                        #Use unpacking to provide arguments for job submission
+                        system_id = self.job_scheduler.submit_job(job_command=pend_job.job_command,
+                                                                  **pend_job.scheduler_arguments)
+                        if system_id == "ERROR":
+                            print(f"Job submission failed for {pend_job.step_name}:\n",
+                                  f"   Job sample: {pend_sample.sample_name}\n",
+                                  f"   Scheduler parameters: {pend_job.scheduler_arguments}\n",
+                                  f"   Job command: {pend_job.job_command}\n",
+                                  file=sys.stderr)
+                            raise JobMonitorException(f"Job submission failed for {pend_job.step_name}. "
+                                                      f"See expression pipeline log file for full details.")
+
+                        print(f"Finished submitting {pend_job.step_name} command to "
+                              f"{self.scheduler_name} for sample {pend_sample.sample_name}.")
+
+                        # Finish submission
+                        self.submit_pending_job(pend_job_id, system_id)
+            time.sleep(queue_update_interval)
 
     def submit_new_job(self, job_id, job_command, sample, step_name, scheduler_arguments,
                        validation_attributes, output_directory_path, system_id=None,
@@ -318,8 +411,8 @@ class Job:
             List of BEERS job IDs that this job is dependent upon (i.e. this
             job will wait until all those on the dependency list have completed).
             Empty list or "None" if there are no dependencies [default].
-        """
 
+        """
         self.job_id = job_id
         self.sample_id = sample_id
         self.job_command = job_command
@@ -332,7 +425,7 @@ class Job:
 
         if scheduler_name not in SUPPORTED_DISPATCHER_MODES:
             raise BeersUtilsException(f'{scheduler_name} is not a supported mode.\n'
-                                      'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
+                                      f'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         else:
             self.scheduler_name = scheduler_name
 
@@ -382,8 +475,8 @@ class Job:
                 STALLED - job running without any change in output files for longer than threshold time.
                 COMPLETED - job finished successfully with complete output files.
                 WAITING_FOR_DEPENDENCY - job not submitted and waiting for dependency to complete.
-        """
 
+        """
         job_status = "SUBMITTED"
 
         if self.system_id is None:
@@ -417,7 +510,7 @@ class Job:
                     if pipeline_step.is_output_valid(self.validation_attributes):
                         job_status = "COMPLETED"
                     else:
-                        job_status="FAILED"
+                        job_status = "FAILED"
 
                 else:
                     raise NotImplementedError()

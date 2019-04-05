@@ -343,78 +343,9 @@ class ExpressionPipeline:
                 #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
                 #      on the same BAM file at the same time, though I don't know why this would be a problem.
 
-
-
-        #TODO: Create a generalized job submitter framework for the steps in
-        #      this pipeline. Given a sample object , and the step name, we should
-        #      be able to call a single function which will perform the step-
-        #      specific code to launch each job and return a system id (or
-        #      perhaps even handles queuing to the job monitor itself). This will
-        #      cut down on the code redundancy between the rest of the script and
-        #      the loop below.
-        #Wait here until all of the preceding steps have finished. Submit any
-        #jobs that were waiting on dependencies to complete and resubmit any
-        #failed jobs.
+        #Wait here until all of the preceding steps have finished.
         print(f'Waiting until all samples finish processing before running Beagle.')
-        while not expression_pipeline_monitor.is_processing_complete():
-            #Check for jobs requiring resubmission
-            resubmission_jobs = expression_pipeline_monitor.resubmission_list.copy()
-            if resubmission_jobs:
-                print(f"Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.")
-                for resub_job_id, resub_job in resubmission_jobs.items():
-                    resub_sample = expression_pipeline_monitor.get_sample(resub_job.sample_id)
-
-                    bam_filename = bam_files[resub_job.sample_id]
-
-                    print(f"Submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
-
-                    #Use unpacking to provide arguments for job submission
-                    system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=resub_job.job_command,
-                                                                                     **resub_job.scheduler_arguments)
-                    if system_id == "ERROR":
-                        print(f"Job submission failed for {resub_job.step_name}:\n",
-                              f"   Job sample: {resub_sample.sample_name}\n",
-                              f"   Scheduler parameters: {resub_job.scheduler_arguments}\n",
-                              f"   Job command: {resub_job.job_command}\n",
-                              file=sys.stderr)
-                        raise CampareeException(f"Job submission failed for {resub_job.step_name}. ",
-                                                "See expression pipeline log file for full details.")
-
-                    print(f"Finished submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
-
-
-                    # Finish resubmission
-                    expression_pipeline_monitor.resubmit_job(resub_job_id, system_id)
-
-            #Check if pending jobs have satisfied their dependencies
-            pending_jobs = expression_pipeline_monitor.pending_list.copy()
-            if pending_jobs:
-                print(f"Check {len(pending_jobs)} pending jobs for satisfied dependencies:")
-                for pend_job_id, pend_job in pending_jobs.items():
-                    if expression_pipeline_monitor.are_dependencies_satisfied(pend_job_id):
-                        pend_sample = expression_pipeline_monitor.get_sample(pend_job.sample_id)
-
-                        bam_filename = bam_files[pend_job.sample_id]
-
-                        print(f"Submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
-
-                        #Use unpacking to provide arguments for job submission
-                        system_id = expression_pipeline_monitor.job_scheduler.submit_job(job_command=pend_job.job_command,
-                                                                                         **pend_job.scheduler_arguments)
-                        if system_id == "ERROR":
-                            print(f"Job submission failed for {pend_job.step_name}:\n",
-                                  f"   Job sample: {pend_sample.sample_name}\n",
-                                  f"   Scheduler parameters: {pend_job.scheduler_arguments}\n",
-                                  f"   Job command: {pend_job.job_command}\n",
-                                  file=sys.stderr)
-                            raise CampareeException(f"Job submission failed for {pend_job.step_name}. ",
-                                                    "See expression pipeline log file for full details.")
-
-                        print(f"Finished submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
-
-                        # Finish submission
-                        expression_pipeline_monitor.submit_pending_job(pend_job_id, system_id)
-            time.sleep(10)
+        expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
         variants_compilation = self.steps['VariantsCompilationStep']
         variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
