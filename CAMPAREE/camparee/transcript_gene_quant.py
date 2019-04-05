@@ -69,8 +69,8 @@ class TranscriptGeneQuantificationStep:
                     continue
                 line = line.rstrip('\n').split('\t')
                 transcript_id = line[0].split(':')[0]
-                transcript_tpm = float(line[4])
-                self.transcript_final_count[transcript_id] = transcript_tpm
+                transcript_fpk = float(line[3]) / float(line[2]) * 1000 # est_counts / eff_length * 1000 = FPK
+                self.transcript_final_count[transcript_id] = transcript_fpk
 
         # Write the transcript quantification information to transcript quant filename
         with open(self.transcript_dist_filename, 'w') as transcript_dist_file:
