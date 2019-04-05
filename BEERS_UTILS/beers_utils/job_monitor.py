@@ -13,7 +13,13 @@ class JobMonitor:
     (either due to success or error/failure).
     """
 
-    def __init__(self, output_directory_path, dispatcher_mode):
+    #Hash mapping step names (keys) to AbstractPipelineStep objects (values).
+    #Used in code checking job output validity. Provides generalized way of
+    #retrieving job-specific Class objects to run static methods when validating
+    #job output.
+    PIPELINE_STEPS = {}
+
+    def __init__(self, output_directory_path, scheduler_name):
         """
         Initialize the monitor to track a specific set of jobs/processes running on
         a list of corresponding samples.
@@ -22,7 +28,7 @@ class JobMonitor:
         ----------
         output_directory_path : string
             Path to data directory where job/process output is being stored.
-        dispatcher_mode : string
+        scheduler_name : string
             The mode used to submit the jobs/processes to the scheduler.
         """
         self.output_directory = output_directory_path
@@ -39,8 +45,8 @@ class JobMonitor:
         #Stores list of samples in dictionary indexed by sample ID.
         self.samples_by_ids = {}
 
-        self.dispatcher_mode = dispatcher_mode
-        self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(dispatcher_mode)
+        self.scheduler_name = scheduler_name
+        self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
 
     def is_processing_complete(self):
         """
@@ -59,7 +65,7 @@ class JobMonitor:
         #that if/when the code below removes jobs from the running_list it won't
         #cause python to throw a "dictionary changed size during iteration" error.
         for job_id, job in dict(self.running_list).items():
-            job_status = job.check_job_status()
+            job_status = job.check_job_status(self.job_scheduler)
             if job_status == "FAILED":
                 self.mark_job_for_resubmission(job_id)
             elif job_status == "COMPLETED":
@@ -136,7 +142,7 @@ class JobMonitor:
         """
         submitted_job = Job(job_id, job_command, sample.sample_id, step_name,
                             scheduler_arguments, validation_attributes,
-                            output_directory_path, self.dispatcher_mode,
+                            output_directory_path, self.scheduler_name,
                             system_id, dependency_list)
         #TODO: Condsider whether to add a check to see if both a system_id and
         #      a dependency list is provided (and throw an expection if both or
@@ -254,8 +260,6 @@ class Job:
     job to the scheduler.
     """
 
-    #Regular expression for parsion bjobs output (including header)
-    LSF_BJOBS_OUTPUT_PATTERN = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
     #List of valid outputs from job status-reporting methods. This is a guide
     #for future development and users who wish to add custom status-checking
     #methods.
@@ -266,7 +270,7 @@ class Job:
                           'WAITING_FOR_DEPENDENCY'] #job not submitted and waiting for dependency to complete.
 
     def __init__(self, job_id, job_command, sample_id, step_name, scheduler_arguments,
-                 validation_attributes, output_directory_path, dispatcher_mode,
+                 validation_attributes, output_directory_path, scheduler_name,
                  system_id=None, dependency_list=None):
         """
         Initialize job to track the status of a step/operation running on the
@@ -300,7 +304,7 @@ class Job:
             of any output files or parameters.
         output_directory_path : string
             Path to data directory where job/process output is being stored.
-        dispatcher_mode : string
+        scheduler_name : string
             The mode used to submit the jobs/processes. Currently supports
             {",".join(SUPPORTED_DISPATCHER_MODES)}.
         system_id : string
@@ -326,11 +330,11 @@ class Job:
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
         self.data_directory = os.path.join(self.output_directory, CONSTANTS.DATA_DIRECTORY_NAME)
 
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise BeersUtilsException(f'{dispatcher_mode} is not a supported mode.\n'
+        if scheduler_name not in SUPPORTED_DISPATCHER_MODES:
+            raise BeersUtilsException(f'{scheduler_name} is not a supported mode.\n'
                                       'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         else:
-            self.dispatcher_mode = dispatcher_mode
+            self.scheduler_name = scheduler_name
 
         self.system_id = system_id
         self.dependency_list = set()
@@ -357,10 +361,17 @@ class Job:
         for job_id in dependency_job_ids:
             self.dependency_list.add(job_id)
 
-    def check_job_status(self):
+    def check_job_status(self, scheduler=None):
         """
         Determine job's current run status based on system's job handler status
         and the job's output files.
+
+        Parameters
+        ----------
+        scheduler : AbstractJobScheduler
+            Interface to the system's job scheduler currently tracking the job.
+            If no job scheduler provided, the method assumes the job is running
+            in locally in serial mode [default].
 
         Returns
         -------
@@ -377,77 +388,38 @@ class Job:
 
         if self.system_id is None:
             job_status = "WAITING_FOR_DEPENDENCY"
-        elif self.dispatcher_mode == "serial" or self.dispatcher_mode == "parallel":
+        elif self.scheduler_name == "serial" or self.scheduler_name == "parallel" or not scheduler:
             job_status = "COMPLETED"
-        elif self.dispatcher_mode == "lsf":
+        else:
 
-            result = subprocess.run(' '.join([f"bjobs {self.system_id}"]), shell=True, check=True, stdout=subprocess.PIPE, encoding="ascii")
+            scheduler_job_status = scheduler.check_job_status(self.system_id)
 
-            #Here's some code just using string split to try to get job status
-            #Skip first line bjobs output, since it just contains the header info.
-            #job_status = result.stdout.split("\n")[1].split()[2]
+            if scheduler_job_status == "RUNNING" or scheduler_job_status == "PENDING":
+                job_status = "SUBMITTED"
+            elif scheduler_job_status == "FAILED":
+                job_status = "FAILED"
+            elif scheduler_job_status == "COMPLETED":
 
-            if Job.LSF_BJOBS_OUTPUT_PATTERN.match(result.stdout):
-                lsf_job_status = Job.LSF_BJOBS_OUTPUT_PATTERN.match(result.stdout).group("job_status")
+                #TODO: To clean up the code, we should probably create
+                #      separate methods to check the status of various steps,
+                #      rather than build them all in here. This code will
+                #      check the name of the step and call the appropriate
+                #      one of these methods.
 
+                #Check output files
+                if self.step_name == "GenomeAlignmentStep" or \
+                   self.step_name == "GenomeBamIndexStep" or \
+                   self.step_name == "VariantsFinderStep" or \
+                   self.step_name == "IntronQuantificationStep":
 
-                #Job still waiting or is currently running, so we don't care.
-                #TODO: If jobs remain in either state for too long, resubmit,
-                #      or check output/log files (in the case of RUN) for their
-                #      their last update. If too much time has passed during
-                #      an update, might need to resubmit jobs.
-                if lsf_job_status == "PEND" or lsf_job_status == "RUN" or lsf_job_status == "WAIT":
-                    pass
-                elif lsf_job_status == "EXIT":
-                    job_status = "FAILED"
-                elif lsf_job_status == "DONE":
-                    #TODO: To clean up the code, we should probably create
-                    #      separate methods to check the status of various steps,
-                    #      rather than build them all in here. This code will
-                    #      check the name of the step and call the appropriate
-                    #      one of these methods.
+                    pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 
-                    #Check output files
-                    if self.step_name == "GenomeAlignmentStep":
-                        aligner_log_file_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "genome_alignment.Log.progress.out")
-                        #Read last line in aligner log file
-                        line = ""
-                        with open(aligner_log_file_path, "r") as aligner_log_file:
-                            for line in aligner_log_file:
-                                line = line.rstrip()
-                        if line == "ALL DONE!":
-                            job_status = "COMPLETED"
-                        else:
-                            job_status = "FAILED"
-                    elif self.step_name == "GenomeBamIndexStep":
-                        index_file_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "genome_alignment.Aligned.sortedByCoord.out.bam.bai")
-                        if os.path.isfile(index_file_path):
-                            job_status = "COMPLETED"
-                        else:
-                            job_status = "FAILED"
-                    elif self.step_name == "VariantsFinderStep":
-                        #TODO: make this more general, so a single block of code can call
-                        #the is_output_valid function for an arbitrary function.
-                        module = importlib.import_module(f'.variants_finder', package="camparee")
-                        VariantsFinderStep = getattr(module, self.step_name)
-                        if VariantsFinderStep.is_output_valid(self.validation_attributes):
-                            job_status = "COMPLETED"
-                        else:
-                            job_status = "FAILED"
-                    elif self.step_name == "IntronQuantificationStep":
-                        # TODO: do proper validation here
-                        from camparee.intron_quant import IntronQuantificationStep
-                        status = IntronQuantificationStep.is_output_valid({})
-                        if status:
-                            job_status = "COMPLETED"
-                        else:
-                            job_status = "FAILED"
+                    if pipeline_step.is_output_valid(self.validation_attributes):
+                        job_status = "COMPLETED"
                     else:
-                        raise NotImplementedError()
+                        job_status="FAILED"
+
                 else:
-                    #TODO: Handle all other possible status messages from bjobs. Search
-                    #      the bjobs manpage for "JOB STATUS" to find the full list and
-                    #      explanation of all job status values.
                     raise NotImplementedError()
 
             #TODO: Right now I'm just assuming anything that isn't found by bjobs
@@ -458,9 +430,6 @@ class Job:
             #      that something did go wrong.
             else:
                 job_status = "FAILED"
-        else:
-            #TODO: generalize code, implement code for other steps, or both.
-            raise NotImplementedError()
 
         return job_status
 
