@@ -191,10 +191,28 @@ class IntronQuantificationStep:
                                 self.intron_normalized_antisense_counts[other_intron] = min(other_counts - antisense_count, 0)
 
         # Transcript-level intron quantifications
-        for intron, count in self.intron_normalized_counts.items():
-            self.transcript_intron_counts[intron.transcript] += count
-        for intron, count in self.intron_normalized_antisense_counts.items():
-            self.transcript_intron_antisense_counts[intron.transcript] += count
+        for transcript in self.info.transcripts:
+            # flanks are first-and-last introns
+            # But for now we do not use them to quantify the total transcript-level
+            # intron counts since they are not really introns but are very long and so
+            # throw off the intron length normalization
+            non_flank_introns = transcript.introns[1:-1]
+            sense_counts = 0
+            antisense_counts = 0
+            total_length = 0
+            for intron in non_flank_introns:
+                # We use normalized_counts here and then "unnormalize" them by effective length since we have 
+                # already performed the correction of the above section (removing non-primary intron counts)
+                sense_counts  += self.intron_normalized_counts[intron] * intron.effective_length
+                antisense_counts  += self.intron_normalized_antisense_counts[intron] * intron.effective_length
+                total_length += intron.effective_length
+
+            if total_length == 0:
+                self.transcript_intron_counts[transcript] = 0
+                self.transcript_intron_antisense_counts[transcript] = 0
+            else:
+                self.transcript_intron_counts[transcript] = sense_counts / total_length
+                self.transcript_intron_antisense_counts[transcript] = antisense_counts / total_length
 
         # Write out the results to output file
         # SENSE INTRON OUTPUT
