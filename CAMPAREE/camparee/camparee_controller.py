@@ -1,6 +1,7 @@
 import json
 import time
 import glob
+import yaml
 import numpy as np
 import termcolor
 import os
@@ -39,7 +40,6 @@ class CampareeController:
         self.dispatcher = None
         self.configuration = None
         self.resources = None
-        self.controller_configuration = None
         self.seed = None
         self.output_directory_path = None
         self.input_samples = []
@@ -60,18 +60,18 @@ class CampareeController:
         #we may want to move this check elsewhere.
         dispatcher_mode = ""
         if not args.dispatcher_mode:
-            if not self.controller_configuration.get('dispatcher_mode', None):
+            if not self.configuration['setup'].get('dispatcher_mode', None):
                 raise CampareeValidationException('No dispatcher_mode given either on the command line'
                                                   ' or in the configuration file')
-            dispatcher_mode = self.controller_configuration['dispatcher_mode']
+            dispatcher_mode = self.configuration['setup']['dispatcher_mode']
         else:
             dispatcher_mode = args.dispatcher_mode
         if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
             raise CampareeValidationException(f'{dispatcher_mode} is not a supported mode.\n'
                                               'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         self.assemble_input_samples()
-        ExpressionPipeline.main(self.configuration['expression_pipeline'], dispatcher_mode,
-                                self.resources, os.path.join(self.output_directory_path,stage_name),
+        ExpressionPipeline.main(self.configuration, dispatcher_mode,
+                                os.path.join(self.output_directory_path,stage_name),
                                 self.input_samples)
 
     def perform_setup(self, args, stage_names):
@@ -105,11 +105,12 @@ class CampareeController:
         controller is set to a separate dictionary also attached to the controller.
         :param configuration_file_path: The absolute file path of the configuration file
         """
-        with open(configuration_file_path, "r+") as configuration_file:
-            self.configuration = json.load(configuration_file)
-        self.controller_configuration = self.configuration[self.controller_name]
-        self.resources = self.configuration[self.resources_name]
-        self.resources['resources_folder'] = os.path.join(CampareeController.CAMPAREE_ROOT_DIR, "resources")
+        with open(configuration_file_path, 'r+') as configuration_file:
+            try:
+                self.configuration = yaml.load(configuration_file, Loader=yaml.FullLoader)
+            except yaml.YAMLError as ye:
+                raise CampareeValidationException(ye)
+        self.resources = self.configuration['resources']
 
     def set_run_id(self, run_id):
         """
@@ -119,10 +120,10 @@ class CampareeController:
         :param run_id: The run id found on the command line, if any.
         """
         if not run_id:
-            if not self.controller_configuration['run_id']:
+            if not self.configuration['setup']['run_id']:
                 raise CampareeValidationException('No run id given either on the command line'
                                                   ' or in the configuration file')
-            self.run_id = self.controller_configuration['run_id']
+            self.run_id = self.configuration['setup']['run_id']
         else:
             self.run_id = run_id
 
@@ -132,7 +133,7 @@ class CampareeController:
         no seed is provided by the user and then set it.  The seed will be added to the controller log file created for
         this run so that the user may re-create the run exactly at a later date, assuming all else remains the same.
         """
-        self.seed = self.controller_configuration.get('seed', GeneralUtils.generate_seed())
+        self.seed = self.configuration['setup'].get('seed', GeneralUtils.generate_seed())
         np.random.seed(self.seed)
 
     def create_output_folder_structure(self, stage_names):
@@ -147,7 +148,7 @@ class CampareeController:
         :param stage_names: names of folders directly below the top level output directory (e.g., controller,
         library_prep)
         """
-        self.output_directory_path = f"{self.controller_configuration['output_directory_path']}_run{self.run_id}"
+        self.output_directory_path = f"{self.configuration['output']['directory_path']}_run{self.run_id}"
         if not os.path.exists(self.output_directory_path):
             try:
                 os.makedirs(self.output_directory_path, mode=0o0755, exist_ok=True)
@@ -191,9 +192,9 @@ class CampareeController:
         :return: True is valid and false otherwise.
         """
         valid = True
-        input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
+        input_directory_path = self.configuration["input"]["directory_path"]
         self.input_samples = []
-        for input_sample in self.configuration['expression_pipeline']["input"]["data"].values():
+        for input_sample in self.configuration["input"]["data"].values():
             input_files = copy.copy(input_sample["fastq_files"])
             if "bam_file" in input_sample:
                 input_files.append(input_sample["bam_file"])
@@ -226,13 +227,13 @@ class CampareeController:
         or may not be provided in the configuration data.  If not set, the gender will be inferred by the expression
         pipeline.
         """
-        input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
+        input_directory_path = self.configuration["input"]["directory_path"]
         self.input_samples = []
         # TODO handle the situation where the adapter kit is not specified or not found
         # The kit is really only needed for library prep.  So if the expression pipeline does not generate
         # molecule packets, we could postpone this step until when that assembly occurs.  But we don't want to
         # make the addition to thousands of molecule packets after the fact.
-        for sample_name, input_sample in self.configuration['expression_pipeline']["input"]["data"].items():
+        for sample_name, input_sample in self.configuration["input"]["data"].items():
             #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
             fastq_file_paths = [os.path.join(input_directory_path, filename)
                                        for filename in input_sample["fastq_files"]]

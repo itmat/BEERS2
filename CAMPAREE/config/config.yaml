@@ -1,0 +1,27 @@
+# Configuration File for CAMPAREE
+# Default configuration is for the including Baby mouse genome.
+setup:
+    run_id: null
+    seed: 100
+    dispatcher_mode: lsf
+resources:
+    directory_path: /home/crisl/beers_project/BEERS2.0/CAMPAREE/resources
+    species_model: baby_genome.mm10
+    reference_genome_filename: baby_genome.mm10.oneline_seqs.fa
+    chr_ploidy_filename: baby_genome.mm10.chr_ploidy.txt
+    annotation_filename: annotations
+input:
+    directory_path: /project/itmatlab/for_cris/Baby.Test_mouse_samples/data/expression/baby_genome.mm9/
+    data: {'9576': {fastq_files: [9576_forward.fq.gz, 9576_reverse.fq.gz], gender: male}, '9577': {fastq_files: [9577_forward.fq.gz, 9577_reverse.fq.gz], gender: male}}
+output:
+    directory_path: /home/crisl/beers_project/BEERS2.0/data/
+    type: molecule_file
+    molecule_count: 50000
+steps:
+    - {step_name: genome_alignment.GenomeAlignmentStep, parameters: {'--runThreadN': 4, '--outFilterMismatchNmax': 33, '--seedSearchStartLmax': 33, '--alignSJoverhangMin': 8, '--readFilesCommand': zcat, '--outSAMstrandField': intronMotif, '--limitOutSJcollapsed': 1000000, '--limitSjdbInsertNsj': 1000000, '--outFilterMultimapNmax': 10, '--outFilterMismatchNoverLmax': 0.3, '--alignEndsType': Local}}
+    - {step_name: variants_finder.VariantsFinderStep, parameters: {sort_by_entropy: false, min_threshold: 0.03}}
+    - {step_name: variants_compilation.VariantsCompilationStep}
+    - {step_name: beagle.BeagleStep}
+    - {step_name: genome_builder.GenomeBuilderStep, parameters: {ignore_indels: false, ignore_snps: false}}
+    - {step_name: update_annotation_for_genome.UpdateAnnotationForGenomeStep}
+    - {step_name: intron_quant.IntronQuantificationStep, parameters: {forward_read_is_sense: false, flank_size: 1500}}

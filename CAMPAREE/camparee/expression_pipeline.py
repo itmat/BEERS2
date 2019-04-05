@@ -20,7 +20,7 @@ class ExpressionPipeline:
     finding, parental genome construction, annotation, quantification and generation of transcripts and finally the
     generation of packets of molecules that may be used to simulate RNA sequencing.
     """
-    def __init__(self, configuration, dispatcher_mode, resources, output_directory_path, input_samples):
+    def __init__(self, configuration, dispatcher_mode, output_directory_path, input_samples):
         self.dispatcher_mode = dispatcher_mode
         self.samples = input_samples
         self.output_directory_path = output_directory_path
@@ -46,7 +46,8 @@ class ExpressionPipeline:
             self.__step_paths[step_name] = inspect.getfile(module)
             JobMonitor.PIPELINE_STEPS[step_name] = step_class
         valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, \
-            kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path = self.validate_and_gather_resources(resources)
+            kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path =\
+            self.validate_and_gather_resources(configuration['resources'])
         if not valid:
             raise CampareeValidationException("The resources data is not completely valid."
                                               "  Consult the standard error file for details.")
@@ -88,7 +89,7 @@ class ExpressionPipeline:
             valid = False
         else:
             resources_index_files_directory_path = \
-                os.path.join(resources['resources_folder'], "index_files", resources['species_model'])
+                os.path.join(resources['directory_path'], "index_files", resources['species_model'])
             if not(os.path.exists(resources_index_files_directory_path) and
                    os.path.isdir(resources_index_files_directory_path)):
                 print(f"The index files directory, {resources_index_files_directory_path}, must exist as a directory",
@@ -131,7 +132,7 @@ class ExpressionPipeline:
                         print(f"The annotation file path, {annotation_file_path} must exist as a file",
                               file=sys.stderr)
                         valid = False
-        third_party_software_directory_path = os.path.join(resources['resources_folder'], "third_party_software")
+        third_party_software_directory_path = os.path.join(resources['directory_path'], "third_party_software")
         if not (os.path.exists(third_party_software_directory_path) and
                 os.path.isdir(third_party_software_directory_path)):
                     print(f"The third party software directory path , {third_party_software_directory_path}, must exist"
@@ -476,8 +477,8 @@ class ExpressionPipeline:
         return seeds
 
     @staticmethod
-    def main(configuration, dispatcher_mode, resources, output_directory_path, input_samples):
-        pipeline = ExpressionPipeline(configuration, dispatcher_mode, resources, output_directory_path, input_samples)
+    def main(configuration, dispatcher_mode, output_directory_path, input_samples):
+        pipeline = ExpressionPipeline(configuration, dispatcher_mode, output_directory_path, input_samples)
         if not pipeline.validate():
             raise CampareeValidationException("Expression Pipeline Validation Failed.  "
                                               "Consult the standard error file for details.")

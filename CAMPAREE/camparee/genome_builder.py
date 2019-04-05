@@ -271,7 +271,16 @@ class GenomeBuilderStep:
     def make_paired_chromosome(self, chromosome, sample_index):
         """
         Here, the beagle data for the given sample is threaded together with the reference sequence to create a
-        custom sequence for the given chromosome
+        custom sequence for the given chromosome.  Below is a snippet of a beagle vcf file for 6 samples along with
+        a header.
+
+        #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  sample1 sample2 sample3 sample4 sample5 sample6
+        ...
+        chr1    257558  .       A       G       .       PASS    .       GT      0|1     0|0     0|0     0|0     0|0     0|0
+        chr1    257559  .       G       C,GAG   .       PASS    .       GT      0|1     0|2     0|0     0|0     0|0     0|0
+        chr1    257560  .       C       A       .       PASS    .       GT      1|0     1|0     0|0     1|0     0|0     0|0
+        chr1    257570  .       C       CAA,CA  .       PASS    .       GT      1|0     0|0     0|0     0|0     0|1     2|0
+
         :param chromosome: The chromosome for which the reference sequence is altered by beagle data.
         :param sample_index: identifies the position of the subject sample in the beagle data.
         """
@@ -298,6 +307,9 @@ class GenomeBuilderStep:
                     beagle_chromosome, position, _, ref, alts, *others = fields
                     position = int(position)
                     alts = alts.split(',')
+
+                    # Collect alt, ref selections for this sample where 0 = ref and > 0 = alt (i.e., 0/1 = ref for 1st
+                    # parent chr and alt for 2nd while 1/2 = 1st alt for 1st parent chr and 2nd alt for 2nd, etc.)
                     sample = fields[sample_index].strip().split('|')
                     alt_indexes = [int(s) for s in sample]
 
@@ -319,17 +331,23 @@ class GenomeBuilderStep:
                                            f" {genome.position + genome.offset} to genome_{genome.name}\n")
                             genome.append_segment(reference_sequence[genome.position + genome.offset: position])
 
+                        # Identify alt or ref for current parent
                         alt_index = alt_indexes[genome_index]
+
+                        # Apply the ref or alt as appropriate
                         if alt_index == 0:
                             genome.append_segment(ref)
                         else:
+                            # Get the appropriate alt as given by the index - 1 (since the 1st alt is given by 1)
                             alt = alts[alt_index-1]
 
+                            # Apply a snp alt only if the ignore_snps parameter is not set
                             if len(alt) == len(ref):
                                 if self.ignore_snps:
                                     genome.append_segment(ref)
                                 else:
                                     genome.append_segment(alt)
+                            # Otherwise, apply only if the ignore_indels parameter is not set
                             else:
                                 if self.ignore_indels:
                                     genome.append_segment(ref)
@@ -372,6 +390,17 @@ class Genome:
         self.genome_output_filename = genome_output_file_stem + '_' + self.name + ".fa"
         self.genome_indels_filename = genome_output_file_stem + '_indels_' + self.name + ".txt"
         self.indels_file = open(self.genome_indels_filename, 'a')
+        self.genome_mapper_filename = genome_output_file_stem + '_to_parental_coordinate_mapping_' + self.name + ".txt"
+        self.mapper_file = open(self.genome_mapper_filename, 'a')
+
+        # These variables are used to control the mapper.  The last construct indicates what the last construct event
+        # was (A = append, I = insert, D = delete).  The placeholders for the reference and this genome indicate where
+        # the last append after an insert or delete started so we can mash all consecutive appends (due to snps)
+        # together.
+        #self.mapper_file.write("#CHR\tREF GENOME\tNEW GENOME\n")
+        self.last_construct = "A"
+        self.ref_placeholder = 0
+        self.gen_placeholder = 0
 
     def append_segment(self, sequence):
         """
@@ -382,6 +411,10 @@ class Genome:
         remains unchangeed.
         :param sequence: sequence segment to append
         """
+
+        # Last construct now was an append
+        self.last_construct = "A"
+
         self.sequence.write(sequence)
         self.position += len(sequence)
 
@@ -395,6 +428,28 @@ class Genome:
         :param sequence: sequence segment to insert
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tI\t{len(sequence)}\n")
+
+        # Spans just before this insert (only done if the last construct was an append)
+        if self.last_construct == "A":
+
+            # Starts bumped for 1 index, ends not bumped because we are 1 base prior to insert
+            reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+            genome_span = f"{self.gen_placeholder + 1}-{self.position}"
+            self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+
+        # Span for this insert
+        # Genome start bumped for 1 index but end not bumped because length includes starting base.
+        genome_span = f"{self.position + 1}-{self.position + len(sequence)}"
+        self.mapper_file.write(f"{self.chromosome}\t*-*\t{genome_span}\n")
+
+        # Placeholders set to last positions after insert
+        self.ref_placeholder = self.position + self.offset
+        self.gen_placeholder = self.position + len(sequence)
+
+        # Last construct now was an insert
+        self.last_construct = "I"
+
+        # This does the real insert work
         self.sequence.write(sequence)
         self.position += len(sequence)
         self.offset += -1 * len(sequence)
@@ -408,6 +463,28 @@ class Genome:
         :param length: number of bases in the reference sequence to skip over.
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tD\t{length}\n")
+
+        # Spans just before this delete (only done if the last construct was an append)
+        if self.last_construct == "A":
+
+            # Starts bumped for 1 index, ends not bumped because we are 1 base prior to delete
+            reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+            genome_span = f"{self.gen_placeholder + 1}-{self.position}"
+            self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+
+        # Span for this delete
+        # Ref start bumped for 1 index but end not bumped because length includes starting base
+        reference_span = f"{self.position + self.offset + 1}-{self.position + self.offset + length}"
+        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t*-*\n")
+
+        # Placeholders set to last positions after delete
+        self.ref_placeholder = self.position + self.offset + length
+        self.gen_placeholder = self.position
+
+        # Last construct now was a delete
+        self.last_construct = "D"
+
+        # This does the real delete work
         self.offset += length
 
     def save_to_file(self):
@@ -425,6 +502,7 @@ class Genome:
 
         # TODO might be a better place for this - say using a context manager?
         self.indels_file.close()
+        self.mapper_file.close()
 
     def __str__(self):
         """
@@ -493,9 +571,9 @@ python genome_builder.py \
 
 python genome_builder.py \
 -s 1 \
--d ../../data/pipeline_results_run89/expression_pipeline/data \
--r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
--p ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt \
--l ../../data/pipeline_results_run89/expression_pipeline/logs \
--x female
+-d ../../data/_run600/expression_pipeline/data \
+-r ../resources/index_files/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa \
+-p ../resources/index_files/baby_genome.mm10/baby_genome.mm10.chr_ploidy.txt \
+-l ../../data/_run600/expression_pipeline/logs \
+-x male
 '''
