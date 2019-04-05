@@ -60,6 +60,9 @@ class JobMonitor:
                     or resubmission list.
 
         """
+        # TODO: Could we merge this function with monitor_until_all_jobs_completed()?
+        #       Would there every be any need to run is_processing_complete() alone?
+
         #Note, I need to force python to create a copy of the running_list so
         #that if/when the code below removes jobs from the running_list it won't
         #cause python to throw a "dictionary changed size during iteration" error.
@@ -69,7 +72,12 @@ class JobMonitor:
                 self.mark_job_for_resubmission(job_id)
             elif job_status == "COMPLETED":
                 self.mark_job_completed(job_id)
-        #TODO: Check pending_list's dependencies to see if they need to move to running_list.
+
+        print(f"Running jobs: {len(self.running_list)} "
+              f"Pending jobs: {len(self.pending_list)} "
+              f"Resub jobs: {len(self.resubmission_list)} "
+              f"Completed jobs: {len(self.completed_list)}")
+
         return True if (not self.running_list and
                         not self.pending_list and
                         not self.resubmission_list) else False
@@ -128,16 +136,15 @@ class JobMonitor:
             queues, before checking again.
 
         """
-
         while not self.is_processing_complete():
             #Check for jobs requiring resubmission
             resubmission_jobs = self.resubmission_list.copy()
             if resubmission_jobs:
-                print(f"Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.")
+                print(f"--Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.")
                 for resub_job_id, resub_job in resubmission_jobs.items():
                     resub_sample = self.get_sample(resub_job.sample_id)
 
-                    print(f"Submitting {resub_job.step_name} command to {self.scheduler_name} "
+                    print(f"\tSubmitting {resub_job.step_name} command to {self.scheduler_name} "
                           f"for sample {resub_sample.sample_name}.")
 
                     #Use unpacking to provide arguments for job submission
@@ -152,7 +159,7 @@ class JobMonitor:
                         raise JobMonitorException(f"Job submission failed for {resub_job.step_name}. "
                                                   f"See log files for full details.")
 
-                    print(f"Finished submitting {resub_job.step_name} command to "
+                    print(f"\tFinished submitting {resub_job.step_name} command to "
                           f"{self.scheduler_name} for sample {resub_sample.sample_name}.")
 
 
@@ -162,12 +169,12 @@ class JobMonitor:
             #Check if pending jobs have satisfied their dependencies
             pending_jobs = self.pending_list.copy()
             if pending_jobs:
-                print(f"Check {len(pending_jobs)} pending jobs for satisfied dependencies:")
+                print(f"--Check {len(pending_jobs)} pending jobs for satisfied dependencies:")
                 for pend_job_id, pend_job in pending_jobs.items():
                     if self.are_dependencies_satisfied(pend_job_id):
                         pend_sample = self.get_sample(pend_job.sample_id)
 
-                        print(f"Submitting {pend_job.step_name} command to {self.scheduler_name} "
+                        print(f"\tSubmitting {pend_job.step_name} command to {self.scheduler_name} "
                               f"for sample {pend_sample.sample_name}.")
 
                         #Use unpacking to provide arguments for job submission
@@ -182,7 +189,7 @@ class JobMonitor:
                             raise JobMonitorException(f"Job submission failed for {pend_job.step_name}. "
                                                       f"See expression pipeline log file for full details.")
 
-                        print(f"Finished submitting {pend_job.step_name} command to "
+                        print(f"\tFinished submitting {pend_job.step_name} command to "
                               f"{self.scheduler_name} for sample {pend_sample.sample_name}.")
 
                         # Finish submission
