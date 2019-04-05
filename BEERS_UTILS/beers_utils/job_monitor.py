@@ -407,24 +407,10 @@ class Job:
                 #      one of these methods.
 
                 #Check output files
-                if self.step_name == "GenomeAlignmentStep":
-                    aligner_log_file_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "genome_alignment.Log.progress.out")
-                    #Read last line in aligner log file
-                    line = ""
-                    with open(aligner_log_file_path, "r") as aligner_log_file:
-                        for line in aligner_log_file:
-                            line = line.rstrip()
-                    if line == "ALL DONE!":
-                        job_status = "COMPLETED"
-                    else:
-                        job_status = "FAILED"
-                elif self.step_name == "GenomeBamIndexStep":
-                    index_file_path = os.path.join(self.data_directory, f"sample{self.sample_id}", "genome_alignment.Aligned.sortedByCoord.out.bam.bai")
-                    if os.path.isfile(index_file_path):
-                        job_status = "COMPLETED"
-                    else:
-                        job_status = "FAILED"
-                elif self.step_name == "VariantsFinderStep" or self.step_name == "IntronQuantificationStep":
+                if self.step_name == "GenomeAlignmentStep" or \
+                   self.step_name == "GenomeBamIndexStep" or \
+                   self.step_name == "VariantsFinderStep" or \
+                   self.step_name == "IntronQuantificationStep":
 
                     pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 

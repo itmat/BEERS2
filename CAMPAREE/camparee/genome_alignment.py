@@ -8,6 +8,7 @@ import json
 
 import pysam
 
+from beers_utils.sample import Sample
 from camparee.abstract_camparee_step import AbstractCampareeStep
 from camparee.camparee_utils import CampareeException
 
@@ -40,7 +41,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
 
     def validate(self):
         invalid_STAR_parameters = ["--outFileNamePrefix", "--genomeDir", "--runMode", "--outSAMtype", "--readFilesIn"]
-        for key, value in self.options.items():
+        for key, value in self.star_cmd_options.items():
             if not key.startswith("--"):
                 print(f"Genome Alignment parameter {key} with value {value} needs to be"
                       f"a STAR option starting with double dashes --", sys.stderr)
@@ -72,6 +73,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
         if sample.bam_file_path:
             if os.path.isfile(sample.bam_file_path):
                 print(f"sample{sample.sample_id} {sample.sample_name} is already aligned.")
+                return
             else:
                 raise CampareeException(f"BAM file provided for sample{sample.sample_id} - {sample.sample_name}"
                                         f" does note exist at the following path:\n"
@@ -90,8 +92,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
                                                      read_files=read_files)
 
         print(f"Starting STAR on sample {sample.sample_name}.")
-        result = subprocess.run(star_command, shell=True, check=True)
-        print(result.stdout.rstrip())
+        star_result = subprocess.run(star_command, shell=True, check=True)
         print(f"Finished running STAR on {sample.sample_name}.")
 
     def get_genome_bam_path(self, sample):
@@ -162,7 +163,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
                    f" --resources_index_files_directory_path {resources_index_files_directory_path}"
                    f" --sample '{repr(sample)}'"
                    f" --star_bin_path {star_bin_path}"
-                   f" --config_parameters '{json.dumps(self.star_cmd_options)}'")
+                   f" --star_parameters '{json.dumps(self.star_cmd_options)}'")
 
         return command
 
@@ -203,9 +204,10 @@ class GenomeAlignmentStep(AbstractCampareeStep):
         """
 
         sample = eval(cmd_args.sample)
+        parameters = json.loads(cmd_args.star_parameters)
         genome_alignment = GenomeAlignmentStep(log_directory_path=cmd_args.log_directory_path,
                                                data_directory_path=cmd_args.data_directory_path,
-                                               parameters=cmd_args.star_parameters)
+                                               parameters=parameters)
         genome_alignment.execute(sample=sample,
                                  resources_index_files_directory_path=cmd_args.resources_index_files_directory_path,
                                  star_bin_path=cmd_args.star_bin_path)

@@ -365,16 +365,6 @@ class ExpressionPipeline:
 
                     bam_filename = bam_files[resub_job.sample_id]
 
-                    """
-                    if resub_job.step_name == "GenomeAlignmentStep":
-                        (bam_file, system_id) = genome_alignment.execute(resub_sample,
-                                                                         self.resources_index_files_directory_path,
-                                                                         self.star_file_path, self.dispatcher_mode)
-                    elif resub_job.step_name == "GenomeBamIndexStep":
-                        system_id = genome_index.execute(resub_sample, bam_filename, self.dispatcher_mode)
-                    elif resub_job.step_name == "VariantsFinderStep" or \
-                         resub_job.step_name == "IntronQuantificationStep":
-                    """
                     print(f"Submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
                     #Use unpacking to provide arguments for job submission
@@ -389,7 +379,7 @@ class ExpressionPipeline:
                         raise CampareeException(f"Job submission failed for {resub_job.step_name}. ",
                                                 "See expression pipeline log file for full details.")
 
-                        print(f"Finished submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
+                    print(f"Finished submitting {resub_job.step_name} command to {self.dispatcher_mode} for sample {resub_sample.sample_name}.")
 
 
                     # Finish resubmission
@@ -405,16 +395,6 @@ class ExpressionPipeline:
 
                         bam_filename = bam_files[pend_job.sample_id]
 
-                        """
-                        if pend_job.step_name == "GenomeAlignmentStep":
-                            (bam_file, system_id) = genome_alignment.execute(pend_sample,
-                                                                             self.resources_index_files_directory_path,
-                                                                             self.star_file_path, self.dispatcher_mode)
-                        elif pend_job.step_name == "GenomeBamIndexStep":
-                            system_id = genome_index.execute(pend_sample, bam_filename, self.dispatcher_mode)
-                        elif pend_job.step_name == "VariantsFinderStep" or \
-                             pend_job.step_name == "IntronQuantificationStep":
-                        """
                         print(f"Submitting {pend_job.step_name} command to {self.dispatcher_mode} for sample {pend_sample.sample_name}.")
 
                         #Use unpacking to provide arguments for job submission
