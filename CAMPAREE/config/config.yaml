@@ -14,7 +14,7 @@ input:
     directory_path: /project/itmatlab/for_cris/Baby.Test_mouse_samples/data/expression/baby_genome.mm9/
     data: {'9576': {fastq_files: [9576_forward.fq.gz, 9576_reverse.fq.gz], gender: male}, '9577': {fastq_files: [9577_forward.fq.gz, 9577_reverse.fq.gz], gender: male}}
 output:
-    directory_path: /home/crisl/beers_project/BEERS2.0/data
+    directory_path: /home/crisl/beers_project/BEERS2.0/data/
     type: molecule_file
     molecule_count: 50000
 steps:
