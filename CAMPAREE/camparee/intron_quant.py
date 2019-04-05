@@ -211,8 +211,8 @@ class IntronQuantificationStep:
                 self.transcript_intron_counts[transcript_id] = 0
                 self.transcript_intron_antisense_counts[transcript_id] = 0
             else:
-                self.transcript_intron_counts[transcript_id] = sense_counts / total_length * 1000
-                self.transcript_intron_antisense_counts[transcript_id] = antisense_counts / total_length * 1000
+                self.transcript_intron_counts[transcript_id] = sense_counts / total_length
+                self.transcript_intron_antisense_counts[transcript_id] = antisense_counts / total_length
 
         # Write out the results to output file
         # SENSE INTRON OUTPUT
