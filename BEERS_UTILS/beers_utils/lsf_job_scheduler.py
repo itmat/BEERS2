@@ -74,7 +74,7 @@ class LsfJobScheduler(AbstractJobScheduler):
                 job_status = "RUNNING"
             elif lsf_job_status == "PEND" or lsf_job_status == "WAIT":
                 job_status = "PENDING"
-            elif lsf_job_status == "EXIT" or lsf_job_status == "UNKWN":
+            elif lsf_job_status == "EXIT" or lsf_job_status == "ZOMBI" or lsf_job_status == "UNKWN":
                 job_status = "FAILED"
             elif lsf_job_status == "DONE":
                 job_status = "COMPLETED"
