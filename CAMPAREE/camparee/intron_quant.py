@@ -191,7 +191,7 @@ class IntronQuantificationStep:
                                 self.intron_normalized_antisense_counts[other_intron] = min(other_counts - antisense_count, 0)
 
         # Transcript-level intron quantifications
-        for transcript in self.info.transcripts:
+        for transcript_id, transcript in self.info.transcripts.items():
             # flanks are first-and-last introns
             # But for now we do not use them to quantify the total transcript-level
             # intron counts since they are not really introns but are very long and so
@@ -208,11 +208,11 @@ class IntronQuantificationStep:
                 total_length += intron.effective_length
 
             if total_length == 0:
-                self.transcript_intron_counts[transcript] = 0
-                self.transcript_intron_antisense_counts[transcript] = 0
+                self.transcript_intron_counts[transcript_id] = 0
+                self.transcript_intron_antisense_counts[transcript_id] = 0
             else:
-                self.transcript_intron_counts[transcript] = sense_counts / total_length
-                self.transcript_intron_antisense_counts[transcript] = antisense_counts / total_length
+                self.transcript_intron_counts[transcript_id] = sense_counts / total_length * 1000
+                self.transcript_intron_antisense_counts[transcript_id] = antisense_counts / total_length * 1000
 
         # Write out the results to output file
         # SENSE INTRON OUTPUT
@@ -223,7 +223,7 @@ class IntronQuantificationStep:
             transcript_ids = sorted((transcript.gene.gene_id, id, transcript) for id, transcript in self.info.transcripts.items())
             for (gene_id, transcript_id, transcript) in transcript_ids:
 
-                total_count = self.transcript_intron_counts[transcript]
+                total_count = self.transcript_intron_counts[transcript_id]
                 intron_counts = [str(self.intron_normalized_counts[intron]) for intron in transcript.introns]
 
 
@@ -243,7 +243,7 @@ class IntronQuantificationStep:
             transcript_ids = sorted((transcript.gene.gene_id, id, transcript) for id, transcript in self.info.transcripts.items())
             for (gene_id, transcript_id, transcript) in transcript_ids:
 
-                total_count = self.transcript_intron_antisense_counts[transcript]
+                total_count = self.transcript_intron_antisense_counts[transcript_id]
                 intron_counts = [str(self.intron_normalized_antisense_counts[intron]) for intron in transcript.introns]
 
 
