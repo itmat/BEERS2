@@ -4,6 +4,8 @@ import argparse
 
 import numpy
 
+from camparee.camparee_utils import CampareeUtils
+
 class VariantsCompilationStep():
 
     def __init__(self, logfile, data_directory_path, parameters):
@@ -11,22 +13,6 @@ class VariantsCompilationStep():
 
     def validate(self):
         return True
-
-    #TODO: move this method to the camparee utilities (it's also defined and used in
-    #the run_beagle.py script).
-    def parse_line(line):
-        ''' reads a line of a variant file from BEERS2'''
-        # sample line is: (note tabs and spaces both used)
-        # 1:28494 | C:1 | T:1    TOT=2   0.5,0.5 E=1.0
-        if line == '':
-            return "DONE", 0, {}
-        entries = line.split('\t')
-        loc_and_vars, total, fractions, entropy = entries
-        loc, *variants = loc_and_vars.split(" | ")
-        chromosome, position = loc.split(":")
-        position = int(position)
-        variants = {base: int(count) for base, count in [variant.split(":") for variant in variants]}
-        return chromosome, position, variants
 
     def execute(self, samples, chr_ploidy_data, reference):
         self.chr_ploidy_data = chr_ploidy_data
@@ -55,7 +41,7 @@ class VariantsCompilationStep():
             i = 0
             while any(line != '' for line in next_lines):
                 i += 1
-                parsed_lines = [VariantsCompilationStep.parse_line(line) for line in next_lines]
+                parsed_lines = [CampareeUtils.parse_variant_line(line) for line in next_lines]
                 chromosome = min(chr for chr, pos, vars in parsed_lines if chr != "DONE")
                 position = min(pos for chr, pos, vars in parsed_lines if chr == chromosome)
                 if chromosome != last_chromosome:

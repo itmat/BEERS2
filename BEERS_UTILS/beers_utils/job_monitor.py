@@ -279,7 +279,7 @@ class JobMonitor:
                       f"   Job command: {job.job_command}\n",
                       file=sys.stderr)
                 raise JobMonitorException(f"Job submission failed for {job.step_name}. "
-                                          f"See expression pipeline log file for full details.")
+                                          f"See log file for full details.")
 
             print(f"\tFinished submitting {job.step_name} command to "
                   f"{self.scheduler_name} for sample {pend_sample.sample_name}.")
@@ -315,7 +315,7 @@ class JobMonitor:
             job = self.resubmission_list[job_id]
 
             if job.resubmission_counter == self.max_resub_limit:
-                raise JobMonitorException(f"The {job_id} exceeded the maximum resubmission"
+                raise JobMonitorException(f"The {job_id} exceeded the maximum resubmission "
                                           f"limit of {self.max_resub_limit}.\n")
 
             resub_sample = self.get_sample(job.sample_id)
@@ -332,7 +332,8 @@ class JobMonitor:
                       f"   Scheduler parameters: {job.scheduler_arguments}\n",
                       f"   Job command: {job.job_command}\n",
                       file=sys.stderr)
-                raise JobMonitorException(f"Job submission failed for {job.step_name}.")
+                raise JobMonitorException(f"Job submission failed for {job.step_name}. "
+                                          f"See log file for full details.")
 
             print(f"\tFinished submitting {job.step_name} command to "
                   f"{self.scheduler_name} for sample {resub_sample.sample_name}.")
