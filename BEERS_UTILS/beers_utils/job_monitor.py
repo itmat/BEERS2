@@ -18,7 +18,7 @@ class JobMonitor:
     #job output.
     PIPELINE_STEPS = {}
 
-    def __init__(self, output_directory_path, scheduler_name):
+    def __init__(self, output_directory_path, scheduler_name, max_resub_limit=3):
         """
         Initialize the monitor to track a specific set of jobs/processes running on
         a list of corresponding samples.
@@ -29,9 +29,14 @@ class JobMonitor:
             Path to data directory where job/process output is being stored.
         scheduler_name : string
             The mode used to submit the jobs/processes to the scheduler.
+        max_resub_limit : int
+            The maximum number of times a job can be resubmitted before the
+            pipeline halts.
+
         """
         self.output_directory = output_directory_path
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
+        self.max_resub_limit = max_resub_limit
         self.pending_list = {}
         self.running_list = {}
         #Tracks which of the submitted jobs have stalled or failed and ultimately
@@ -73,10 +78,10 @@ class JobMonitor:
             elif job_status == "COMPLETED":
                 self.mark_job_completed(job_id)
 
-        print(f"Running jobs: {len(self.running_list)} "
-              f"Pending jobs: {len(self.pending_list)} "
-              f"Resub jobs: {len(self.resubmission_list)} "
-              f"Completed jobs: {len(self.completed_list)}")
+        print(f"Running jobs:{len(self.running_list)} | "
+              f"Pending jobs:{len(self.pending_list)} | "
+              f"Resub jobs:{len(self.resubmission_list)} | "
+              f"Completed jobs:{len(self.completed_list)}")
 
         return True if (not self.running_list and
                         not self.pending_list and
@@ -141,59 +146,21 @@ class JobMonitor:
             resubmission_jobs = self.resubmission_list.copy()
             if resubmission_jobs:
                 print(f"--Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.")
-                for resub_job_id, resub_job in resubmission_jobs.items():
-                    resub_sample = self.get_sample(resub_job.sample_id)
-
-                    print(f"\tSubmitting {resub_job.step_name} command to {self.scheduler_name} "
-                          f"for sample {resub_sample.sample_name}.")
-
-                    #Use unpacking to provide arguments for job submission
-                    system_id = self.job_scheduler.submit_job(job_command=resub_job.job_command,
-                                                              **resub_job.scheduler_arguments)
-                    if system_id == "ERROR":
-                        print(f"Job submission failed for {resub_job.step_name}:\n",
-                              f"   Job sample: {resub_sample.sample_name}\n",
-                              f"   Scheduler parameters: {resub_job.scheduler_arguments}\n",
-                              f"   Job command: {resub_job.job_command}\n",
-                              file=sys.stderr)
-                        raise JobMonitorException(f"Job submission failed for {resub_job.step_name}. "
-                                                  f"See log files for full details.")
-
-                    print(f"\tFinished submitting {resub_job.step_name} command to "
-                          f"{self.scheduler_name} for sample {resub_sample.sample_name}.")
-
-
-                    # Finish resubmission
-                    self.resubmit_job(resub_job_id, system_id)
+                for resub_job_id in resubmission_jobs.keys():
+                    self.resubmit_job(resub_job_id)
 
             #Check if pending jobs have satisfied their dependencies
             pending_jobs = self.pending_list.copy()
             if pending_jobs:
                 print(f"--Check {len(pending_jobs)} pending jobs for satisfied dependencies:")
-                for pend_job_id, pend_job in pending_jobs.items():
+                for pend_job_id in pending_jobs.keys():
+                    # TODO: Consider moving this check inside the submit_pending_job
+                    #       method. The advantage of keeping this separate is we
+                    #       can force the submission of a pending job, regardless
+                    #       of the status of its dependencies (could be useful when
+                    #       restarting a job monitoring queue following a crash).
                     if self.are_dependencies_satisfied(pend_job_id):
-                        pend_sample = self.get_sample(pend_job.sample_id)
-
-                        print(f"\tSubmitting {pend_job.step_name} command to {self.scheduler_name} "
-                              f"for sample {pend_sample.sample_name}.")
-
-                        #Use unpacking to provide arguments for job submission
-                        system_id = self.job_scheduler.submit_job(job_command=pend_job.job_command,
-                                                                  **pend_job.scheduler_arguments)
-                        if system_id == "ERROR":
-                            print(f"Job submission failed for {pend_job.step_name}:\n",
-                                  f"   Job sample: {pend_sample.sample_name}\n",
-                                  f"   Scheduler parameters: {pend_job.scheduler_arguments}\n",
-                                  f"   Job command: {pend_job.job_command}\n",
-                                  file=sys.stderr)
-                            raise JobMonitorException(f"Job submission failed for {pend_job.step_name}. "
-                                                      f"See expression pipeline log file for full details.")
-
-                        print(f"\tFinished submitting {pend_job.step_name} command to "
-                              f"{self.scheduler_name} for sample {pend_sample.sample_name}.")
-
-                        # Finish submission
-                        self.submit_pending_job(pend_job_id, system_id)
+                        self.submit_pending_job(pend_job_id)
             time.sleep(queue_update_interval)
 
     def submit_new_job(self, job_id, job_command, sample, step_name, scheduler_arguments,
@@ -259,9 +226,9 @@ class JobMonitor:
         #      require restarting).
 
         if job_id in self.running_list or job_id in self.pending_list:
-            raise JobMonitorException(f'Submitted job is already in the list of running or pending\n',
-                                      'jobs. To move a job from the pending to the running list, use\n',
-                                      'the submit_pending_job() function\n')
+            raise JobMonitorException(f"Submitted job is already in the list of running or pending\n"
+                                      f"jobs. To move a job from the pending to the running list, use\n"
+                                      f"the submit_pending_job() function\n")
         else:
             if system_id is not None:
                 self.running_list[job_id] = submitted_job
@@ -272,9 +239,9 @@ class JobMonitor:
                 self.samples_by_ids[sample.sample_id] = sample
 
 
-    def submit_pending_job(self, job_id, new_system_id):
+    def submit_pending_job(self, job_id):
         """
-        Update job with new system ID and move it from the pending list to
+        submit job through the job scheduler and move it from the pending list to
         the list of running jobs.
 
         Parameters
@@ -282,41 +249,94 @@ class JobMonitor:
         job_id : string
             Internal BEERS ID that uniquely identifies the job to submit. This
             job ID must be present in the pending list.
-        new_system_id : string
-            New system-level ID assigned to the job during submission.
+
         """
+        # TODO: We could probably combine the resubmit_job() and submit_pending_job()
+        #       into a single method that also takes a job_type argument [pending,resub]
+        #       and then behaves accordingly. Or maybe it simply infers what to do with
+        #       the job based on which queue it's located in. There's a ton of overlap
+        #       between these two functions right now.
         if not job_id in self.pending_list:
-            raise JobMonitorException(f'Job missing from the list of pending jobs.\n')
+            raise JobMonitorException(f"Job missing from the list of pending jobs.\n")
         elif job_id in self.running_list or job_id in self.resubmission_list:
-            raise JobMonitorException(f'Job is already in the list of running jobs or ',
-                                      'jobs marked for resubmission.\n')
+            raise JobMonitorException(f"Job is already in the list of running jobs or "
+                                      f"jobs marked for resubmission.\n")
         else:
             job = self.pending_list[job_id]
+
+            pend_sample = self.get_sample(job.sample_id)
+
+            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name} "
+                  f"for sample {pend_sample.sample_name}.")
+
+            #Use unpacking to provide arguments for job submission
+            new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
+                                                          **job.scheduler_arguments)
+            if new_system_id == "ERROR":
+                print(f"Job submission failed for {job.step_name}:\n",
+                      f"   Job sample: {pend_sample.sample_name}\n",
+                      f"   Scheduler parameters: {job.scheduler_arguments}\n",
+                      f"   Job command: {job.job_command}\n",
+                      file=sys.stderr)
+                raise JobMonitorException(f"Job submission failed for {job.step_name}. "
+                                          f"See expression pipeline log file for full details.")
+
+            print(f"\tFinished submitting {job.step_name} command to "
+                  f"{self.scheduler_name} for sample {pend_sample.sample_name}.")
+
             job.system_id = new_system_id
             self.running_list[job_id] = job
             del self.pending_list[job_id]
 
-    def resubmit_job(self, job_id, new_system_id):
+    def resubmit_job(self, job_id):
         """
-        Update job with new system ID and move it from the resubmission list to
-        the list of running jobs. Also increment job's resubmission counter.
+        Resubmit job through the job scheduler and move it from the resubmission
+        list to the list of running jobs. Also increment job's resubmission counter.
 
         Parameters
         ----------
         job_id : string
             Internal BEERS ID that uniquely identifies the job to resubmit. This
             job ID must be present in the resubmission list.
-        new_system_id : string
-            New system-level ID assigned to the job during resubmission.
+
         """
+        # TODO: We could probably combine the resubmit_job() and submit_pending_job()
+        #       into a single method that also takes a job_type argument [pending,resub]
+        #       and then behaves accordingly. Or maybe it simply infers what to do with
+        #       the job based on which queue it's located in. There's a ton of overlap
+        #       between these two functions right now.
         if not job_id in self.resubmission_list:
-            raise JobMonitorException(f'Resubmitted job missing from the list of jobs ',
-                                      'marked for resubmission.\n')
+            raise JobMonitorException(f"Resubmitted job missing from the list of jobs "
+                                      f"marked for resubmission.\n")
         elif job_id in self.running_list or job_id in self.pending_list:
-            raise JobMonitorException(f'Resubmitted job is already in the list of ',
-                                      'running or pending jobs.\n')
+            raise JobMonitorException(f"Resubmitted job is already in the list of "
+                                      f"running or pending jobs.\n")
         else:
             job = self.resubmission_list[job_id]
+
+            if job.resubmission_counter == self.max_resub_limit:
+                raise JobMonitorException(f"The {job_id} exceeded the maximum resubmission"
+                                          f"limit of {self.max_resub_limit}.\n")
+
+            resub_sample = self.get_sample(job.sample_id)
+
+            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name} "
+                  f"for sample {resub_sample.sample_name}.")
+
+            #Use unpacking to provide arguments for job submission
+            new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
+                                                          **job.scheduler_arguments)
+            if new_system_id == "ERROR":
+                print(f"Job submission failed for {job.step_name}:\n",
+                      f"   Job sample: {resub_sample.sample_name}\n",
+                      f"   Scheduler parameters: {job.scheduler_arguments}\n",
+                      f"   Job command: {job.job_command}\n",
+                      file=sys.stderr)
+                raise JobMonitorException(f"Job submission failed for {job.step_name}.")
+
+            print(f"\tFinished submitting {job.step_name} command to "
+                  f"{self.scheduler_name} for sample {resub_sample.sample_name}.")
+
             job.system_id = new_system_id
             job.resubmission_counter += 1
             self.running_list[job_id] = job
