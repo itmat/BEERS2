@@ -180,7 +180,8 @@ class JobMonitor:
             likely be the output of the StepName.get_commandline_call() function.
         sample : Sample
             Sample object associated with the job. Will be added to the dictionary
-            of samples stored in the JobMonitor if it's not already there.
+            of samples stored in the JobMonitor if it's not already there. If the
+            job is not associated with a specific sample, set to 'None'.
         step_name : string
             Name of the step in the pipeline associated with monitored job.
         scheduler_arguments : dict
@@ -207,7 +208,12 @@ class JobMonitor:
             job will wait until all those on the dependency list have completed).
             If the job has no dependencies, this should be "None" or empty.
         """
-        submitted_job = Job(job_id, job_command, sample.sample_id, step_name,
+
+        sample_id_for_job = None
+        if sample:
+            sample_id_for_job = sample.sample_id
+
+        submitted_job = Job(job_id, job_command, sample_id_for_job, step_name,
                             scheduler_arguments, validation_attributes,
                             output_directory_path, self.scheduler_name,
                             system_id, dependency_list)
@@ -235,8 +241,8 @@ class JobMonitor:
             else:
                 self.pending_list[job_id] = submitted_job
 
-            if not sample.sample_id in self.samples_by_ids:
-                self.samples_by_ids[sample.sample_id] = sample
+            if sample_id_for_job and  sample_id_for_job not in self.samples_by_ids:
+                self.samples_by_ids[sample_id_for_job] = sample
 
 
     def submit_pending_job(self, job_id):
@@ -266,23 +272,25 @@ class JobMonitor:
 
             pend_sample = self.get_sample(job.sample_id)
 
-            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name} "
-                  f"for sample {pend_sample.sample_name}.")
+            #Only identify sample if one is associated with the job.
+            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {pend_sample.sample_name}' if pend_sample}.")
 
             #Use unpacking to provide arguments for job submission
             new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
                                                           **job.scheduler_arguments)
             if new_system_id == "ERROR":
                 print(f"Job submission failed for {job.step_name}:\n",
-                      f"   Job sample: {pend_sample.sample_name}\n",
+                      f"   Job sample: {pend_sample.sample_name if pend_sample else 'None'}\n",
                       f"   Scheduler parameters: {job.scheduler_arguments}\n",
                       f"   Job command: {job.job_command}\n",
                       file=sys.stderr)
                 raise JobMonitorException(f"Job submission failed for {job.step_name}. "
                                           f"See log file for full details.")
 
-            print(f"\tFinished submitting {job.step_name} command to "
-                  f"{self.scheduler_name} for sample {pend_sample.sample_name}.")
+            #Only identify sample if one is associated with the job.
+            print(f"\tFinished submitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {pend_sample.sample_name}' if pend_sample}.")
 
             job.system_id = new_system_id
             self.running_list[job_id] = job
@@ -320,23 +328,25 @@ class JobMonitor:
 
             resub_sample = self.get_sample(job.sample_id)
 
-            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name} "
-                  f"for sample {resub_sample.sample_name}.")
+            #Only identify sample if one is associated with the job.
+            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {resub_sample.sample_name}' if resub_sample}.")
 
             #Use unpacking to provide arguments for job submission
             new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
                                                           **job.scheduler_arguments)
             if new_system_id == "ERROR":
                 print(f"Job submission failed for {job.step_name}:\n",
-                      f"   Job sample: {resub_sample.sample_name}\n",
+                      f"   Job sample: {resub_sample.sample_name if resub_sample else 'None'}\n",
                       f"   Scheduler parameters: {job.scheduler_arguments}\n",
                       f"   Job command: {job.job_command}\n",
                       file=sys.stderr)
                 raise JobMonitorException(f"Job submission failed for {job.step_name}. "
                                           f"See log file for full details.")
 
-            print(f"\tFinished submitting {job.step_name} command to "
-                  f"{self.scheduler_name} for sample {resub_sample.sample_name}.")
+            #Only identify sample if one is associated with the job.
+            print(f"\tFinished submitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {resub_sample.sample_name}' if resub_sample}.")
 
             job.system_id = new_system_id
             job.resubmission_counter += 1
@@ -345,9 +355,25 @@ class JobMonitor:
 
     def get_sample(self, sample_id):
         """
-        Helper function returns sample object given a sample_id.
+        Given a sample_id, return sample object from the dictionary of sample.
+        objects stored by the JobMonitor.
+
+        Parameters
+        ----------
+        sample_id : string
+            ID of sample object (created by Controller class) to return.
+
+        Returns
+        -------
+        Sample
+            Sample object corresponding to the given id. If the sample_id is None,
+            or is not contained in the dictionary of sample objects, this method
+            returns None.
+
         """
-        return self.samples_by_ids[sample_id]
+        #Use get method so it handels cases where sample_id == None, or if the
+        #sample_id doesn't correspond to any sample stored in the dict.
+        return self.samples_by_ids.get(sample_id)
 
     def are_dependencies_satisfied(self, job_id):
         """
@@ -394,8 +420,7 @@ class Job:
                  validation_attributes, output_directory_path, scheduler_name,
                  system_id=None, dependency_list=None):
         """
-        Initialize job to track the status of a step/operation running on the
-        current sample.
+        Initialize job to track the status of a step/operation.
 
         Parameters
         ----------
@@ -406,7 +431,7 @@ class Job:
             likely be the output of the StepName.get_commandline_call() function.
         sample_id : string
             ID of sample object (created by Controller class) associated with
-            job.
+            job. If the job is not associated with a specific sample, set to 'None'.
         step_name : string
             Name of the step in the pipeline being monitored. Ideally this code
             should be agnostic to the step, but there are some steps that will

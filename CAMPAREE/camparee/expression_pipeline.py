@@ -362,8 +362,8 @@ class ExpressionPipeline:
                               'memory_in_mb' : 6000,
                               'num_processors' : 1}
             validation_attributes = variants_compilation.get_validation_attributes()
-            expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample_id}",
-                                                       job_command=command, sample=sample,
+            expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}",
+                                                       job_command=command, sample=None,
                                                        step_name=step_name,
                                                        scheduler_arguments=scheduler_args,
                                                        validation_attributes=validation_attributes,
