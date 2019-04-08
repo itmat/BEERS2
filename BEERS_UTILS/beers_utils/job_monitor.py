@@ -274,7 +274,7 @@ class JobMonitor:
 
             #Only identify sample if one is associated with the job.
             print(f"\tSubmitting {job.step_name} command to {self.scheduler_name}"
-                  f"{f' for sample {pend_sample.sample_name}' if pend_sample}.")
+                  f"{f' for sample {pend_sample.sample_name}.' if pend_sample else '.'}")
 
             #Use unpacking to provide arguments for job submission
             new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
@@ -290,7 +290,7 @@ class JobMonitor:
 
             #Only identify sample if one is associated with the job.
             print(f"\tFinished submitting {job.step_name} command to {self.scheduler_name}"
-                  f"{f' for sample {pend_sample.sample_name}' if pend_sample}.")
+                  f"{f' for sample {pend_sample.sample_name}.' if pend_sample else '.'}")
 
             job.system_id = new_system_id
             self.running_list[job_id] = job
@@ -330,7 +330,7 @@ class JobMonitor:
 
             #Only identify sample if one is associated with the job.
             print(f"\tSubmitting {job.step_name} command to {self.scheduler_name}"
-                  f"{f' for sample {resub_sample.sample_name}' if resub_sample}.")
+                  f"{f' for sample {resub_sample.sample_name}.' if resub_sample else '.'}")
 
             #Use unpacking to provide arguments for job submission
             new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
@@ -346,7 +346,7 @@ class JobMonitor:
 
             #Only identify sample if one is associated with the job.
             print(f"\tFinished submitting {job.step_name} command to {self.scheduler_name}"
-                  f"{f' for sample {resub_sample.sample_name}' if resub_sample}.")
+                  f"{f' for sample {resub_sample.sample_name}.' if resub_sample else '.'}")
 
             job.system_id = new_system_id
             job.resubmission_counter += 1
