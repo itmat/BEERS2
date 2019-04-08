@@ -531,7 +531,8 @@ class Job:
                 if self.step_name == "GenomeAlignmentStep" or \
                    self.step_name == "GenomeBamIndexStep" or \
                    self.step_name == "VariantsFinderStep" or \
-                   self.step_name == "IntronQuantificationStep":
+                   self.step_name == "IntronQuantificationStep" or \
+                   self.step_name == "VariantsCompilationStep":
 
                     pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 

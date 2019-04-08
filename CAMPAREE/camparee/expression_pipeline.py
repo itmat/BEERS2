@@ -343,12 +343,38 @@ class ExpressionPipeline:
                 #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
                 #      on the same BAM file at the same time, though I don't know why this would be a problem.
 
+
+        step_name = 'VariantsCompilationStep'
+        variants_compilation = self.steps[step_name]
+        if self.dispatcher_mode == "serial":
+            #Get list of sample ID's, instead of passing all of the Sample objects.
+            variants_compilation.execute([sample.sample_id for sample in self.samples],
+                                         self.chr_ploidy_data, self.reference_genome)
+        else:
+            stdout_log = os.path.join(variants_compilation.log_directory_path, f"{step_name}.bsub.%J.out")
+            stderr_log = os.path.join(variants_compilation.log_directory_path, f"{step_name}.bsub.%J.err")
+            command = variants_compilation.get_commandline_call([sample.sample_id for sample in self.samples],
+                                                                self.chr_ploidy_file_path,
+                                                                self.reference_genome_file_path)
+            scheduler_args = {'job_name' : f"{step_name}",
+                              'stdout_logfile' : stdout_log,
+                              'stderr_logfile' : stderr_log,
+                              'memory_in_mb' : 6000,
+                              'num_processors' : 1}
+            validation_attributes = variants_compilation.get_validation_attributes()
+            expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample_id}",
+                                                       job_command=command, sample=sample,
+                                                       step_name=step_name,
+                                                       scheduler_arguments=scheduler_args,
+                                                       validation_attributes=validation_attributes,
+                                                       output_directory_path=variants_compilation.data_directory_path,
+                                                       system_id=None,
+                                                       dependency_list=[f"VariantsFinderStep.{sample.sample_id}" for sample in self.samples])
+
+
         #Wait here until all of the preceding steps have finished.
         print(f'Waiting until all samples finish processing before running Beagle.')
         expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
-
-        variants_compilation = self.steps['VariantsCompilationStep']
-        variants_compilation.execute(self.samples, self.chr_ploidy_data, self.reference_genome)
 
         print(f"Processing combined samples...")
         beagle = self.steps['BeagleStep']
