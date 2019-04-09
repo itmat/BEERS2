@@ -553,11 +553,12 @@ class Job:
                 #      one of these methods.
 
                 #Check output files
-                if self.step_name == "GenomeAlignmentStep" or \
-                   self.step_name == "GenomeBamIndexStep" or \
-                   self.step_name == "VariantsFinderStep" or \
-                   self.step_name == "IntronQuantificationStep" or \
-                   self.step_name == "VariantsCompilationStep":
+                if self.step_name in ["GenomeAlignmentStep",
+                                      "GenomeBamIndexStep",
+                                      "VariantsFinderStep",
+                                      "IntronQuantificationStep",
+                                      "VariantsCompilationStep",
+                                      "BeagleStep"]:
 
                     pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 

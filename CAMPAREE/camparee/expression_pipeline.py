@@ -377,10 +377,37 @@ class ExpressionPipeline:
         expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
         print(f"Processing combined samples...")
-        beagle = self.steps['BeagleStep']
-        outcome = beagle.execute(self.beagle_file_path, seeds["beagle"])
-        if outcome != 0:
-            raise CampareeException("Beagle process failed.")
+        step_name = 'BeagleStep'
+        beagle = self.steps[step_name]
+        seed = seeds["beagle"]
+        if self.dispatcher_mode == "serial":
+            #Get list of sample ID's, instead of passing all of the Sample objects.
+            beagle.execute(self.beagle_file_path, seed)
+        else:
+            stdout_log = os.path.join(beagle.log_directory_path, f"{step_name}.bsub.%J.out")
+            stderr_log = os.path.join(beagle.log_directory_path, f"{step_name}.bsub.%J.err")
+            command = beagle.get_commandline_call(self.beagle_file_path, seed)
+            scheduler_args = {'job_name' : f"{step_name}",
+                              'stdout_logfile' : stdout_log,
+                              'stderr_logfile' : stderr_log,
+                              'memory_in_mb' : 6000,
+                              'num_processors' : 1}
+            validation_attributes = beagle.get_validation_attributes()
+            expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}",
+                                                       job_command=command,
+                                                       sample=None,
+                                                       step_name=step_name,
+                                                       scheduler_arguments=scheduler_args,
+                                                       validation_attributes=validation_attributes,
+                                                       output_directory_path=beagle.data_directory_path,
+                                                       system_id=None,
+                                                       dependency_list=[f"VariantsCompilationStep"])
+
+        #TODO: We could load all of the steps in the entire pipeline into the queue
+        #      and then just have the queue keep running until everything finishes.
+        #      The only advantage of explicitly waiting here is that the user gets
+        #      stdout indicating which stage is running for the pipeline.
+        expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
         for sample in self.samples:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
