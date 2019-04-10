@@ -218,7 +218,7 @@ class GenomeBuilderStep(AbstractCampareeStep):
             operations as a call to execute() with the same parameters.
 
         """
-        #Retrieve path to the variants_finder.py script.
+        #Retrieve path to the genome_builder.py script.
         genome_builder_path = os.path.realpath(__file__)
         #If the above command returns a string with a "pyc" extension, instead
         #of "py", strip off "c" so it points to this script.

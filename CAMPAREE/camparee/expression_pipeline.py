@@ -293,8 +293,8 @@ class ExpressionPipeline:
         seed = seeds["beagle"]
         self.run_step(step_name='BeagleStep',
                       sample=None,
-                      execute_args=list(self.beagle_file_path, seed),
-                      cmd_line_args=list(self.beagle_file_path, seed),
+                      execute_args=[self.beagle_file_path, seed],
+                      cmd_line_args=[self.beagle_file_path, seed],
                       dependency_list=[f"VariantsCompilationStep"])
 
         #TODO: We could load all of the steps in the entire pipeline into the queue

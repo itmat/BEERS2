@@ -423,10 +423,10 @@ class JobMonitor:
         """
 
         job_queue_state = {}
-        job_queue_state['pending_list'] = [str(job) for job in self.pending_list]
-        job_queue_state['running_list'] = [str(job) for job in self.running_list]
-        job_queue_state['resubmission_list'] = [str(job) for job in self.resubmission_list]
-        job_queue_state['completed_list'] = [str(job) for job in self.completed_list]
+        job_queue_state['pending_list'] = [str(job) for job in self.pending_list.values()]
+        job_queue_state['running_list'] = [str(job) for job in self.running_list.values()]
+        job_queue_state['resubmission_list'] = [str(job) for job in self.resubmission_list.values()]
+        job_queue_state['completed_list'] = [str(job) for job in self.completed_list.values()]
 
         return job_queue_state
 
