@@ -65,6 +65,10 @@ class ExpressionPipeline:
         self.output_type = configuration["output"]["type"]
         self.output_molecule_count = configuration["output"]["molecule_count"]
 
+        self.expression_pipeline_monitor = None
+        if self.dispatcher_mode != "serial":
+            self.expression_pipeline_monitor = JobMonitor(self.output_directory_path, self.dispatcher_mode)
+
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
             os.makedirs(os.path.join(data_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
@@ -219,224 +223,96 @@ class ExpressionPipeline:
 
         seeds = self.generate_job_seeds()
 
-        expression_pipeline_monitor = JobMonitor(self.output_directory_path, self.dispatcher_mode)
-
         bam_files = {}
         for sample in self.samples:
 
-            step_name = 'GenomeAlignmentStep'
-            genome_alignment = self.steps[step_name]
+            #Retrieve name of BAM file associated with this sample. This is either
+            #the path to a user provided BAM file, or the default path the
+            #GenomeAlignmentStep will use to store the alignment results for this
+            #sample.
+            genome_alignment = self.steps['GenomeAlignmentStep']
             bam_file = genome_alignment.get_genome_bam_path(sample)
             bam_files[sample.sample_id] = bam_file
-
-            if self.dispatcher_mode == "serial":
-                genome_alignment.execute(sample, self.resources_index_files_directory_path,
-                                         self.star_file_path)
-            else:
-                stdout_log = os.path.join(genome_alignment.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.out")
-                stderr_log = os.path.join(genome_alignment.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.err")
-                command = genome_alignment.get_commandline_call(sample, self.resources_index_files_directory_path,
-                                                                self.star_file_path)
-                scheduler_args = {'job_name' : f"{step_name}.sample{sample.sample_id}_{sample.sample_name}",
-                                  'stdout_logfile' : stdout_log,
-                                  'stderr_logfile' : stderr_log,
-                                  'memory_in_mb' : 40000,
-                                  'num_processors' : 4}
-                validation_attributes = genome_alignment.get_validation_attributes(sample)
-                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample.sample_id}",
-                                                           job_command=command, sample=sample,
-                                                           step_name=step_name,
-                                                           scheduler_arguments=scheduler_args,
-                                                           validation_attributes=validation_attributes,
-                                                           output_directory_path=self.output_directory_path,
-                                                           system_id=None,
-                                                           dependency_list=None)
+            self.run_step(step_name='GenomeAlignmentStep',
+                          sample=sample,
+                          execute_args=[sample, self.resources_index_files_directory_path,
+                                        self.star_file_path],
+                          cmd_line_args=[sample, self.resources_index_files_directory_path,
+                                         self.star_file_path],
+                          scheduler_memory_in_mb=40000,
+                          scheduler_num_processors=4)
 
         for sample in self.samples:
 
-            step_name = 'GenomeBamIndexStep'
-            genome_index = self.steps[step_name]
             bam_filename = bam_files[sample.sample_id]
-
-            if self.dispatcher_mode == "serial":
-                genome_index.execute(sample, bam_filename)
-            else:
-                stdout_log = os.path.join(genome_index.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.out")
-                stderr_log = os.path.join(genome_index.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.err")
-                command = genome_index.get_commandline_call(sample, bam_filename)
-
-                scheduler_args = {'job_name' : f"{step_name}.sample{sample.sample_id}_{sample.sample_name}",
-                                  'stdout_logfile' : stdout_log,
-                                  'stderr_logfile' : stderr_log,
-                                  'memory_in_mb' : 6000,
-                                  'num_processors' : 1}
-                validation_attributes = genome_index.get_validation_attributes(bam_filename)
-                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample.sample_id}",
-                                                           job_command=command, sample=sample,
-                                                           step_name=step_name,
-                                                           scheduler_arguments=scheduler_args,
-                                                           validation_attributes=validation_attributes,
-                                                           output_directory_path=self.output_directory_path,
-                                                           system_id=None,
-                                                           dependency_list=[f"GenomeAlignmentStep.{sample.sample_id}"])
-
+            self.run_step(step_name='GenomeBamIndexStep',
+                          sample=sample,
+                          execute_args=[sample, bam_filename],
+                          cmd_line_args=[sample, bam_filename],
+                          dependency_list=[f"GenomeAlignmentStep.{sample.sample_id}"])
 
         for sample_id, bam_file in bam_files.items():
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
-            step_name = 'VariantsFinderStep'
-            variants_finder = self.steps[step_name]
-            sample = expression_pipeline_monitor.get_sample(sample_id)
+            sample = self.expression_pipeline_monitor.get_sample(sample_id)
             seed = seeds[f"variant_finder.{sample_id}"]
-
-            if self.dispatcher_mode == "serial":
-                print(f"Processing variants in sample {sample_id}...")
-                variants_finder.execute(sample, bam_file, self.chr_ploidy_data, self.reference_genome, seed)
-            else:
-                stdout_log = os.path.join(variants_finder.log_directory_path, f"sample{sample_id}", f"{step_name}.bsub.%J.out")
-                stderr_log = os.path.join(variants_finder.log_directory_path, f"sample{sample_id}", f"{step_name}.bsub.%J.err")
-                command = variants_finder.get_commandline_call(sample, bam_file, self.chr_ploidy_file_path,
-                                                               self.reference_genome_file_path, seed)
-                scheduler_args = {'job_name' : f"{step_name}.sample{sample_id}_{sample.sample_name}",
-                                  'stdout_logfile' : stdout_log,
-                                  'stderr_logfile' : stderr_log,
-                                  'memory_in_mb' : 6000,
-                                  'num_processors' : 1}
-                validation_attributes = variants_finder.get_validation_attributes(sample)
-                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample_id}",
-                                                           job_command=command, sample=sample,
-                                                           step_name=step_name,
-                                                           scheduler_arguments=scheduler_args,
-                                                           validation_attributes=validation_attributes,
-                                                           output_directory_path=self.output_directory_path,
-                                                           system_id=None,
-                                                           dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
+            self.run_step(step_name='VariantsFinderStep',
+                          sample=sample,
+                          execute_args=[sample, bam_file, self.chr_ploidy_data,
+                                        self.reference_genome, seed],
+                          cmd_line_args=[sample, bam_file, self.chr_ploidy_file_path,
+                                         self.reference_genome_file_path, seed],
+                          dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
 
         for sample_id, bam_file in bam_files.items():
-            step_name = 'IntronQuantificationStep'
-            intron_quant = self.steps[step_name]
-            output_directory = os.path.join(intron_quant.data_directory_path, f"sample{sample.sample_id}")
-            sample = expression_pipeline_monitor.get_sample(sample_id)
-
-            if self.dispatcher_mode == "serial":
-                print(f"Computing Intron Quantifications in sample {sample_id}")
-                intron_quant.execute(bam_file, output_directory, self.annotation_file_path)
-            else:
-                stdout_log = os.path.join(intron_quant.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.out")
-                stderr_log = os.path.join(intron_quant.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.err")
-                command = intron_quant.get_commandline_call(bam_file, output_directory, self.annotation_file_path)
-
-                scheduler_args = {'job_name' : f"{step_name}.sample{sample_id}_{sample.sample_name}",
-                                  'stdout_logfile' : stdout_log,
-                                  'stderr_logfile' : stderr_log,
-                                  'memory_in_mb' : 6000,
-                                  'num_processors' : 1}
-                validation_attributes = intron_quant.get_validation_attributes(output_directory)
-                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample_id}",
-                                                           job_command=command, sample=sample,
-                                                           step_name=step_name,
-                                                           scheduler_arguments=scheduler_args,
-                                                           validation_attributes=validation_attributes,
-                                                           output_directory_path=output_directory,
-                                                           system_id=None,
-                                                           dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
-                #TODO: do we need to depend upon the index being done? or just the alignment?
-                #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
-                #      on the same BAM file at the same time, though I don't know why this would be a problem.
+            output_directory = os.path.join(self.data_directory_path, f"sample{sample.sample_id}")
+            sample = self.expression_pipeline_monitor.get_sample(sample_id)
+            self.run_step(step_name='IntronQuantificationStep',
+                          sample=sample,
+                          execute_args=[bam_file, output_directory, self.annotation_file_path],
+                          cmd_line_args=[bam_file, output_directory, self.annotation_file_path],
+                          dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
+            #TODO: do we need to depend upon the index being done? or just the alignment?
+            #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
+            #      on the same BAM file at the same time, though I don't know why this would be a problem.
 
 
-        step_name = 'VariantsCompilationStep'
-        variants_compilation = self.steps[step_name]
-        if self.dispatcher_mode == "serial":
-            #Get list of sample ID's, instead of passing all of the Sample objects.
-            variants_compilation.execute([sample.sample_id for sample in self.samples],
-                                         self.chr_ploidy_data, self.reference_genome)
-        else:
-            stdout_log = os.path.join(variants_compilation.log_directory_path, f"{step_name}.bsub.%J.out")
-            stderr_log = os.path.join(variants_compilation.log_directory_path, f"{step_name}.bsub.%J.err")
-            command = variants_compilation.get_commandline_call([sample.sample_id for sample in self.samples],
-                                                                self.chr_ploidy_file_path,
-                                                                self.reference_genome_file_path)
-            scheduler_args = {'job_name' : f"{step_name}",
-                              'stdout_logfile' : stdout_log,
-                              'stderr_logfile' : stderr_log,
-                              'memory_in_mb' : 6000,
-                              'num_processors' : 1}
-            validation_attributes = variants_compilation.get_validation_attributes()
-            expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}",
-                                                       job_command=command, sample=None,
-                                                       step_name=step_name,
-                                                       scheduler_arguments=scheduler_args,
-                                                       validation_attributes=validation_attributes,
-                                                       output_directory_path=variants_compilation.data_directory_path,
-                                                       system_id=None,
-                                                       dependency_list=[f"VariantsFinderStep.{sample.sample_id}" for sample in self.samples])
-
+        self.run_step(step_name='VariantsCompilationStep',
+                      sample=None,
+                      execute_args=[[sample.sample_id for sample in self.samples],
+                                    self.chr_ploidy_data, self.reference_genome],
+                      cmd_line_args=[[sample.sample_id for sample in self.samples],
+                                     self.chr_ploidy_file_path,
+                                     self.reference_genome_file_path],
+                      dependency_list=[f"VariantsFinderStep.{sample.sample_id}" for sample in self.samples])
 
         #Wait here until all of the preceding steps have finished.
         print(f'Waiting until all samples finish processing before running Beagle.')
-        expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
+        self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
         print(f"Processing combined samples...")
-        step_name = 'BeagleStep'
-        beagle = self.steps[step_name]
         seed = seeds["beagle"]
-        if self.dispatcher_mode == "serial":
-            beagle.execute(self.beagle_file_path, seed)
-        else:
-            stdout_log = os.path.join(beagle.log_directory_path, f"{step_name}.bsub.%J.out")
-            stderr_log = os.path.join(beagle.log_directory_path, f"{step_name}.bsub.%J.err")
-            command = beagle.get_commandline_call(self.beagle_file_path, seed)
-            scheduler_args = {'job_name' : f"{step_name}",
-                              'stdout_logfile' : stdout_log,
-                              'stderr_logfile' : stderr_log,
-                              'memory_in_mb' : 6000,
-                              'num_processors' : 1}
-            validation_attributes = beagle.get_validation_attributes()
-            expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}",
-                                                       job_command=command,
-                                                       sample=None,
-                                                       step_name=step_name,
-                                                       scheduler_arguments=scheduler_args,
-                                                       validation_attributes=validation_attributes,
-                                                       output_directory_path=beagle.data_directory_path,
-                                                       system_id=None,
-                                                       dependency_list=[f"VariantsCompilationStep"])
+        self.run_step(step_name='BeagleStep',
+                      sample=None,
+                      execute_args=list(self.beagle_file_path, seed),
+                      cmd_line_args=list(self.beagle_file_path, seed),
+                      dependency_list=[f"VariantsCompilationStep"])
 
         #TODO: We could load all of the steps in the entire pipeline into the queue
         #      and then just have the queue keep running until everything finishes.
         #      The only advantage of explicitly waiting here is that the user gets
         #      stdout indicating which stage is running for the pipeline.
-        expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
+        self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
         for sample in self.samples:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
+            self.run_step(step_name='GenomeBuilderStep',
+                          sample=sample,
+                          execute_args=[sample, self.chr_ploidy_data, self.reference_genome],
+                          cmd_line_args=[sample, self.chr_ploidy_file_path,
+                                         self.reference_genome_file_path],
+                          dependency_list=[f"BeagleStep"])
 
-            step_name = 'GenomeBuilderStep'
-            genome_builder = self.steps[step_name]
-            if self.dispatcher_mode == "serial":
-                genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
-            else:
-                stdout_log = os.path.join(genome_builder.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.out")
-                stderr_log = os.path.join(genome_builder.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.err")
-                command = genome_builder.get_commandline_call(sample, self.chr_ploidy_file_path,
-                                                              self.reference_genome_file_path)
-                scheduler_args = {'job_name' : f"{step_name}.sample{sample.sample_id}_{sample.sample_name}",
-                                  'stdout_logfile' : stdout_log,
-                                  'stderr_logfile' : stderr_log,
-                                  'memory_in_mb' : 6000,
-                                  'num_processors' : 1}
-                validation_attributes = genome_builder.get_validation_attributes(sample)
-                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample.sample_id}",
-                                                           job_command=command,
-                                                           sample=sample,
-                                                           step_name=step_name,
-                                                           scheduler_arguments=scheduler_args,
-                                                           validation_attributes=validation_attributes,
-                                                           output_directory_path=genome_builder.data_directory_path,
-                                                           system_id=None,
-                                                           dependency_list=[f"BeagleStep"])
-
-            expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
+            self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
             for suffix in [1,2]:
 
@@ -482,6 +358,72 @@ class ExpressionPipeline:
             for sample in self.samples:
                 seeds[f"{job}.{sample.sample_id}"] = numpy.random.randint(MAX_SEED)
         return seeds
+
+    def run_step(self, step_name, sample, execute_args, cmd_line_args, dependency_list=None,
+                 jobname_suffix=None, scheduler_memory_in_mb=6000, scheduler_num_processors=1):
+        """
+        Helper function that runs the given step, with the given parameters. If
+        CAMPAREE is configured to use a scheduler/job monitor, this helper function
+        wraps submission of the step to the job monitor.
+
+        Parameters
+        ----------
+        step_name : string
+            Name of the CAMPAREE step to run. It should be in the list of steps
+            stored in the steps dictionary.
+        sample : Sample
+            Sample to run through the step. For steps that aren't associated with
+            specific samples, set this to None.
+        execute_args : list
+            List of positional paramteres to pass to the execute() method for the
+            given step.
+        cmd_line_args : list
+            List of positional parameters to pass to the get_commandline_call()
+            method for the given step.
+        dependency_list : list
+            List of job names (if any) the current step depends on. Default: None.
+        jobname_suffix : string
+            Suffix to add to job submission ID. Default: None.
+        scheduler_memory_in_mb : int
+            Amount of RAM (in MB) to request if submitting this step to a job scheduler.
+        scheduler_num_processors : int
+            Number of processors to request if submitting this step to a job scheduler.
+
+        """
+        if step_name not in list(self.steps.keys()):
+            raise CampareeException(f"{step_name} not in the list of loaded steps (see config file).")
+
+        step_class = self.steps[step_name]
+        if self.dispatcher_mode == "serial":
+            step_class.execute(*execute_args)
+        else:
+            stdout_log = os.path.join(step_class.log_directory_path,
+                                      f"sample{sample.sample_id}" if sample else "",
+                                      f"{step_name}{f'.{jobname_suffix}' if jobname_suffix else ''}.bsub.%J.out")
+            stderr_log = os.path.join(step_class.log_directory_path,
+                                      f"sample{sample.sample_id}" if sample else "",
+                                      f"{step_name}{f'.{jobname_suffix}' if jobname_suffix else ''}.bsub.%J.err")
+            scheduler_job_name = (f"{step_name}{f'.sample{sample.sample_id}_{sample.sample_name}' if sample else ''}"
+                                  f"{f'.{jobname_suffix}' if jobname_suffix else ''}")
+            scheduler_args = {'job_name' : scheduler_job_name,
+                              'stdout_logfile' : stdout_log,
+                              'stderr_logfile' : stderr_log,
+                              'memory_in_mb' : scheduler_memory_in_mb,
+                              'num_processors' : scheduler_num_processors}
+            command = step_class.get_commandline_call(*cmd_line_args)
+            validation_attributes = step_class.get_validation_attributes(*cmd_line_args)
+            output_directory = os.path.join(step_class.data_directory_path,
+                                            f"sample{sample.sample_id}" if sample else "")
+            self.expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}{'.{sample.sample_id}' if sample else ''}"
+                                                                   f"{f'.{jobname_suffix}' if jobname_suffix else ''}",
+                                                            job_command=command,
+                                                            sample=sample,
+                                                            step_name=step_name,
+                                                            scheduler_arguments=scheduler_args,
+                                                            validation_attributes=validation_attributes,
+                                                            output_directory_path=output_directory,
+                                                            system_id=None,
+                                                            dependency_list=dependency_list)
 
     @staticmethod
     def main(configuration, dispatcher_mode, output_directory_path, input_samples):
