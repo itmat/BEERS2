@@ -232,9 +232,19 @@ class JobMonitor:
         #      require restarting).
 
         if job_id in self.running_list or job_id in self.pending_list:
-            raise JobMonitorException(f"Submitted job is already in the list of running or pending\n"
-                                      f"jobs. To move a job from the pending to the running list, use\n"
-                                      f"the submit_pending_job() function\n")
+            #Dump job that was already present in running/pending list, as well as
+            #contents of running/pending lists to an error file.
+            #with open(os.path.join(self.log_directory, "JobMonitorQueue.Error_output.log"), 'a') as log_file:
+            current_queue_state = self._get_job_queue_state()
+            print(f"****Submitted job****\n{str(submitted_job)}\n")
+            pending_jobs = '\n'.join(current_queue_state['pending_list'])
+            print(f"\n****Pending queue jobs****\n{pending_jobs}\n\n")
+            running_jobs = '\n'.join(current_queue_state['running_list'])
+            print(f"\n****Running queue jobs****\n{running_jobs}\n\n")
+            raise JobMonitorException(f"\n\tSubmitted job is already in the list of running or pending\n"
+                                      f"\tjobs. To move a job from the pending to the running list, use\n"
+                                      f"\tthe submit_pending_job() function\n"
+                                      f"\tSee log file for details queue state details.")
         else:
             if system_id is not None:
                 self.running_list[job_id] = submitted_job
@@ -398,6 +408,28 @@ class JobMonitor:
         job = self.pending_list[job_id]
         return set(job.dependency_list).issubset(self.completed_list.keys())
 
+    def _get_job_queue_state(self):
+        """
+        Prepare dump of jobs in the pending, running, resubmission, and completed lists.
+        This is inteded for debugging and error handling purposes.
+
+        Returns
+        -------
+        dict
+            Dictionary of job lists in each job queue, indexed by the name of the queue.
+            keys: pending_list, running_list, resubmission_list, completed_list
+            values: list of jobs currently in queue
+
+        """
+
+        job_queue_state = {}
+        job_queue_state['pending_list'] = [str(job) for job in self.pending_list]
+        job_queue_state['running_list'] = [str(job) for job in self.running_list]
+        job_queue_state['resubmission_list'] = [str(job) for job in self.resubmission_list]
+        job_queue_state['completed_list'] = [str(job) for job in self.completed_list]
+
+        return job_queue_state
+
 
 class Job:
     """
@@ -493,6 +525,29 @@ class Job:
         #and should be remedied.
         self.resubmission_counter = 0
 
+    def __str__(self):
+        return (f"Job - id:  {self.job_id}\n"
+                f"      step_name: {self.step_name}\n"
+                f"      sample_id: {self.sample_id}\n"
+                f"      system_id: {self.system_id}\n"
+                f"      dependency_list: {str(self.dependency_list)}\n"
+                f"      job_command: {self.job_command}\n"
+                f"      scheduler_arguments: {str(self.scheduler_arguments)}\n"
+                f"      validation_attributes: {str(self.validation_attributes)}\n"
+                f"      log_directory: {self.log_directory}\n"
+                f"      data_directory: {self.data_directory}")
+
+    def __repr__(self):
+        return (f"Job(job_id={self.job_id},"
+                f" job_command={self.job_command},"
+                f" sample_id={self.sample_id},"
+                f" step_name={self.step_name},"
+                f" scheduler_arguments=\"{repr(self.scheduler_arguments)}\","
+                f" validation_attributes=\"{repr(self.validation_attributes)}\","
+                f" output_directory={self.output_directory},"
+                f" scheduler_name={self.scheduler_name},"
+                f" system_id={self.system_id},"
+                f" \"{repr(self.dependency_list)}\")")
 
     def add_dependencies(self, dependency_job_ids):
         """

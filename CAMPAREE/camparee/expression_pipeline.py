@@ -414,7 +414,7 @@ class ExpressionPipeline:
             validation_attributes = step_class.get_validation_attributes(*cmd_line_args)
             output_directory = os.path.join(step_class.data_directory_path,
                                             f"sample{sample.sample_id}" if sample else "")
-            self.expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}{'.{sample.sample_id}' if sample else ''}"
+            self.expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}{f'.{sample.sample_id}' if sample else ''}"
                                                                    f"{f'.{jobname_suffix}' if jobname_suffix else ''}",
                                                             job_command=command,
                                                             sample=sample,
