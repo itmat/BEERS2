@@ -381,7 +381,6 @@ class ExpressionPipeline:
         beagle = self.steps[step_name]
         seed = seeds["beagle"]
         if self.dispatcher_mode == "serial":
-            #Get list of sample ID's, instead of passing all of the Sample objects.
             beagle.execute(self.beagle_file_path, seed)
         else:
             stdout_log = os.path.join(beagle.log_directory_path, f"{step_name}.bsub.%J.out")
@@ -412,8 +411,32 @@ class ExpressionPipeline:
         for sample in self.samples:
             print(f"Processing sample{sample.sample_id} ({sample.sample_name}...")
 
-            genome_builder = self.steps['GenomeBuilderStep']
-            genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
+            step_name = 'GenomeBuilderStep'
+            genome_builder = self.steps[step_name]
+            if self.dispatcher_mode == "serial":
+                genome_builder.execute(sample, self.chr_ploidy_data, self.reference_genome)
+            else:
+                stdout_log = os.path.join(genome_builder.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.out")
+                stderr_log = os.path.join(genome_builder.log_directory_path, f"sample{sample.sample_id}", f"{step_name}.bsub.%J.err")
+                command = genome_builder.get_commandline_call(sample, self.chr_ploidy_file_path,
+                                                              self.reference_genome_file_path)
+                scheduler_args = {'job_name' : f"{step_name}.sample{sample.sample_id}_{sample.sample_name}",
+                                  'stdout_logfile' : stdout_log,
+                                  'stderr_logfile' : stderr_log,
+                                  'memory_in_mb' : 6000,
+                                  'num_processors' : 1}
+                validation_attributes = genome_builder.get_validation_attributes(sample)
+                expression_pipeline_monitor.submit_new_job(job_id=f"{step_name}.{sample.sample_id}",
+                                                           job_command=command,
+                                                           sample=sample,
+                                                           step_name=step_name,
+                                                           scheduler_arguments=scheduler_args,
+                                                           validation_attributes=validation_attributes,
+                                                           output_directory_path=genome_builder.data_directory_path,
+                                                           system_id=None,
+                                                           dependency_list=[f"BeagleStep"])
+
+            expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
             for suffix in [1,2]:
 

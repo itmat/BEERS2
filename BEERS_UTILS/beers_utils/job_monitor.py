@@ -558,7 +558,8 @@ class Job:
                                       "VariantsFinderStep",
                                       "IntronQuantificationStep",
                                       "VariantsCompilationStep",
-                                      "BeagleStep"]:
+                                      "BeagleStep",
+                                      "GenomeBuilderStep"]:
 
                     pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 

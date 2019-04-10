@@ -234,12 +234,14 @@ class GenomeBuilderStep(AbstractCampareeStep):
         command = (f" python {genome_builder_path}"
                    f" --log_directory_path {self.log_directory_path}"
                    f" --data_directory_path {self.data_directory_path}"
-                   f" --ignore_indels {self.ignore_indels}"
-                   f" --ignore_snps {self.ignore_snps}"
                    f" --sample '{repr(sample)}'"
                    f" --chr_ploidy_file_path {chr_ploidy_file_path}"
                    f" --reference_genome_file_path {reference_genome_file_path}")
 
+        if self.ignore_indels:
+            command += " --ignore_indels"
+        if self.ignore_snps:
+            command += " --ignore_snps"
         if chromosome_list:
             #Create comma-searated list of chromosomes
             command += f" --chromosomes {','.join(str(chr) for chr in chromosome_list)}"
