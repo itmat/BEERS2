@@ -306,17 +306,26 @@ class IntronQuantificationStep(AbstractCampareeStep):
 
         return command
 
-    def get_validation_attributes(self, output_directory):
+    def get_validation_attributes(self, aligned_file_path, output_directory, geneinfo_file_path):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the IntronQuantification job.
 
         Parameters
         ----------
+        aligned_file_path : string
+            Path to BAM file aligned to genome. [Note: this parameter is
+            captured just so get_validation_attributes() accepts the same
+            arguments as get_commandline_call(). It is not used here.]
         output_directory : string
             Directory where the following output files are saved:
             {OUTPUT_INTRON_FILE_NAME}, {OUTPUT_INTRON_ANTISENSE_FILE_NAME},
             {OUTPUT_INTERGENIC_FILE_NAME}.
+        geneinfo_file_path : string
+            Geneinfo file in BED format with 1-based, inclusive coordinates.
+            [Note: this parameter is captured just so get_validation_attributes()
+            accepts the same arguments as get_commandline_call(). It is not used
+            here.]
 
         Returns
         -------

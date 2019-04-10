@@ -120,10 +120,22 @@ class BeagleStep(AbstractCampareeStep):
 
         return command
 
-    def get_validation_attributes(self):
+    def get_validation_attributes(self, beagle_jar_path, seed=None):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the BeagleStep job.
+
+        Parameters
+        ----------
+        beagle_jar_path : string
+            Path to the beagle JAR file. [Note: this parameter is captured just
+            so get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
+        seed : int
+            Seed for random number generator. Used so repeated runs will produce
+            the same results. [Note: this parameter is captured just so
+            get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
 
         Returns
         -------

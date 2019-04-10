@@ -244,10 +244,31 @@ class VariantsCompilationStep(AbstractCampareeStep):
 
         return command
 
-    def get_validation_attributes(self):
+    def get_validation_attributes(self, samples, chr_ploidy_file_path, reference_genome_file_path):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the VariantsCompilationStep job.
+
+        Parameters
+        ----------
+        samples : list
+            List of Sample() objects for which variants have been called and need
+            to be merged. [Note: this parameter is captured just so
+            get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
+        chr_ploidy_file_path : string
+            File that maps chromosome names to their male/female ploidy. [Note:
+            this parameter is captured just so get_validation_attributes() accepts
+            the same arguments as get_commandline_call(). It is not used here.]
+        reference_genome_file_path : string
+            File that maps chromosome names in reference to nucleotide sequence.
+            [Note: this parameter is captured just so get_validation_attributes()
+            accepts the same arguments as get_commandline_call(). It is not used
+            here.]
+
+
+
+
 
         Returns
         -------

@@ -248,7 +248,7 @@ class GenomeBuilderStep(AbstractCampareeStep):
 
         return command
 
-    def get_validation_attributes(self, sample):
+    def get_validation_attributes(self, sample, chr_ploidy_file_path, reference_genome_file_path, chromosome_list=None):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the GenomeBuilderStep job corresponding to the given
@@ -258,6 +258,22 @@ class GenomeBuilderStep(AbstractCampareeStep):
         ----------
         sample : Sample
             Sample for which custom parental genomes will be generated.
+        chr_ploidy_file_path : string
+            File that maps chromosome names to their male/female ploidy. [Note:
+            this parameter is captured just so get_validation_attributes() accepts
+            the same arguments as get_commandline_call(). It is not used here.]
+        reference_genome_file_path : string
+            File that maps chromosome names in reference to nucleotide sequence.
+            [Note: this parameter is captured just so get_validation_attributes()
+            accepts the same arguments as get_commandline_call(). It is not used
+            here.]
+        chromosome_list : list
+            A debug feature that overrides the chr_ploidy_data chr list. Useful
+            for testing a specific chromosome only or a small subset of
+            chromosomes. [Note: this parameter is captured just so
+            get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
+
 
         Returns
         -------
