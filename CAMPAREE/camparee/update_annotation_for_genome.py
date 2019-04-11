@@ -73,8 +73,8 @@ class UpdateAnnotationForGenomeStep(AbstractCampareeStep):
 
          Parameters
         ----------
-        genome_indel_suffix : string
-             Suffix to apply to obtain proper genome indel file.
+        genome_indel_suffix : int
+             Suffix to apply to obtain proper genome indel file. Should be 1 or 2.
         input_annot_filename : string
             Full path to annotation file with coordinates for reference genome.
         """
@@ -84,7 +84,7 @@ class UpdateAnnotationForGenomeStep(AbstractCampareeStep):
         gender_index = 1 if sample.gender == "female" else 0
         self.chr_ploidy = self._get_chr_ploidy_from_file(chr_ploidy_file_path)
         desired_chromosomes = [chromosome for chromosome, ploidies in self.chr_ploidy.items()
-                                if  ploidies[gender_index] >= genome_indel_suffix]
+                               if  ploidies[gender_index] >= int(genome_indel_suffix)]
 
         #TODO: Switch all of these filenames/patterns so they are stored/read
         #      from the CAMPAREE CONSTANTS.
@@ -92,9 +92,9 @@ class UpdateAnnotationForGenomeStep(AbstractCampareeStep):
                                                    f"custom_genome_indels_{genome_indel_suffix}.txt")
         self.input_annot_file_path = input_annot_file_path
         self.updated_annot_file_path = os.path.join(self.data_directory_path, f"sample{sample.sample_id}",
-                                                    self.UPDATE_ANNOT_OUTPUT_FILENAME_PATTERN.format(genome_indel_suffix))
+                                                    self.UPDATE_ANNOT_OUTPUT_FILENAME_PATTERN.format(genome_suffix=genome_indel_suffix))
         self.log_file_path = os.path.join(self.log_directory_path, f'sample{sample.sample_id}',
-                                          self.UPDATE_ANNOT_LOG_FILENAME_PATTERN.format(genome_indel_suffix))
+                                          self.UPDATE_ANNOT_LOG_FILENAME_PATTERN.format(genome_suffix=genome_indel_suffix))
 
 
         #Load indel offsets from the indel file
@@ -420,9 +420,9 @@ class UpdateAnnotationForGenomeStep(AbstractCampareeStep):
         valid_output = False
 
         update_annot_outfile_path = os.path.join(data_directory, f"sample{sample_id}",
-                                                 UpdateAnnotationForGenomeStep.UPDATE_ANNOT_OUTPUT_FILENAME_PATTERN.format(genome_suffix))
+                                                 UpdateAnnotationForGenomeStep.UPDATE_ANNOT_OUTPUT_FILENAME_PATTERN.format(genome_suffix=genome_suffix))
         update_annot_logfile_path = os.path.join(log_directory, f"sample{sample_id}",
-                                                 UpdateAnnotationForGenomeStep.UPDATE_ANNOT_LOG_FILENAME_PATTERN.format(genome_suffix))
+                                                 UpdateAnnotationForGenomeStep.UPDATE_ANNOT_LOG_FILENAME_PATTERN.format(genome_suffix=genome_suffix))
 
         if os.path.isfile(update_annot_outfile_path) and \
            os.path.isfile(update_annot_logfile_path):
@@ -446,13 +446,13 @@ class UpdateAnnotationForGenomeStep(AbstractCampareeStep):
         """
         parser = argparse.ArgumentParser(description='Update annotation file with'
                                                      ' coordinates for variant genome')
-        parser.add_argument('-l', '--log_directory_path', require=True,
+        parser.add_argument('-l', '--log_directory_path', required=True,
                             help="Path to log directory.")
-        parser.add_argument('-d', '--data_directory_path', require=True,
+        parser.add_argument('-d', '--data_directory_path', required=True,
                             help='Path to data directory')
-        parser.add_argument('-g', '--genome_indel_suffix', require=True,
-                            help="Suffix that distinguishes genome names")
-        parser.add_argument('-i', '--input_annot_file_path', require=True,
+        parser.add_argument('-g', '--genome_indel_suffix', required=True, type=int, choices=[1,2],
+                            help="Integer suffix that distinguishes genome names")
+        parser.add_argument('-i', '--input_annot_file_path', required=True,
                             help="Annotation file using reference coordinates")
         parser.add_argument('-p', '--chr_ploidy_file_path')
         parser.add_argument('--sample', default=None,

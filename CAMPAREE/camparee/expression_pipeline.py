@@ -285,11 +285,6 @@ class ExpressionPipeline:
                                      self.reference_genome_file_path],
                       dependency_list=[f"VariantsFinderStep.{sample.sample_id}" for sample in self.samples])
 
-        #Wait here until all of the preceding steps have finished.
-        print(f'Waiting until all samples finish processing before running Beagle.')
-        self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
-
-        print(f"Processing combined samples...")
         seed = seeds["beagle"]
         self.run_step(step_name='BeagleStep',
                       sample=None,
@@ -312,12 +307,18 @@ class ExpressionPipeline:
                                          self.reference_genome_file_path],
                           dependency_list=[f"BeagleStep"])
 
-            self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
-
             for suffix in [1,2]:
 
-                annotation_updater = self.steps['UpdateAnnotationForGenomeStep']
-                annotation_updater.execute(sample, suffix, self.annotation_file_path, self.chr_ploidy_file_path)
+                self.run_step(step_name='UpdateAnnotationForGenomeStep',
+                              sample=sample,
+                              execute_args=[sample, suffix, self.annotation_file_path,
+                                            self.chr_ploidy_file_path],
+                              cmd_line_args=[sample, suffix, self.annotation_file_path,
+                                             self.chr_ploidy_file_path],
+                              dependency_list=[f"GenomeBuilderStep.{sample_id}"],
+                              jobname_suffix=suffix)
+
+        self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
         transcriptomes.prep_transcriptomes(self.samples,
                                             self.data_directory_path,
@@ -395,7 +396,15 @@ class ExpressionPipeline:
 
         step_class = self.steps[step_name]
         if self.dispatcher_mode == "serial":
+            status_msg = f"Performing {step_name}"
+            status_msg += f".{jobname_suffix}" if jobname_suffix else ""
+            status_msg += f" on sample{sample.sample_id}" if sample else ""
+            print(status_msg)
             step_class.execute(*execute_args)
+            status_msg = f"Finished {step_name}"
+            status_msg += f".{jobname_suffix}" if jobname_suffix else ""
+            status_msg += f" on sample{sample.sample_id}" if sample else ""
+            print(status_msg + "\n")
         else:
             stdout_log = os.path.join(step_class.log_directory_path,
                                       f"sample{sample.sample_id}" if sample else "",
