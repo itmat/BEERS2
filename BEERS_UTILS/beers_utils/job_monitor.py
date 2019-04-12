@@ -615,7 +615,8 @@ class Job:
                                       "VariantsCompilationStep",
                                       "BeagleStep",
                                       "GenomeBuilderStep",
-                                      "UpdateAnnotationForGenomeStep"]:
+                                      "UpdateAnnotationForGenomeStep",
+                                      "TranscriptQuantificatAndMoleculeGenerationStep"]:
 
                     pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 

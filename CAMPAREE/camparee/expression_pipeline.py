@@ -307,7 +307,7 @@ class ExpressionPipeline:
                                          self.reference_genome_file_path],
                           dependency_list=[f"BeagleStep"])
 
-            for suffix in [1,2]:
+            for suffix in [1, 2]:
 
                 self.run_step(step_name='UpdateAnnotationForGenomeStep',
                               sample=sample,
@@ -315,20 +315,22 @@ class ExpressionPipeline:
                                             self.chr_ploidy_file_path],
                               cmd_line_args=[sample, suffix, self.annotation_file_path,
                                              self.chr_ploidy_file_path],
-                              dependency_list=[f"GenomeBuilderStep.{sample_id}"],
+                              dependency_list=[f"GenomeBuilderStep.{sample.sample_id}"],
                               jobname_suffix=suffix)
 
-        self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
+            seed = seeds[f"TranscriptQuantificatAndMoleculeGenerationStep.{sample.sample_id}"]
+            self.run_step(step_name='TranscriptQuantificatAndMoleculeGenerationStep',
+                          sample=sample,
+                          execute_args=[sample, self.kallisto_file_path, self.bowtie2_dir_path,
+                                        self.output_type, self.output_molecule_count, seed],
+                          cmd_line_args=[sample, self.kallisto_file_path, self.bowtie2_dir_path,
+                                         self.output_type, self.output_molecule_count, seed],
+                          dependency_list=[f"UpdateAnnotationForGenomeStep.{sample.sample_id}.1",
+                                           f"UpdateAnnotationForGenomeStep.{sample.sample_id}.2"],
+                          scheduler_memory_in_mb=40000,
+                          scheduler_num_processors=7)
 
-        transcriptomes.prep_transcriptomes(self.samples,
-                                            self.data_directory_path,
-                                            self.log_directory_path,
-                                            self.kallisto_file_path,
-                                            self.bowtie2_dir_path,
-                                            self.output_type,
-                                            self.output_molecule_count,
-                                            self.dispatcher_mode,
-                                            seeds["transcriptomes"])
+        self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
             #for _ in range(2):
             #    quantifier = Quantify(annotation_updates, self.alignment_filename)
@@ -352,10 +354,10 @@ class ExpressionPipeline:
         """
         seeds = {}
         # Seeds for jobs that don't run per sample
-        for job in ["VariantsCompilationStep", "BeagleStep", "transcriptomes"]:
+        for job in ["VariantsCompilationStep", "BeagleStep"]:
             seeds[job] = numpy.random.randint(MAX_SEED)
         # Seeds for jobs that are run per sample
-        for job in ["VariantsFinderStep"]:
+        for job in ["VariantsFinderStep", "TranscriptQuantificatAndMoleculeGenerationStep"]:
             for sample in self.samples:
                 seeds[f"{job}.{sample.sample_id}"] = numpy.random.randint(MAX_SEED)
         return seeds
