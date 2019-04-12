@@ -254,7 +254,7 @@ class ExpressionPipeline:
         for sample_id, bam_file in bam_files.items():
             # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
             sample = self.expression_pipeline_monitor.get_sample(sample_id)
-            seed = seeds[f"variant_finder.{sample_id}"]
+            seed = seeds[f"VariantsFinderStep.{sample_id}"]
             self.run_step(step_name='VariantsFinderStep',
                           sample=sample,
                           execute_args=[sample, bam_file, self.chr_ploidy_data,
@@ -275,17 +275,17 @@ class ExpressionPipeline:
             #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
             #      on the same BAM file at the same time, though I don't know why this would be a problem.
 
-
+        seed = seeds["VariantsCompilationStep"]
         self.run_step(step_name='VariantsCompilationStep',
                       sample=None,
                       execute_args=[[sample.sample_id for sample in self.samples],
-                                    self.chr_ploidy_data, self.reference_genome],
+                                    self.chr_ploidy_data, self.reference_genome, seed],
                       cmd_line_args=[[sample.sample_id for sample in self.samples],
                                      self.chr_ploidy_file_path,
-                                     self.reference_genome_file_path],
+                                     self.reference_genome_file_path, seed],
                       dependency_list=[f"VariantsFinderStep.{sample.sample_id}" for sample in self.samples])
 
-        seed = seeds["beagle"]
+        seed = seeds["BeagleStep"]
         self.run_step(step_name='BeagleStep',
                       sample=None,
                       execute_args=[self.beagle_file_path, seed],
@@ -352,10 +352,10 @@ class ExpressionPipeline:
         """
         seeds = {}
         # Seeds for jobs that don't run per sample
-        for job in ["beagle", "transcriptomes"]:
+        for job in ["VariantsCompilationStep", "BeagleStep", "transcriptomes"]:
             seeds[job] = numpy.random.randint(MAX_SEED)
         # Seeds for jobs that are run per sample
-        for job in ["variant_finder"]:
+        for job in ["VariantsFinderStep"]:
             for sample in self.samples:
                 seeds[f"{job}.{sample.sample_id}"] = numpy.random.randint(MAX_SEED)
         return seeds

@@ -24,7 +24,7 @@ class VariantsCompilationStep(AbstractCampareeStep):
     def validate(self):
         return True
 
-    def execute(self, sample_id_list, chr_ploidy_data, reference_genome):
+    def execute(self, sample_id_list, chr_ploidy_data, reference_genome, seed=None):
         """
         Entry point into variants_compilation.
 
@@ -37,11 +37,20 @@ class VariantsCompilationStep(AbstractCampareeStep):
             ploidy as values.
         reference_genome : dict
             Dictionary representation of the reference genome
+        seed : int
+            Seed for random number generator. Used so repeated runs will produce
+            the same results.
 
         """
         self.chr_ploidy_data = chr_ploidy_data
         contig_order = list(reference_genome.keys())
         log_file_path = os.path.join(self.log_directory_path, VariantsCompilationStep.VARIANTS_LOG_FILENAME)
+
+        # The common_variant() method defined below uses a random number when
+        # choosing which of two equally prevalent variants to keep.
+        if seed is not None:
+            numpy.random.seed(seed)
+
         with open(log_file_path, "w") as log_file:
             print("Converting variants into vcf file")
             log_file.write("Converting variants into vcf file\n")
@@ -207,7 +216,7 @@ class VariantsCompilationStep(AbstractCampareeStep):
             log_file.write(f"Finished creating VCF file for Beagle with {i} variant entries\n")
             log_file.write("ALL DONE!\n")
 
-    def get_commandline_call(self, samples, chr_ploidy_file_path, reference_genome_file_path):
+    def get_commandline_call(self, samples, chr_ploidy_file_path, reference_genome_file_path, seed=None):
         """
         Prepare command to execute the VariantsCompilationStep from the command
         line, given all of the arugments used to run the execute() function.
@@ -221,6 +230,9 @@ class VariantsCompilationStep(AbstractCampareeStep):
             File that maps chromosome names to their male/female ploidy.
         reference_genome_file_path : string
             File that maps chromosome names in reference to nucleotide sequence.
+        seed : integer
+            Seed for random number generator. Used so repeated runs will produce
+            the same results.
 
         Returns
         -------
@@ -242,9 +254,12 @@ class VariantsCompilationStep(AbstractCampareeStep):
                    f" --chr_ploidy_file_path {chr_ploidy_file_path}"
                    f" --reference_genome_file_path {reference_genome_file_path}")
 
+        if seed is not None:
+            command += f" --seed {seed}"
+
         return command
 
-    def get_validation_attributes(self, samples, chr_ploidy_file_path, reference_genome_file_path):
+    def get_validation_attributes(self, samples, chr_ploidy_file_path, reference_genome_file_path, seed=None):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the VariantsCompilationStep job.
@@ -265,10 +280,11 @@ class VariantsCompilationStep(AbstractCampareeStep):
             [Note: this parameter is captured just so get_validation_attributes()
             accepts the same arguments as get_commandline_call(). It is not used
             here.]
-
-
-
-
+        seed : integer
+            Seed for random number generator. Used so repeated runs will produce
+            the same results. [Note: this parameter is captured just so
+            get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
 
         Returns
         -------
@@ -295,6 +311,7 @@ class VariantsCompilationStep(AbstractCampareeStep):
         parser.add_argument('--sample_ids')
         parser.add_argument('--chr_ploidy_file_path')
         parser.add_argument('--reference_genome_file_path')
+        parser.add_argument('--seed', type=int, default=None)
         args = parser.parse_args()
 
         variants_compiler = VariantsCompilationStep(args.log_directory_path,
@@ -304,7 +321,8 @@ class VariantsCompilationStep(AbstractCampareeStep):
         chr_ploidy_data = CampareeUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
         variants_compiler.execute(sample_id_list,
                                   chr_ploidy_data,
-                                  reference_genome)
+                                  reference_genome,
+                                  args.seed)
 
     @staticmethod
     def is_output_valid(validation_attributes):
