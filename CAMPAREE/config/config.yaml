@@ -28,3 +28,4 @@ steps:
     - {step_name: genome_builder.GenomeBuilderStep, parameters: {ignore_indels: false, ignore_snps: false}}
     - {step_name: update_annotation_for_genome.UpdateAnnotationForGenomeStep}
     - {step_name: intron_quant.IntronQuantificationStep, parameters: {forward_read_is_sense: false, flank_size: 1500}}
+    - {step_name: transcriptomes.TranscriptQuantificatAndMoleculeGenerationStep, parameters: {num_bowtie_threads: 7}}

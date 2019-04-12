@@ -361,7 +361,7 @@ class VariantsFinderStep(AbstractCampareeStep):
 
         return command
 
-    def get_validation_attributes(self, sample):
+    def get_validation_attributes(self, sample, alignment_file_path, chr_ploidy_file_path, reference_genome_file_path, seed=None):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the VariantsFinder job corresponding to the given sample.
@@ -370,6 +370,25 @@ class VariantsFinderStep(AbstractCampareeStep):
         ----------
         sample : Sample
             Sample for which variants will be called.
+        alignment_file_path : string
+            Path to BAM file which will be parsed. [Note: this parameter is
+            captured just so get_validation_attributes() accepts the same
+            arguments as get_commandline_call(). It is not used here.]
+        chr_ploidy_file_path : string
+            File that maps chromosome names to their male/female ploidy. [Note:
+            this parameter is captured just so get_validation_attributes()
+            accepts the same arguments as get_commandline_call(). It is not used
+            here.]
+        reference_genome_file_path : string
+            File that maps chromosome names in reference to nucleotide sequence.
+            [Note: this parameter is captured just so get_validation_attributes()
+            accepts the same arguments as get_commandline_call(). It is not used
+            here.]
+        seed : integer
+            Seed for random number generator. Used to repeated runs will produce
+            the same results. [Note: this parameter is captured just so
+            get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
 
         Returns
         -------
