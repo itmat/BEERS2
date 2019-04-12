@@ -121,7 +121,7 @@ class TranscriptQuantificatAndMoleculeGenerationStep():
             subprocess.run(command, shell=True, check=True)
 
         print(f"Quantifying allelic imabalance for sample{sample.sample_id}")
-        allelic_imbalance_quant = AllelicImbalanceQuantificationStep(sample_dir)
+        allelic_imbalance_quant = AllelicImbalanceQuantificationStep(sample_dir, sample)
         allelic_imbalance_quant.quantify_allelic_imbalance()
         allelic_imbalance_quant.make_allele_imbalance_dist_file()
 
