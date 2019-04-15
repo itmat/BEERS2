@@ -1,7 +1,6 @@
 import os
-import re
-import importlib
-import subprocess
+import sys
+import time
 from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers_utils.general_utils import BeersUtilsException
 import beers_utils.job_scheduler_provider
@@ -19,7 +18,7 @@ class JobMonitor:
     #job output.
     PIPELINE_STEPS = {}
 
-    def __init__(self, output_directory_path, scheduler_name):
+    def __init__(self, output_directory_path, scheduler_name, max_resub_limit=3):
         """
         Initialize the monitor to track a specific set of jobs/processes running on
         a list of corresponding samples.
@@ -30,9 +29,14 @@ class JobMonitor:
             Path to data directory where job/process output is being stored.
         scheduler_name : string
             The mode used to submit the jobs/processes to the scheduler.
+        max_resub_limit : int
+            The maximum number of times a job can be resubmitted before the
+            pipeline halts.
+
         """
         self.output_directory = output_directory_path
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
+        self.max_resub_limit = max_resub_limit
         self.pending_list = {}
         self.running_list = {}
         #Tracks which of the submitted jobs have stalled or failed and ultimately
@@ -61,6 +65,9 @@ class JobMonitor:
                     or resubmission list.
 
         """
+        # TODO: Could we merge this function with monitor_until_all_jobs_completed()?
+        #       Would there every be any need to run is_processing_complete() alone?
+
         #Note, I need to force python to create a copy of the running_list so
         #that if/when the code below removes jobs from the running_list it won't
         #cause python to throw a "dictionary changed size during iteration" error.
@@ -70,7 +77,12 @@ class JobMonitor:
                 self.mark_job_for_resubmission(job_id)
             elif job_status == "COMPLETED":
                 self.mark_job_completed(job_id)
-        #TODO: Check pending_list's dependencies to see if they need to move to running_list.
+
+        print(f"Running jobs:{len(self.running_list)} | "
+              f"Pending jobs:{len(self.pending_list)} | "
+              f"Resub jobs:{len(self.resubmission_list)} | "
+              f"Completed jobs:{len(self.completed_list)}")
+
         return True if (not self.running_list and
                         not self.pending_list and
                         not self.resubmission_list) else False
@@ -87,14 +99,69 @@ class JobMonitor:
         #      function finishes).
 
     def mark_job_completed(self, job_id):
+        """
+        Move job from running queue to completed queue.
+
+        Parameters
+        ----------
+        job_id : string
+            Internal BEERS ID that uniquely identifies this job.
+
+        """
         self.completed_list[job_id] = self.running_list[job_id]
         del self.running_list[job_id]
 
     def mark_job_for_resubmission(self, job_id):
+        """
+        Move job from running queue to resubmission queue.
+
+        Parameters
+        ----------
+        job_id : string
+            Internal BEERS ID that uniquely identifies this job.
+
+        """
         self.resubmission_list[job_id] = self.running_list[job_id]
         #Remove job from the process list so it can be replaced with a new entry
         #in the process list rollowing resubmission.
         del self.running_list[job_id]
+
+    def monitor_until_all_jobs_completed(self, queue_update_interval=10):
+        """
+        Monitor until all jobs in the pending, running, and resubmission queues
+        have completed. This method performs the following job queue operations:
+            1) Submit pending jobs as their dependencies are satisfied
+            2) Mark and resubmit failed jobs.
+            3) Move jobs to completed queue as they finish.
+
+        Parameters
+        ----------
+        queue_update_interval : int
+            Number of second to wait after checking and updating all jobs on the
+            queues, before checking again.
+
+        """
+        while not self.is_processing_complete():
+            #Check for jobs requiring resubmission
+            resubmission_jobs = self.resubmission_list.copy()
+            if resubmission_jobs:
+                print(f"--Resubmitting {len(resubmission_jobs)} jobs that failed/stalled.")
+                for resub_job_id in resubmission_jobs.keys():
+                    self.resubmit_job(resub_job_id)
+
+            #Check if pending jobs have satisfied their dependencies
+            pending_jobs = self.pending_list.copy()
+            if pending_jobs:
+                print(f"--Check {len(pending_jobs)} pending jobs for satisfied dependencies:")
+                for pend_job_id in pending_jobs.keys():
+                    # TODO: Consider moving this check inside the submit_pending_job
+                    #       method. The advantage of keeping this separate is we
+                    #       can force the submission of a pending job, regardless
+                    #       of the status of its dependencies (could be useful when
+                    #       restarting a job monitoring queue following a crash).
+                    if self.are_dependencies_satisfied(pend_job_id):
+                        self.submit_pending_job(pend_job_id)
+            time.sleep(queue_update_interval)
 
     def submit_new_job(self, job_id, job_command, sample, step_name, scheduler_arguments,
                        validation_attributes, output_directory_path, system_id=None,
@@ -113,7 +180,8 @@ class JobMonitor:
             likely be the output of the StepName.get_commandline_call() function.
         sample : Sample
             Sample object associated with the job. Will be added to the dictionary
-            of samples stored in the JobMonitor if it's not already there.
+            of samples stored in the JobMonitor if it's not already there. If the
+            job is not associated with a specific sample, set to 'None'.
         step_name : string
             Name of the step in the pipeline associated with monitored job.
         scheduler_arguments : dict
@@ -140,7 +208,12 @@ class JobMonitor:
             job will wait until all those on the dependency list have completed).
             If the job has no dependencies, this should be "None" or empty.
         """
-        submitted_job = Job(job_id, job_command, sample.sample_id, step_name,
+
+        sample_id_for_job = None
+        if sample:
+            sample_id_for_job = sample.sample_id
+
+        submitted_job = Job(job_id, job_command, sample_id_for_job, step_name,
                             scheduler_arguments, validation_attributes,
                             output_directory_path, self.scheduler_name,
                             system_id, dependency_list)
@@ -159,22 +232,32 @@ class JobMonitor:
         #      require restarting).
 
         if job_id in self.running_list or job_id in self.pending_list:
-            raise JobMonitorException(f'Submitted job is already in the list of running or pending\n',
-                                      'jobs. To move a job from the pending to the running list, use\n',
-                                      'the submit_pending_job() function\n')
+            #Dump job that was already present in running/pending list, as well as
+            #contents of running/pending lists to an error file.
+            #with open(os.path.join(self.log_directory, "JobMonitorQueue.Error_output.log"), 'a') as log_file:
+            current_queue_state = self._get_job_queue_state()
+            print(f"****Submitted job****\n{str(submitted_job)}\n")
+            pending_jobs = '\n'.join(current_queue_state['pending_list'])
+            print(f"\n****Pending queue jobs****\n{pending_jobs}\n\n")
+            running_jobs = '\n'.join(current_queue_state['running_list'])
+            print(f"\n****Running queue jobs****\n{running_jobs}\n\n")
+            raise JobMonitorException(f"\n\tSubmitted job is already in the list of running or pending\n"
+                                      f"\tjobs. To move a job from the pending to the running list, use\n"
+                                      f"\tthe submit_pending_job() function\n"
+                                      f"\tSee log file for details queue state details.")
         else:
             if system_id is not None:
                 self.running_list[job_id] = submitted_job
             else:
                 self.pending_list[job_id] = submitted_job
 
-            if not sample.sample_id in self.samples_by_ids:
-                self.samples_by_ids[sample.sample_id] = sample
+            if sample_id_for_job and  sample_id_for_job not in self.samples_by_ids:
+                self.samples_by_ids[sample_id_for_job] = sample
 
 
-    def submit_pending_job(self, job_id, new_system_id):
+    def submit_pending_job(self, job_id):
         """
-        Update job with new system ID and move it from the pending list to
+        submit job through the job scheduler and move it from the pending list to
         the list of running jobs.
 
         Parameters
@@ -182,41 +265,99 @@ class JobMonitor:
         job_id : string
             Internal BEERS ID that uniquely identifies the job to submit. This
             job ID must be present in the pending list.
-        new_system_id : string
-            New system-level ID assigned to the job during submission.
+
         """
+        # TODO: We could probably combine the resubmit_job() and submit_pending_job()
+        #       into a single method that also takes a job_type argument [pending,resub]
+        #       and then behaves accordingly. Or maybe it simply infers what to do with
+        #       the job based on which queue it's located in. There's a ton of overlap
+        #       between these two functions right now.
         if not job_id in self.pending_list:
-            raise JobMonitorException(f'Job missing from the list of pending jobs.\n')
+            raise JobMonitorException(f"Job missing from the list of pending jobs.\n")
         elif job_id in self.running_list or job_id in self.resubmission_list:
-            raise JobMonitorException(f'Job is already in the list of running jobs or ',
-                                      'jobs marked for resubmission.\n')
+            raise JobMonitorException(f"Job is already in the list of running jobs or "
+                                      f"jobs marked for resubmission.\n")
         else:
             job = self.pending_list[job_id]
+
+            pend_sample = self.get_sample(job.sample_id)
+
+            #Only identify sample if one is associated with the job.
+            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {pend_sample.sample_name}.' if pend_sample else '.'}")
+
+            #Use unpacking to provide arguments for job submission
+            new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
+                                                          **job.scheduler_arguments)
+            if new_system_id == "ERROR":
+                print(f"Job submission failed for {job.step_name}:\n",
+                      f"   Job sample: {pend_sample.sample_name if pend_sample else 'None'}\n",
+                      f"   Scheduler parameters: {job.scheduler_arguments}\n",
+                      f"   Job command: {job.job_command}\n",
+                      file=sys.stderr)
+                raise JobMonitorException(f"Job submission failed for {job.step_name}. "
+                                          f"See log file for full details.")
+
+            #Only identify sample if one is associated with the job.
+            print(f"\tFinished submitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {pend_sample.sample_name}.' if pend_sample else '.'}")
+
             job.system_id = new_system_id
             self.running_list[job_id] = job
             del self.pending_list[job_id]
 
-    def resubmit_job(self, job_id, new_system_id):
+    def resubmit_job(self, job_id):
         """
-        Update job with new system ID and move it from the resubmission list to
-        the list of running jobs. Also increment job's resubmission counter.
+        Resubmit job through the job scheduler and move it from the resubmission
+        list to the list of running jobs. Also increment job's resubmission counter.
 
         Parameters
         ----------
         job_id : string
             Internal BEERS ID that uniquely identifies the job to resubmit. This
             job ID must be present in the resubmission list.
-        new_system_id : string
-            New system-level ID assigned to the job during resubmission.
+
         """
+        # TODO: We could probably combine the resubmit_job() and submit_pending_job()
+        #       into a single method that also takes a job_type argument [pending,resub]
+        #       and then behaves accordingly. Or maybe it simply infers what to do with
+        #       the job based on which queue it's located in. There's a ton of overlap
+        #       between these two functions right now.
         if not job_id in self.resubmission_list:
-            raise JobMonitorException(f'Resubmitted job missing from the list of jobs ',
-                                      'marked for resubmission.\n')
+            raise JobMonitorException(f"Resubmitted job missing from the list of jobs "
+                                      f"marked for resubmission.\n")
         elif job_id in self.running_list or job_id in self.pending_list:
-            raise JobMonitorException(f'Resubmitted job is already in the list of ',
-                                      'running or pending jobs.\n')
+            raise JobMonitorException(f"Resubmitted job is already in the list of "
+                                      f"running or pending jobs.\n")
         else:
             job = self.resubmission_list[job_id]
+
+            if job.resubmission_counter == self.max_resub_limit:
+                raise JobMonitorException(f"The {job_id} exceeded the maximum resubmission "
+                                          f"limit of {self.max_resub_limit}.\n")
+
+            resub_sample = self.get_sample(job.sample_id)
+
+            #Only identify sample if one is associated with the job.
+            print(f"\tSubmitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {resub_sample.sample_name}.' if resub_sample else '.'}")
+
+            #Use unpacking to provide arguments for job submission
+            new_system_id = self.job_scheduler.submit_job(job_command=job.job_command,
+                                                          **job.scheduler_arguments)
+            if new_system_id == "ERROR":
+                print(f"Job submission failed for {job.step_name}:\n",
+                      f"   Job sample: {resub_sample.sample_name if resub_sample else 'None'}\n",
+                      f"   Scheduler parameters: {job.scheduler_arguments}\n",
+                      f"   Job command: {job.job_command}\n",
+                      file=sys.stderr)
+                raise JobMonitorException(f"Job submission failed for {job.step_name}. "
+                                          f"See log file for full details.")
+
+            #Only identify sample if one is associated with the job.
+            print(f"\tFinished submitting {job.step_name} command to {self.scheduler_name}"
+                  f"{f' for sample {resub_sample.sample_name}.' if resub_sample else '.'}")
+
             job.system_id = new_system_id
             job.resubmission_counter += 1
             self.running_list[job_id] = job
@@ -224,9 +365,25 @@ class JobMonitor:
 
     def get_sample(self, sample_id):
         """
-        Helper function returns sample object given a sample_id.
+        Given a sample_id, return sample object from the dictionary of sample.
+        objects stored by the JobMonitor.
+
+        Parameters
+        ----------
+        sample_id : string
+            ID of sample object (created by Controller class) to return.
+
+        Returns
+        -------
+        Sample
+            Sample object corresponding to the given id. If the sample_id is None,
+            or is not contained in the dictionary of sample objects, this method
+            returns None.
+
         """
-        return self.samples_by_ids[sample_id]
+        #Use get method so it handels cases where sample_id == None, or if the
+        #sample_id doesn't correspond to any sample stored in the dict.
+        return self.samples_by_ids.get(sample_id)
 
     def are_dependencies_satisfied(self, job_id):
         """
@@ -251,6 +408,28 @@ class JobMonitor:
         job = self.pending_list[job_id]
         return set(job.dependency_list).issubset(self.completed_list.keys())
 
+    def _get_job_queue_state(self):
+        """
+        Prepare dump of jobs in the pending, running, resubmission, and completed lists.
+        This is inteded for debugging and error handling purposes.
+
+        Returns
+        -------
+        dict
+            Dictionary of job lists in each job queue, indexed by the name of the queue.
+            keys: pending_list, running_list, resubmission_list, completed_list
+            values: list of jobs currently in queue
+
+        """
+
+        job_queue_state = {}
+        job_queue_state['pending_list'] = [str(job) for job in self.pending_list.values()]
+        job_queue_state['running_list'] = [str(job) for job in self.running_list.values()]
+        job_queue_state['resubmission_list'] = [str(job) for job in self.resubmission_list.values()]
+        job_queue_state['completed_list'] = [str(job) for job in self.completed_list.values()]
+
+        return job_queue_state
+
 
 class Job:
     """
@@ -273,8 +452,7 @@ class Job:
                  validation_attributes, output_directory_path, scheduler_name,
                  system_id=None, dependency_list=None):
         """
-        Initialize job to track the status of a step/operation running on the
-        current sample.
+        Initialize job to track the status of a step/operation.
 
         Parameters
         ----------
@@ -285,7 +463,7 @@ class Job:
             likely be the output of the StepName.get_commandline_call() function.
         sample_id : string
             ID of sample object (created by Controller class) associated with
-            job.
+            job. If the job is not associated with a specific sample, set to 'None'.
         step_name : string
             Name of the step in the pipeline being monitored. Ideally this code
             should be agnostic to the step, but there are some steps that will
@@ -318,8 +496,8 @@ class Job:
             List of BEERS job IDs that this job is dependent upon (i.e. this
             job will wait until all those on the dependency list have completed).
             Empty list or "None" if there are no dependencies [default].
-        """
 
+        """
         self.job_id = job_id
         self.sample_id = sample_id
         self.job_command = job_command
@@ -332,7 +510,7 @@ class Job:
 
         if scheduler_name not in SUPPORTED_DISPATCHER_MODES:
             raise BeersUtilsException(f'{scheduler_name} is not a supported mode.\n'
-                                      'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
+                                      f'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         else:
             self.scheduler_name = scheduler_name
 
@@ -347,6 +525,29 @@ class Job:
         #and should be remedied.
         self.resubmission_counter = 0
 
+    def __str__(self):
+        return (f"Job - id:  {self.job_id}\n"
+                f"      step_name: {self.step_name}\n"
+                f"      sample_id: {self.sample_id}\n"
+                f"      system_id: {self.system_id}\n"
+                f"      dependency_list: {str(self.dependency_list)}\n"
+                f"      job_command: {self.job_command}\n"
+                f"      scheduler_arguments: {str(self.scheduler_arguments)}\n"
+                f"      validation_attributes: {str(self.validation_attributes)}\n"
+                f"      log_directory: {self.log_directory}\n"
+                f"      data_directory: {self.data_directory}")
+
+    def __repr__(self):
+        return (f"Job(job_id={self.job_id},"
+                f" job_command={self.job_command},"
+                f" sample_id={self.sample_id},"
+                f" step_name={self.step_name},"
+                f" scheduler_arguments=\"{repr(self.scheduler_arguments)}\","
+                f" validation_attributes=\"{repr(self.validation_attributes)}\","
+                f" output_directory={self.output_directory},"
+                f" scheduler_name={self.scheduler_name},"
+                f" system_id={self.system_id},"
+                f" \"{repr(self.dependency_list)}\")")
 
     def add_dependencies(self, dependency_job_ids):
         """
@@ -382,8 +583,8 @@ class Job:
                 STALLED - job running without any change in output files for longer than threshold time.
                 COMPLETED - job finished successfully with complete output files.
                 WAITING_FOR_DEPENDENCY - job not submitted and waiting for dependency to complete.
-        """
 
+        """
         job_status = "SUBMITTED"
 
         if self.system_id is None:
@@ -407,17 +608,22 @@ class Job:
                 #      one of these methods.
 
                 #Check output files
-                if self.step_name == "GenomeAlignmentStep" or \
-                   self.step_name == "GenomeBamIndexStep" or \
-                   self.step_name == "VariantsFinderStep" or \
-                   self.step_name == "IntronQuantificationStep":
+                if self.step_name in ["GenomeAlignmentStep",
+                                      "GenomeBamIndexStep",
+                                      "VariantsFinderStep",
+                                      "IntronQuantificationStep",
+                                      "VariantsCompilationStep",
+                                      "BeagleStep",
+                                      "GenomeBuilderStep",
+                                      "UpdateAnnotationForGenomeStep",
+                                      "TranscriptQuantificatAndMoleculeGenerationStep"]:
 
                     pipeline_step = JobMonitor.PIPELINE_STEPS[self.step_name]
 
                     if pipeline_step.is_output_valid(self.validation_attributes):
                         job_status = "COMPLETED"
                     else:
-                        job_status="FAILED"
+                        job_status = "FAILED"
 
                 else:
                     raise NotImplementedError()

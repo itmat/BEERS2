@@ -10,23 +10,9 @@ import collections
 import random
 import subprocess
 
-BEAGLE_JAR = "beagle.28Sep18.793.jar"
+from camparee.camparee_utils import CampareeUtils
 
-#TODO: move this method to the camparee utilities (it's also defined and used in
-#the variants_compilation.py script).
-def parse_line(line):
-    ''' reads a line of a variant file from BEERS2'''
-    # sample line is: (note tabs and spaces both used)
-    #1:28494 | C:1 | T:1    TOT=2   0.5,0.5 E=1.0
-    if line == '':
-        return "DONE", 0,{}
-    entries = line.split('\t')
-    loc_and_vars, total, fractions, entropy = entries
-    loc, *variants = loc_and_vars.split(" | ")
-    chromosome,position = loc.split(":")
-    position = int(position)
-    variants = {base:int(count) for base,count in [variant.split(":") for variant in variants]}
-    return chromosome, position, variants
+BEAGLE_JAR = "beagle.28Sep18.793.jar"
 
 def read_maybe_gzipped(filename):
     if ".gz" in filename:
@@ -85,7 +71,7 @@ if __name__ == "__main__":
         i = 0
         while any(line != '' for line in next_lines):
             i += 1
-            parsed_lines = [parse_line(line) for line in next_lines]
+            parsed_lines = [CampareeUtils.parse_variant_line(line) for line in next_lines]
             chromosome = min(chr for chr, pos, vars in parsed_lines if chr != "DONE")
             position = min(pos for chr, pos, vars in parsed_lines if chr == chromosome)
             if chromosome != last_chromosome:

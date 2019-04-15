@@ -167,7 +167,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
 
         return command
 
-    def get_validation_attributes(self, sample):
+    def get_validation_attributes(self, sample, resources_index_files_directory_path, star_bin_path):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the STAR genome job corresponding to the given sample.
@@ -176,6 +176,14 @@ class GenomeAlignmentStep(AbstractCampareeStep):
         ----------
         sample : Sample
             Sample defining the FASTQ files to be aligned, or the pre-aligned BAM.
+        resources_index_files_directory_path : string
+            Directory containing STAR index in 'genome' subdirectory. [Note: this
+            parameter is captured just so get_validation_attributes() accepts the
+            same arguments as get_commandline_call(). It is not used here.]
+        star_bin_path : string
+            Path to STAR executable binary. [Note: this parameter is captured
+            just so get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
 
         Returns
         -------
@@ -324,13 +332,17 @@ class GenomeBamIndexStep(AbstractCampareeStep):
 
         return command
 
-    def get_validation_attributes(self, bam_file_path):
+    def get_validation_attributes(self, sample, bam_file_path):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the BAM index job corresponding to the given bam file.
 
         Parameters
         ----------
+        sample : Sample
+            Sample associated with BAM file to be indexed. [Note: this parameter
+            is captured just so get_validation_attributes() accepts the same
+            arguments as get_commandline_call(). It is not used here.]
         bam_file_path : string
             BAM file to be indexed.
 
