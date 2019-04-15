@@ -94,7 +94,7 @@ class CampareeController:
         sys.excepthook = exception_handler
         self.retrieve_configuration(args.config)
         self.set_run_id(args.run_id)
-        self.plant_seed()
+        self.plant_seed(args.seed)
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
 
@@ -127,13 +127,25 @@ class CampareeController:
         else:
             self.run_id = run_id
 
-    def plant_seed(self):
+    def plant_seed(self, seed):
         """
-        Helper method to obtain the seed from the controller configuration data or to generate a seed if
-        no seed is provided by the user and then set it.  The seed will be added to the controller log file created for
-        this run so that the user may re-create the run exactly at a later date, assuming all else remains the same.
+        Helper method to add the seed to the controller for later use.  The seed, if any, on the command line, takes
+        precedence.  If no seed is present on the command line, the controller configuration data is searched for it.
+        If no seed is found there, one will be randomly generated.  The seed will be added to the controller log file
+        created for this run so that the user may re-create the run exactly at a later date, assuming all else remains
+        the same.
+        :param seed: The seed value found on the command line, if any.
         """
-        self.seed = self.configuration['setup'].get('seed', GeneralUtils.generate_seed())
+        self.seed = seed
+        if not self.seed:
+            # If seed is not a config key or the seed is null, generate a seed internally
+            if 'seed' not in self.configuration['setup'] or not self.configuration['setup']['seed']:
+                self.seed = GeneralUtils.generate_seed()
+            else:
+                # Insure the config seed is an integer, otherwise throw an exception
+                if not isinstance(self.configuration['setup']['seed'], int):
+                    raise CampareeValidationException('The seed specified in the configuration file must be an integer')
+                self.seed = self.configuration['setup']['seed']
         np.random.seed(self.seed)
 
     def create_output_folder_structure(self, stage_names):
