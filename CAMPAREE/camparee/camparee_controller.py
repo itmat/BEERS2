@@ -99,7 +99,6 @@ class CampareeController:
         self.plant_seed(args.seed)
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
-        os.sys.exit("Developer stop")
 
     def retrieve_configuration(self, configuration_file_path):
         """
@@ -209,18 +208,44 @@ class CampareeController:
         :return: True is valid and false otherwise.
         """
         valid = True
-        input_directory_path = self.configuration["input"]["directory_path"]
-        self.input_samples = []
-        for input_sample in self.configuration["input"]["data"].values():
-            input_files = copy.copy(input_sample["fastq_files"])
-            if "bam_file" in input_sample:
-                input_files.append(input_sample["bam_file"])
 
-            for filename in input_files:
-                input_sample_file_path = os.path.join(input_directory_path, filename)
-                if not os.path.exists(input_sample_file_path) or not os.path.isfile(input_sample_file_path):
-                    print(f"The input sample file, {input_sample_file_path}, does not exist as a file.", file=sys.stderr)
+        if "input" not in self.configuration:
+            print("The top level mapping 'input' must be present in the configuration file.", file=sys.stderr)
+            return False
+
+        # The FASTQ directory is required
+        if "fastq_directory_path" not in self.configuration['input']:
+            print("The mapping 'fastq_directory_path' under 'input' must be present in the configuration file",
+                  file=sys.stderr)
+            return False
+        fastq_input_directory_path = self.configuration["input"]["fastq_directory_path"]
+
+        # BAM directory path and BAM files are optional
+        bam_directory_path = self.configuration["input"].get("bam_directory_path", None)
+
+        # Samples must be housed under the data mapping
+        if "data" not in self.configuration["input"]:
+            print("The mapping 'data' under 'input' must be present in the configuration file", file=sys.stderr)
+            return False
+
+        # Iterate over the input samples
+        for input_sample in self.configuration["input"]["data"].values():
+
+            # Validate sample FASTQ files
+            if "fastq_files" not in input_sample:
+                print("The mapping 'fastq_files' under each input sample must be present in the configuration file",
+                      file=sys.stderr)
+            else:
+                for filename in input_sample["fastq_files"]:
+                    if not CampareeController.check_file_existence(fastq_input_directory_path, filename):
+                        valid = False
+
+            # Validate sample BAM file if present
+            if "bam_file" in input_sample:
+                if not CampareeController.check_file_existence(bam_directory_path, input_sample['bam_file']):
                     valid = False
+
+            # Validate sample gender
             gender = input_sample.get("gender", None)
             if gender:
                 gender = gender.lower()
@@ -231,8 +256,42 @@ class CampareeController:
             else:
                 print(f"The input sample, {input_sample['filenames']} has no gender specified.  Consequently, no"
                       f" gender specific chromosomes will be processed for this sample.")
+
+            # Validate whether sample is pooled.  This is required.
+            if "pooled" not in input_sample:
+                print("The mapping 'pooled' under each input sample must be present in the configuration file",
+                      file=sys.stderr)
+                valid = False
+            else:
+                if not isinstance(input_sample['pooled'], bool):
+                    print(f"The value for the mapping 'pooled' must be either true or false - not "
+                          f"{input_sample['pooled']}", file=sys.stderr)
+                    valid = False
+
+            # Validate the molecule count for this sample if present
+            if input_sample['molecule_count'] and not isinstance(input_sample['molecule_count'], int):
+                print(f"The value for the mapping 'molecule_count' must be a integer - not "
+                      f"{input_sample['molecule_count']}", file=sys.stderr)
+
+        os.sys.exit("Developer stop")
         return valid
 
+    @staticmethod
+    def check_file_existence(directory_path, filename):
+        """
+        Helper method to establish whether provided directory path and filename combine to point to an
+        existing file
+        :param directory_path: path to directory holding file
+        :param filename: name of file
+        :return: True if the path is valid and False otherwise
+        """
+        if not directory_path:
+            print(f"No directory path was provided for {filename}.", file=sys.stderr)
+            return False
+        file_path = os.path.join(directory_path, filename)
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            print(f"The file path, {file_path}, does not exist as a file location.", file=sys.stderr)
+            return False
 
 
     def assemble_input_samples(self):

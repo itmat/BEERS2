@@ -94,7 +94,8 @@ input:
             # Gender of the input samples. This will be used in combination with
             # the chromosome ploidy file to determine which chromosomes have
             # homologoues pairs, and should therefore show allele-specific
-            # expression.
+            # expression.  If gender is unknown, the value can be set to 'null'
+            # but certain chromosomes will not be included.
             gender: female
             # [OPTIONAL] Number of RNA transcript molecules to simulate for this
             # sample. CAMPAREE will use the default molecule count (specified in
