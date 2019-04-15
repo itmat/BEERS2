@@ -1,16 +1,14 @@
 import json
 import time
-import glob
 import yaml
 import numpy as np
 import termcolor
 import os
 import sys
 import traceback
-import copy
 import string
 from datetime import datetime
-from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
+from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES
 from beers_utils.general_utils import GeneralUtils
 from camparee.expression_pipeline import ExpressionPipeline,CampareeValidationException
 from beers_utils.sample import Sample
@@ -39,7 +37,6 @@ class CampareeController:
         # The following attributes are defined following instantiation
         self.debug = False
         self.run_id = None
-        self.dispatcher = None
         self.configuration = None
         self.resources = None
         self.seed = None
@@ -58,21 +55,21 @@ class CampareeController:
         if not self.validate_samples():
             raise CampareeValidationException("Sample data is not valid.  Please consult the standard error file"
                                               "for details.")
-        #TODO: Once a dispatcher is more integrated with the epxpression pipeline,
+        #TODO: Once a scheduler is more integrated with the epxpression pipeline,
         #we may want to move this check elsewhere.
-        dispatcher_mode = ""
-        if not args.dispatcher_mode:
-            if not self.configuration['setup'].get('dispatcher_mode', None):
-                raise CampareeValidationException('No dispatcher_mode given either on the command line'
+        scheduler_mode = ""
+        if not args.scheduler_mode:
+            if not self.configuration['setup'].get('scheduler_mode', None):
+                raise CampareeValidationException('No scheduler_mode given either on the command line'
                                                   ' or in the configuration file')
-            dispatcher_mode = self.configuration['setup']['dispatcher_mode']
+            scheduler_mode = self.configuration['setup']['scheduler_mode']
         else:
-            dispatcher_mode = args.dispatcher_mode
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise CampareeValidationException(f'{dispatcher_mode} is not a supported mode.\n'
-                                              'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
+            scheduler_mode = args.scheduler_mode
+        if scheduler_mode not in SUPPORTED_SCHEDULER_MODES:
+            raise CampareeValidationException(f'{scheduler_mode} is not a supported mode.\n'
+                                              'Please select one of {",".join(SUPPORTED_SCHEDULER_MODES)}.\n')
         self.assemble_input_samples()
-        ExpressionPipeline.main(self.configuration, dispatcher_mode,
+        ExpressionPipeline.main(self.configuration, scheduler_mode,
                                 os.path.join(self.output_directory_path,stage_name),
                                 self.input_samples)
 
@@ -235,6 +232,7 @@ class CampareeController:
             if "fastq_files" not in input_sample:
                 print("The mapping 'fastq_files' under each input sample must be present in the configuration file",
                       file=sys.stderr)
+                valid = False
             else:
                 for filename in input_sample["fastq_files"]:
                     if not CampareeController.check_file_existence(fastq_input_directory_path, filename):
@@ -272,8 +270,6 @@ class CampareeController:
             if input_sample['molecule_count'] and not isinstance(input_sample['molecule_count'], int):
                 print(f"The value for the mapping 'molecule_count' must be a integer - not "
                       f"{input_sample['molecule_count']}", file=sys.stderr)
-
-        os.sys.exit("Developer stop")
         return valid
 
     @staticmethod
@@ -292,6 +288,7 @@ class CampareeController:
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
             print(f"The file path, {file_path}, does not exist as a file location.", file=sys.stderr)
             return False
+        return True
 
 
     def assemble_input_samples(self):
@@ -303,7 +300,8 @@ class CampareeController:
         or may not be provided in the configuration data.  If not set, the gender will be inferred by the expression
         pipeline.
         """
-        input_directory_path = self.configuration["input"]["directory_path"]
+        fastq_directory_path = self.configuration["input"]["fastq_directory_path"]
+        bam_directory_path = self.configuration['input']['bam_directory_path']
         self.input_samples = []
         # TODO handle the situation where the adapter kit is not specified or not found
         # The kit is really only needed for library prep.  So if the expression pipeline does not generate
@@ -311,10 +309,11 @@ class CampareeController:
         # make the addition to thousands of molecule packets after the fact.
         for sample_name, input_sample in self.configuration["input"]["data"].items():
             #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
-            fastq_file_paths = [os.path.join(input_directory_path, filename)
+            fastq_file_paths = [os.path.join(fastq_directory_path, filename)
                                        for filename in input_sample["fastq_files"]]
-            bam_file_path = os.path.join(input_directory_path, input_sample["bam_file"]) if "bam_file" in input_sample else ''
+            bam_file_path = os.path.join(bam_directory_path, input_sample["bam_file"]) if "bam_file" in input_sample else ''
             gender = input_sample.get("gender", None)
+            pooled = input_sample["pooled"]
             if gender:
                 gender = gender.lower()
             self.input_samples.append(
@@ -323,5 +322,6 @@ class CampareeController:
                        fastq_file_paths=fastq_file_paths,
                        adapter_sequences="",
                        bam_file_path=bam_file_path,
-                       gender=gender))
+                       gender=gender,
+                       pooled=pooled))
             Sample.next_sample_id += 1

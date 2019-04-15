@@ -12,7 +12,7 @@ optional_named.add_argument('-r', '--run_id', help="Alphanumberic used to specif
                                                    " underscores only).")
 optional_named.add_argument('-d', '--debug', action='store_true',
                             help='Indicates whether additional diagnostics are printed.')
-optional_named.add_argument('-m', '--dispatcher_mode', choices=['serial', 'lsf'],
+optional_named.add_argument('-m', '--scheduler_mode', choices=['serial', 'lsf'],
                             help='Indicates whether to dispatch jobs serially, using multicore, or using lsf')
 optional_named.add_argument('-s', '--seed', type=int,
                             help='Optional integer value used as a seed for random number generation.')

@@ -2,7 +2,7 @@ import sys
 import os
 import importlib
 import time
-from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES, MAX_SEED
+from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES, MAX_SEED
 from beers_utils.job_monitor import JobMonitor
 from camparee.camparee_utils import CampareeUtils, CampareeException
 #To enable export of config parameter dictionaries to command line
@@ -34,12 +34,9 @@ class ExpressionPipeline:
         #Track pathes of scripts for each step. This is needed when running the
         #steps from the command line, as we do when submitting to lsf.
         self.__step_paths = {}
-        for step in configuration['steps']:
-            if "step_name" not in step:
-                raise CampareeValidationException("Every step in the configuration must have an associated"
-                                                  " step name written as 'module name.class_name'.")
-            module_name, step_name = step["step_name"].rsplit(".")
-            parameters = step.get("parameters", dict())
+        for step, props in configuration['steps'].items():
+            module_name, step_name = step.rsplit(".")
+            parameters = props["parameters"] if props and "parameters" in props else None
             module = importlib.import_module(f'.{module_name}', package="camparee")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
@@ -87,6 +84,7 @@ class ExpressionPipeline:
         reference_genome_file_path, chr_ploidy_file_path, annotation_file_path, beagle_file_path, \
             star_file_path, kallisto_file_path, bowtie2_dir_path = None, None, None, None, None, None, None
         valid = True
+        os.sys.exit("Dev stop")
         if 'species_model' not in resources:
             print("The species_model must be listed in the resources section of the configuration file.",
                   file=sys.stderr)
@@ -439,6 +437,7 @@ class ExpressionPipeline:
     @staticmethod
     def main(configuration, dispatcher_mode, output_directory_path, input_samples):
         pipeline = ExpressionPipeline(configuration, dispatcher_mode, output_directory_path, input_samples)
+        os.sys.exit("Developer stop")
         if not pipeline.validate():
             raise CampareeValidationException("Expression Pipeline Validation Failed.  "
                                               "Consult the standard error file for details.")
