@@ -1,31 +1,197 @@
 # Configuration File for CAMPAREE
-# Default configuration is for the including Baby mouse genome.
-setup:
-    run_id: null
-    seed: 100
-    dispatcher_mode: lsf
-resources:
-    directory_path: /home/crisl/beers_project/BEERS2.0/CAMPAREE/resources
-    species_model: Mus_musculus.GRCm38
-    reference_genome_filename: Mus_musculus.GRCm38.dna.oneline_seqs.fa
-    chr_ploidy_filename: Mus_musculus.GRCm38.chr_ploidy.txt
-    annotation_filename: Mus_musculus.GRCm38.93.annotation.txt
-input:
-    directory_path: /project/itmatlab/for_cris/Test_Mouse_Samples/data/expression/GRCm38/
-    data: {'9576': {fastq_files: [9576_forward.fq.gz, 9576_reverse.fq.gz], gender: male}, '9577': {fastq_files: [9577_forward.fq.gz, 9577_reverse.fq.gz], gender: male}}
+# See baby.config.yaml for an example of a fully specified config file.
+# Everything listed below is required, except for those labeled [OPTIONAL].
 
-    {'ILB1': {fastq_files: [FGC1130_Illumina_ILB_9577_s_6_1_GCCAAT.fastq.gz, FGC1130_Illumina_ILB_9577_s_6_2_GCCAAT.fastq.gz], gender: male}, 'ILB2': {fastq_files: [FGC1130_Illumina_ILB_9578_s_6_1_CAGATC.fastq.gz, FGC1130_Illumina_ILB_9578_s_6_2_CAGATC.fastq.gz], gender: male}, 'ILB3': {fastq_files: [FGC1130_Illumina_ILB_9583_s_6_1_ATGTCA.fastq.gz, FGC1130_Illumina_ILB_9583_s_6_2_ATGTCA.fastq.gz], gender: male}, 'UNT1': {fastq_files: [FGC1130_Illumina_UNT_9576_s_6_1_ACAGTG.fastq.gz, FGC1130_Illumina_UNT_9576_s_6_2_ACAGTG.fastq.gz], gender: male}, 'UNT2': {fastq_files: [FGC1130_Illumina_UNT_9580_s_6_1_AGTCAA.fastq.gz, FGC1130_Illumina_UNT_9580_s_6_2_AGTCAA.fastq.gz], gender: male}, 'UNT3': {fastq_files: [FGC1130_Illumina_UNT_9584_s_6_1_CCGTCC.fastq.gz, FGC1130_Illumina_UNT_9584_s_6_2_CCGTCC.fastq.gz], gender: male}}
+### General attributes for running CAMPAREE
+setup:
+    # Alpha-numeric ID (including underscores) assigned to the CAMPAREE run.
+    # Used to name output directories. If specified on command line with the
+    # "-r" argument, it will override the value here.
+    run_id: null
+
+    # [OPTIONAL] Integer value used to see random number generator used in
+    # various CAMPAREE steps. Used for reproducibility.
+    seed: 100
+
+    # The method used to submit jobs for processing. If specified on command
+    # line with the "-m" argument, it will override the value here. Currently
+    # supports "serial" (single-core) and "lsf" (distributed LSF system). Case-
+    # sensitive. Other modes may be added in later releases.
+    scheduler_mode: lsf
+
+### System locations for genome annotation resources used by CAMPAREE
+# See www.smartURLdescribingEverything.com for detailed information
+# about the organization of the CAMPAREE resources directory.
+resources:
+    # [OPTIONAL] Path to upper-level directory containing genome sequence,
+    # annotation info, and STAR index directory. If not provided, defaults to
+    # resources directory contained in the CAMPAREE install directory.
+    directory_path: /path/to/resources
+
+    # Alpha-numeric (including underscores and periods) name of organism and
+    # genome/annotation version. Used as sub-directory to the resources path.
+    species_model: Species_musculus.GRCm38
+
+    # Sub-directory name containing STAR index files This index must be built
+    # using a version of STAR compatible with v2.5.2a. Also, the chromosome
+    # names used in the index must match those used by the reference FASTA and
+    # annotation files below.
+    star_genome_index_directory_name: genome
+
+    # FASTA file containing complete genome sequence. Each chromosome sequence
+    # must be on a single line. To generate files in this format from multi-line
+    # FASTA files, use the camparee/BLAHBLAH.py utility script. If ends in ".gz",
+    # will be treated as a gzipped file.
+    reference_genome_filename: Mus_musculus.GRCm38.dna.oneline_seqs.fa
+
+    # File containing coordinates for each transcript in the annotation. This
+    # file can be built from a GTF using the BLABLAH2.py script. Chromosome
+    # names in this file must match those used in the reference genome FASTA.
+    annotation_filename: Mus_musculus.GRCm38.93.annotation.txt
+
+    # File containing a list of chromosome names and the number of homologous
+    # copies for each gender in the species. Chromosome names must match those
+    # in the reference genome FASTA and annotational files, but may be a subset.
+    # Only the chromosomes specified in this file are used to generate
+    # simulated transcripts. See www.smartURLdescribingEverything.com/ploidy
+    # for full details on how to create ploidy file, and how it is used.
+    chr_ploidy_filename: Mus_musculus.GRCm38.chr_ploidy.txt
+
+### Information concerning input samples
+input:
+    # Path to directory containing FASTQ files for all samples.
+    fastq_directory_path: /path/to/fastq/files/
+    # [OPTIONAL] Path to directory containing BAM files for all samples. Note,
+    # BAM files are only read from here. If CAMPAREE performs the alignment,
+    # the resulting BAM files are saved to the output directory (specified
+    # below).
+    bam_directory_path: /path/to/BAM/files/
+    ### Per-sample information (input files, attributes)
+    data:
+        # Alpha-numerica name (including underscores) for each sample. This
+        # will be used to name the output directory specific to this sample.
+        'sample1_Name':
+            # Names for the forward and reverse fastq files (order matters).
+            # Both forward and reverse must be provided, and they must have
+            # been generated using a strand-specific protocol (both of these
+            # requirements will be removed in later releases).
+            fastq_files:
+                - sample1.forward.fastq.gz
+                - sample1.reverse.fastq.gz
+            # [OPTIONAL] STAR-aligned BAM files generated from the same FASTQ
+            # files listed above. Must have been aligned using the
+            # '--outSAMtype BAM SortedByCoordinate' option (or some other means
+            # to sort alignments by chromsome coordinates).
+            bam_file: 'bamfile.bam'
+            # Was RNA-seq library was created from a pool of individuals? If so,
+            # it is not feasible to infer parental genotypes from variants
+            # contained in the RNA-seq data. Setting this to 'True' will skip
+            # all variant-calling, phasing, parental genome construciton, and
+            # allele-specific quantification operations in the CAMPAREE pipeline.
+            # Simulated transcripts will effectively be generated from the
+            # haploid reference genome.
+            pooled: False
+            # Gender of the input samples. This will be used in combination with
+            # the chromosome ploidy file to determine which chromosomes have
+            # homologoues pairs, and should therefore show allele-specific
+            # expression.
+            gender: female
+            # [OPTIONAL] Number of RNA transcript molecules to simulate for this
+            # sample. CAMPAREE will use the default molecule count (specified in
+            # the 'output' section of this config file) if no molecule count is
+            # provided at the sample level, or if it is overriden in the
+            # 'output' section of this config file.
+            molecule_count: 1000000
+        'sample2_Name':
+            fastq_files:
+                - sample2.forward.fastq.gz
+                - sample2.reverse.fastq.gz
+            bam_file: 'bamfile.bam'
+            pooled: False
+            gender: male
+            molecule_count: 1000000
+
+### Output directory and parameters
 output:
-    directory_path: /home/crisl/beers_project/BEERS2.0/data/
+    # Path to upper-level directory in which all CAMPAREE output will be saved.
+    directory_path: /path/to/output/directory/
+    # This is likely to be removed or changed drastically.
     type: molecule_file
-    molecule_count: 50000
+    # Simulate the default number of RNA transcript molecules for all samples
+    # and ignore the sample-specific molecule counts.
+    override_sample_molecule_count: False
+    # Number of RNA transcript molecules to simulate for samples where no sample-
+    # specific molecule count is provided, or if 'override_sample_molecule_count'
+    # is set to 'True'.
+    default_molecule_count: 50000
+
+### Configuration of individual steps in the CAMPAREE pipeline
+# CAMPAREE uses this list to assemble all of its pipeline components. Therefore,
+# All steps used in the CAMPAREE pipeline *MUST* be listed here, even if they do
+# not require any specialized run parameters. While users may wish to tweak the
+# run parameters for the various steps listed below, the names of the steps
+# should not be changed or removed.
 steps:
-    - {step_name: genome_alignment.GenomeAlignmentStep, parameters: {'--runThreadN': 4, '--outFilterMismatchNmax': 33, '--seedSearchStartLmax': 33, '--alignSJoverhangMin': 8, '--readFilesCommand': zcat, '--outSAMstrandField': intronMotif, '--limitOutSJcollapsed': 1000000, '--limitSjdbInsertNsj': 1000000, '--outFilterMultimapNmax': 10, '--outFilterMismatchNoverLmax': 0.3, '--alignEndsType': Local}}
-    - {step_name: genome_alignment.GenomeBamIndexStep}
-    - {step_name: variants_finder.VariantsFinderStep, parameters: {sort_by_entropy: false, min_threshold: 0.03}}
-    - {step_name: variants_compilation.VariantsCompilationStep}
-    - {step_name: beagle.BeagleStep}
-    - {step_name: genome_builder.GenomeBuilderStep, parameters: {ignore_indels: false, ignore_snps: false}}
-    - {step_name: update_annotation_for_genome.UpdateAnnotationForGenomeStep}
-    - {step_name: intron_quant.IntronQuantificationStep, parameters: {forward_read_is_sense: false, flank_size: 1500}}
-    - {step_name: transcriptomes.TranscriptQuantificatAndMoleculeGenerationStep, parameters: {num_bowtie_threads: 7}}
+    # Align FASTQ files to reference genome using STAR v2.5.2a. Output alignments
+    # in BAM format, sorted by chromosome coordinate. Note that while this step
+    # is skipped if the user provides BAM files, this entry should not be removed
+    # from the config file.
+    'genome_alignment.GenomeAlignmentStep':
+        # [OPTIONAL] Parameters to pass on to STAR for the genome alignment.
+        parameters:
+            '--runThreadN': 4
+            '--outFilterMismatchNmax': 33
+            '--seedSearchStartLmax': 33
+            '--alignSJoverhangMin': 8
+            '--readFilesCommand': zcat
+            '--outSAMstrandField': intronMotif
+            '--limitOutSJcollapsed': 1000000
+            '--limitSjdbInsertNsj': 1000000
+            '--outFilterMultimapNmax': 10
+            '--outFilterMismatchNoverLmax': 0.3
+            '--alignEndsType': Local
+    # Index genome-aligned BAM files using pysam.
+    'genome_alignment.GenomeBamIndexStep':
+    # Quantify intron-mapping reads counts from the genome-aligned BAM. This
+    # step requires data generated from a strand-specific, paired-end protocol.
+    'intron_quant.IntronQuantificationStep':
+        parameters:
+            # Read (forward or reverse) used to determine strand of aligned
+            # fragment. If set to true, strand information is taken from the
+            # forwad read. [DEFAULT] If set to false, strand information is taken
+            # from the reverse read. The latter is used for dUTP-based protocols,
+            # like the Illumina TruSeq Stranded kits.
+            forward_read_is_sense: false
+            flank_size: 1500
+    # Identify variants that differ from the reference genome from the genome-
+    # aligned reads. This step is skipped for samples where 'pooled' is set to
+    # 'True'.
+    'variants_finder.VariantsFinderStep':
+         parameters:
+             sort_by_entropy: false
+             min_threshold: 0.03
+    # Merge variants identified in each sample into a single VCF file. This step
+    # is skipped for samples where 'pooled' is set to 'True'.
+    'variants_compilation.VariantsCompilationStep':
+    # Determine phasing for variants identified from the input samples. Note,
+    # this step requires at least two input samples to perform phasing. This step
+    # is skipped for samples where 'pooled' is set to 'True'.
+    'beagle.BeagleStep':
+    # Build parental genome sequences based on the variants identified from the
+    # input samples. This step is skipped for samples where 'pooled' is set to
+    # 'True'.
+    'genome_builder.GenomeBuilderStep':
+        parameters:
+            # If set to 'True', no INDEL variants are used to construct the
+            # parental genomes. [DEFAULT] If set to 'False', INDEL variants
+            # identified from the input data are used to construct parental
+            # genomes.
+            ignore_indels: false
+            # If set to 'True', no SNP variants are used to construct the
+            # parental genomes. [DEFAULT] if set to 'True', SNP variants
+            # identified from the input data are used to construct parental
+            # genomes.
+            ignore_snps: false
+    # Update transcript annotation coordinates to reflect changes made when
+    # constructring each parental genome sequence.
+    'update_annotation_for_genome.UpdateAnnotationForGenomeStep':
