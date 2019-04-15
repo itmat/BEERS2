@@ -8,6 +8,7 @@ import os
 import sys
 import traceback
 import copy
+import string
 from datetime import datetime
 from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
 from beers_utils.general_utils import GeneralUtils
@@ -34,6 +35,7 @@ class CampareeController:
         self.controller_name = 'camparee_controller'
         self.resources_name = 'resources'
         self.controller_log_filename = 'camparee_controller.log'
+        self.allowed_directory_name_set = set(string.ascii_letters + string.digits + "_")
         # The following attributes are defined following instantiation
         self.debug = False
         self.run_id = None
@@ -97,6 +99,7 @@ class CampareeController:
         self.plant_seed(args.seed)
         self.create_output_folder_structure(stage_names)
         self.create_controller_log()
+        os.sys.exit("Developer stop")
 
     def retrieve_configuration(self, configuration_file_path):
         """
@@ -119,13 +122,15 @@ class CampareeController:
         for it.  If no run id is found in either place, an error is raised.
         :param run_id: The run id found on the command line, if any.
         """
-        if not run_id:
-            if not self.configuration['setup']['run_id']:
-                raise CampareeValidationException('No run id given either on the command line'
-                                                  ' or in the configuration file')
+        self.run_id = run_id
+        if not self.run_id:
+            if 'run_id' not in self.configuration['setup'] or not self.configuration['setup']['run_id']:
+                raise CampareeValidationException('No run id was given either on the command line '
+                                                  'or in the configuration file')
             self.run_id = self.configuration['setup']['run_id']
-        else:
-            self.run_id = run_id
+        if not set(self.run_id).issubset(self.allowed_directory_name_set):
+            raise CampareeValidationException(f'The run id {self.run_id} contains disallowed characters.')
+
 
     def plant_seed(self, seed):
         """
@@ -160,7 +165,7 @@ class CampareeController:
         :param stage_names: names of folders directly below the top level output directory (e.g., controller,
         library_prep)
         """
-        self.output_directory_path = f"{self.configuration['output']['directory_path']}_run{self.run_id}"
+        self.output_directory_path = os.path.join(self.configuration['output']['directory_path'],f"run_{self.run_id}")
         if not os.path.exists(self.output_directory_path):
             try:
                 os.makedirs(self.output_directory_path, mode=0o0755, exist_ok=True)
