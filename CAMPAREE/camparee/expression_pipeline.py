@@ -108,15 +108,26 @@ class ExpressionPipeline:
             self.output_type = output["type"]
 
         # Insure default_molecule_count exists and is an int
+        # TODO: is this redundant given the check performed with missing_output_keys above?
         if "default_molecule_count" not in output:
             print(f"The required mapping 'default_molecule_count' was not found under 'output.", file=sys.stderr)
             valid = False
         else:
-            self.output_molecule_count = output["default_molecule_count"]
-            if not isinstance(self.output_molecule_count, int):
-                print(f"The 'default_molecule_count' must be an integer - not {output['default_molecule_count']}",
+            self.default_molecule_count = output["default_molecule_count"]
+            if not isinstance(self.default_molecule_count, int) and \
+               self.default_molecule_count < 0:
+                print(f"The 'default_molecule_count' must be a positive integer - not "
+                      f"{output['default_molecule_count']}",
                       file=sys.stderr)
                 valid = False
+
+        #Check to make sure override_sample_molecule_count is a boolean
+        self.override_sample_molecule_count = output["override_sample_molecule_count"]
+        if not isinstance(self.override_sample_molecule_count, bool):
+            print(f"The 'override_sample_molecule_count' must be a boolean (True/False) "
+                  f"- not {output['override_sample_molecule_count']}",
+                  file=sys.stderr)
+            valid = False
 
         return valid
 
@@ -329,12 +340,16 @@ class ExpressionPipeline:
                               jobname_suffix=suffix)
 
             seed = seeds[f"TranscriptQuantificatAndMoleculeGenerationStep.{sample.sample_id}"]
+            num_molecules_to_generate = sample.molecule_count
+            # If no molecule count specified for this sample, use the default count.
+            if not num_molecules_to_generate or self.override_sample_molecule_count:
+                num_molecules_to_generate = self.default_molecule_count
             self.run_step(step_name='TranscriptQuantificatAndMoleculeGenerationStep',
                           sample=sample,
                           execute_args=[sample, self.kallisto_file_path, self.bowtie2_dir_path,
-                                        self.output_type, self.output_molecule_count, seed],
+                                        self.output_type, num_molecules_to_generate, seed],
                           cmd_line_args=[sample, self.kallisto_file_path, self.bowtie2_dir_path,
-                                         self.output_type, self.output_molecule_count, seed],
+                                         self.output_type, num_molecules_to_generate, seed],
                           dependency_list=[f"UpdateAnnotationForGenomeStep.{sample.sample_id}.1",
                                            f"UpdateAnnotationForGenomeStep.{sample.sample_id}.2"],
                           scheduler_memory_in_mb=40000,

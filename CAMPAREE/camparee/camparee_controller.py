@@ -267,9 +267,11 @@ class CampareeController:
                     valid = False
 
             # Validate the molecule count for this sample if present
-            if input_sample['molecule_count'] and not isinstance(input_sample['molecule_count'], int):
-                print(f"The value for the mapping 'molecule_count' must be a integer - not "
-                      f"{input_sample['molecule_count']}", file=sys.stderr)
+            if input_sample['molecule_count'] and \
+               not isinstance(input_sample['molecule_count'], int) and \
+               input_sample['molecule_count'] < 0:
+                print(f"The value for the mapping 'molecule_count' must be a positive "
+                      f"integer - not {input_sample['molecule_count']}", file=sys.stderr)
         return valid
 
     @staticmethod
@@ -315,6 +317,7 @@ class CampareeController:
             bam_file_path = os.path.join(bam_directory_path, input_sample["bam_file"]) if "bam_file" in input_sample else ''
             gender = input_sample.get("gender", None)
             pooled = input_sample["pooled"]
+            molecule_count = input_sample.get("molecule_count", None)
             if gender:
                 gender = gender.lower()
             self.input_samples.append(
@@ -324,5 +327,6 @@ class CampareeController:
                        adapter_sequences="",
                        bam_file_path=bam_file_path,
                        gender=gender,
-                       pooled=pooled))
+                       pooled=pooled,
+                       molecule_count=molecule_count))
             Sample.next_sample_id += 1
