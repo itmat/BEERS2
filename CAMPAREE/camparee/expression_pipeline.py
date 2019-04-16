@@ -27,8 +27,8 @@ class ExpressionPipeline:
                                   'reference_genome_filename', 'annotation_filename', 'chr_ploidy_filename']
     REQUIRED_OUTPUT_MAPPINGS = ['directory_path', 'type', 'override_sample_molecule_count', 'default_molecule_count']
 
-    def __init__(self, configuration, dispatcher_mode, output_directory_path, input_samples):
-        self.dispatcher_mode = dispatcher_mode
+    def __init__(self, configuration, scheduler_mode, output_directory_path, input_samples):
+        self.scheduler_mode = scheduler_mode
         self.samples = input_samples
         self.output_directory_path = output_directory_path
         log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -68,8 +68,13 @@ class ExpressionPipeline:
                                               "Consult the standard error file for details.")
 
         self.expression_pipeline_monitor = None
-        if self.dispatcher_mode != "serial":
-            self.expression_pipeline_monitor = JobMonitor(self.output_directory_path, self.dispatcher_mode)
+        if self.scheduler_mode != "serial":
+            self.expression_pipeline_monitor = JobMonitor(self.output_directory_path,
+                                                          self.scheduler_mode)
+            print(f"Running CAMPAREE using the {self.scheduler_mode} job scheduler.",
+                  file=sys.stderr)
+        else:
+            print("Running CAMPAREE in serial mode.", file=sys.stderr)
 
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
@@ -402,7 +407,7 @@ class ExpressionPipeline:
             raise CampareeException(f"{step_name} not in the list of loaded steps (see config file).")
 
         step_class = self.steps[step_name]
-        if self.dispatcher_mode == "serial":
+        if self.scheduler_mode == "serial":
             status_msg = f"Performing {step_name}"
             status_msg += f".{jobname_suffix}" if jobname_suffix else ""
             status_msg += f" on sample{sample.sample_id}" if sample else ""
@@ -442,8 +447,8 @@ class ExpressionPipeline:
                                                             dependency_list=dependency_list)
 
     @staticmethod
-    def main(configuration, dispatcher_mode, output_directory_path, input_samples):
-        pipeline = ExpressionPipeline(configuration, dispatcher_mode, output_directory_path, input_samples)
+    def main(configuration, scheduler_mode, output_directory_path, input_samples):
+        pipeline = ExpressionPipeline(configuration, scheduler_mode, output_directory_path, input_samples)
         if not pipeline.validate():
             raise CampareeValidationException("Expression Pipeline Validation Failed.  "
                                               "Consult the standard error file for details.")
