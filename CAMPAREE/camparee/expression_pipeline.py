@@ -67,10 +67,9 @@ class ExpressionPipeline:
             raise CampareeValidationException("The output data is not completely valid.  "
                                               "Consult the standard error file for details.")
 
-        self.expression_pipeline_monitor = None
+        self.expression_pipeline_monitor = JobMonitor(self.output_directory_path,
+                                                      self.scheduler_mode)
         if self.scheduler_mode != "serial":
-            self.expression_pipeline_monitor = JobMonitor(self.output_directory_path,
-                                                          self.scheduler_mode)
             print(f"Running CAMPAREE using the {self.scheduler_mode} job scheduler.",
                   file=sys.stderr)
         else:
@@ -246,7 +245,6 @@ class ExpressionPipeline:
 
         bam_files = {}
         for sample in self.samples:
-
             #Retrieve name of BAM file associated with this sample. This is either
             #the path to a user provided BAM file, or the default path the
             #GenomeAlignmentStep will use to store the alignment results for this
@@ -264,7 +262,6 @@ class ExpressionPipeline:
                           scheduler_num_processors=4)
 
         for sample in self.samples:
-
             bam_filename = bam_files[sample.sample_id]
             self.run_step(step_name='GenomeBamIndexStep',
                           sample=sample,
