@@ -50,9 +50,10 @@ class JobMonitor:
         self.samples_by_ids = {}
 
         self.scheduler_name = scheduler_name
-        self.job_scheduler = None
-        if self.scheduler_name != "serial":
-            beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
+        if self.scheduler_name == "serial":
+            self.job_scheduler = None
+        else:
+            self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
 
     def is_processing_complete(self):
         """
