@@ -22,7 +22,7 @@ class CampareeController:
     """
 
     """
-    Get CAMPAREE root directory. Used to determin path the 'resources' subdirectory.
+    Get CAMPAREE root directory. Used to determine path the 'third party software' subdirectory.
     """
     CAMPAREE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

@@ -20,6 +20,13 @@ class ExpressionPipeline:
     finding, parental genome construction, annotation, quantification and generation of transcripts and finally the
     generation of packets of molecules that may be used to simulate RNA sequencing.
     """
+
+    CAMPAREE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    THIRD_PARTY_SOFTWARE_DIR_PATH = os.path.join(CAMPAREE_ROOT_DIR, "third_party_software")
+    REQUIRED_RESOURCE_MAPPINGS = ['directory_path', 'species_model', 'star_genome_index_directory_name',
+                                  'reference_genome_filename', 'annotation_filename', 'chr_ploidy_filename']
+    REQUIRED_OUTPUT_MAPPINGS = ['directory_path', 'type', 'override_sample_molecule_count', 'default_molecule_count']
+
     def __init__(self, configuration, dispatcher_mode, output_directory_path, input_samples):
         self.dispatcher_mode = dispatcher_mode
         self.samples = input_samples
@@ -42,25 +49,23 @@ class ExpressionPipeline:
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
             self.__step_paths[step_name] = inspect.getfile(module)
             JobMonitor.PIPELINE_STEPS[step_name] = step_class
-        valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, \
-            kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path =\
-            self.validate_and_gather_resources(configuration['resources'])
-        if not valid:
-            raise CampareeValidationException("The resources data is not completely valid."
-                                              "  Consult the standard error file for details.")
-        self.reference_genome = CampareeUtils.create_genome(reference_genome_file_path)
-        self.chr_ploidy_data = CampareeUtils.create_chr_ploidy_data(chr_ploidy_file_path)
-        self.beagle_file_path = beagle_file_path
-        self.annotation_file_path = annotation_file_path
-        self.star_file_path = star_file_path
-        self.kallisto_file_path = kallisto_file_path
-        self.bowtie2_dir_path = bowtie2_dir_path
-        self.chr_ploidy_file_path = chr_ploidy_file_path
-        self.reference_genome_file_path = reference_genome_file_path
-        self.resources_index_files_directory_path = resources_index_files_directory_path
 
-        self.output_type = configuration["output"]["type"]
-        self.output_molecule_count = configuration["output"]["molecule_count"]
+        # Validate the resources and set file and directory paths as needed.
+        if not self.validate_and_set_resources(configuration['resources']):
+            raise CampareeValidationException("The resources data is not completely valid.  "
+                                              "Consult the standard error file for details.")
+
+        # Collect the data from the ref genome and chromosome ploidy files
+        self.reference_genome = CampareeUtils.create_genome(self.reference_genome_file_path)
+        self.chr_ploidy_data = CampareeUtils.create_chr_ploidy_data(self.chr_ploidy_file_path)
+
+        # Set 3rd party software paths
+        self.set_third_party_software()
+
+        # Validate output data and set
+        if not self.validate_and_set_output_data(configuration['output']):
+            raise CampareeValidationException("The output data is not completely valid.  "
+                                              "Consult the standard error file for details.")
 
         self.expression_pipeline_monitor = None
         if self.dispatcher_mode != "serial":
@@ -71,136 +76,130 @@ class ExpressionPipeline:
             os.makedirs(os.path.join(data_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
             os.makedirs(os.path.join(log_directory_path, f'sample{sample.sample_id}'), mode=0o0755, exist_ok=True)
 
-    @staticmethod
-    def validate_and_gather_resources(resources):
+    def validate_and_set_output_data(self, output):
+        """
+        Helper method to validate and set output data.
+        :param output: The output dictionary extracted from the configuration file.
+        :return: True for valid output data and False otherwise
+        """
+
+        valid = True
+
+        # Insure that all required resources keys are in place.  No point in continuing until this
+        # problem is resolved.
+        missing_output_keys = [item
+                                 for item in ExpressionPipeline.REQUIRED_OUTPUT_MAPPINGS
+                                 if item not in output]
+        if missing_output_keys:
+            print(f"The following required mappings were not found under 'outputs': "
+                  f"{(',').join(missing_output_keys)}", file=sys.stderr)
+            return False
+
+        # Insure type mapping exists
+        if "type" not in output:
+            print(f"The required mapping 'type' was not found under 'output.", file=sys.stderr)
+            valid = False
+        else:
+            self.output_type = output["type"]
+
+        # Insure default_molecule_count exists and is an int
+        if "default_molecule_count" not in output:
+            print(f"The required mapping 'default_molecule_count' was not found under 'output.", file=sys.stderr)
+            valid = False
+        else:
+            self.output_molecule_count = output["default_molecule_count"]
+            if not isinstance(self.output_molecule_count, int):
+                print(f"The 'default_molecule_count' must be an integer - not {output['default_molecule_count']}",
+                      file=sys.stderr)
+                valid = False
+
+        return valid
+
+    def set_third_party_software(self):
+        """
+        Helper method to gather the names of all the 3rd party application files or directories and use them to set
+        all the paths needed in the pipeline.  Since the third party software is shipped with this application, validation
+        should not be necessary.  Software is identified generally by name and not specifically by filename since
+        filenames may contain versioning and other artefacts.
+        :return: the filenames for beagle, star, and kallisto, and the directory name for bowtie2.
+        """
+
+        beagle_filename = [filename for filename in os.listdir(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH)
+                           if "beagle" in filename.lower()][0]
+        self.beagle_file_path = os.path.join(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH, beagle_filename)
+
+        star_filename = [filename for filename in os.listdir(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH)
+                         if "STAR" in filename][0]
+        self.star_file_path = os.path.join(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH, star_filename)
+
+        kallisto_filename = [filename for filename in os.listdir(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH)
+                              if "kallisto" in filename][0]
+        self.kallisto_file_path = os.path.join(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH, kallisto_filename)
+
+        bowtie2_dir_name = [filename for filename in os.listdir(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH)
+                             if "bowtie2" in filename][0]
+        self.bowtie2_dir_path = os.path.join(ExpressionPipeline.THIRD_PARTY_SOFTWARE_DIR_PATH, bowtie2_dir_name)
+
+    def validate_and_set_resources(self, resources):
         """
         Since the resources are input file intensive, and since information about resource paths is found in the
         configuration file, this method validates that all needed resource information is complete, consistent and all
         input data is found.
         :param resources: dictionary containing resources from the configuration file
-        :return: a tuple = valid (True/False), reference genome file path, chr ploidy file path and beagle file path
+        :return: True if valid and False otherwise
         """
         # TODO a some point STAR and samtools will be in thrid party software and may require validation
-        reference_genome_file_path, chr_ploidy_file_path, annotation_file_path, beagle_file_path, \
-            star_file_path, kallisto_file_path, bowtie2_dir_path = None, None, None, None, None, None, None
+        reference_genome_file_path, chr_ploidy_file_path, annotation_file_path, star_genome_directory_path = \
+            None, None, None, None
+
         valid = True
-        os.sys.exit("Dev stop")
-        if 'species_model' not in resources:
-            print("The species_model must be listed in the resources section of the configuration file.",
+
+        # Insure that all required resources keys are in place.  No point in continuing until this
+        # problem is resolved.
+        missing_resource_keys = [item
+                                 for item in ExpressionPipeline.REQUIRED_RESOURCE_MAPPINGS
+                                 if item not in resources]
+        if missing_resource_keys:
+            print(f"The following required mappings were not found under 'resources': "
+                  f"{(',').join(missing_resource_keys)}", file=sys.stderr)
+            return False
+
+        # Insure that the species model directory exists.  No point in continuing util this problem is
+        # resolved.
+        species_model_directory_path = os.path.join(resources['directory_path'], resources['species_model'])
+        if not(os.path.exists(species_model_directory_path) and os.path.isdir(species_model_directory_path)):
+                print(f"The species model directory, {species_model_directory_path}, must exist as a directory",
+                      file=sys.stderr)
+                return False
+
+        # Insure that the reference genome file path exists and points to a file.
+        self.reference_genome_file_path = os.path.join(species_model_directory_path, resources['reference_genome_filename'])
+        if not(os.path.exists(self.reference_genome_file_path) and os.path.isfile(self.reference_genome_file_path)):
+            print(f"The reference genome file path, {self.reference_genome_file_path}, must exist as"
+                  f" a file.", file=sys.stderr)
+            valid = False
+
+        # Insure that the chromosome ploidy file path exists and points to a file.
+        self.chr_ploidy_file_path = os.path.join(species_model_directory_path, resources['chr_ploidy_filename'])
+        if not(os.path.exists(self.chr_ploidy_file_path) and os.path.isfile(self.chr_ploidy_file_path)):
+            print(f"The chr ploidy file path, {chr_ploidy_file_path} must exist as a file", file=sys.stderr)
+            valid = False
+
+        # Insure that the annotations file path exists and points to a file.
+        self.annotation_file_path = os.path.join(species_model_directory_path, resources['annotation_filename'])
+        if not(os.path.exists(self.annotation_file_path) and os.path.isfile(self.annotation_file_path)):
+            print(f"The annotation file path, {self.annotation_file_path} must exist as a file", file=sys.stderr)
+            valid = False
+
+        # Insure that the star index directory exists as a directory.
+        self.star_index_directory_path = \
+            os.path.join(species_model_directory_path, resources['star_genome_index_directory_name'])
+        if not (os.path.exists(self.star_index_directory_path) and os.path.isdir(self.star_index_directory_path)):
+            print(f"The star index directory, {self.star_index_directory_path}, must exist as a directory",
                   file=sys.stderr)
             valid = False
-        else:
-            resources_index_files_directory_path = \
-                os.path.join(resources['directory_path'], "index_files", resources['species_model'])
-            if not(os.path.exists(resources_index_files_directory_path) and
-                   os.path.isdir(resources_index_files_directory_path)):
-                print(f"The index files directory, {resources_index_files_directory_path}, must exist as a directory",
-                      file=sys.stderr)
-                valid = False
-            else:
-                if 'reference_genome_filename' not in resources:
-                    print(f"The reference genome filename must be specified in the resources section of the "
-                          f"configuration file.", file=sys.stderr)
-                    valid = False
-                else:
-                    reference_genome_file_path = \
-                        os.path.join(resources_index_files_directory_path, resources['reference_genome_filename'])
-                    if not(os.path.exists(reference_genome_file_path) and
-                           os.path.isfile(reference_genome_file_path)):
-                        print(f"The reference genome file path, {reference_genome_file_path}, must exist as"
-                              f" a file.", file=sys.stderr)
-                        valid = False
-                if 'chr_ploidy_filename' not in resources:
-                    print(f"The chr ploidy filename must be specified in the resources section of the configuration"
-                          f" file.", file=sys.stderr)
-                    valid = False
-                else:
-                    chr_ploidy_file_path = \
-                        os.path.join(resources_index_files_directory_path, resources['chr_ploidy_filename'])
-                    if not(os.path.exists(chr_ploidy_file_path) and
-                           os.path.isfile(chr_ploidy_file_path)):
-                        print(f"The chr ploidy file path, {chr_ploidy_file_path} must exist as a file",
-                              file=sys.stderr)
-                        valid = False
-                if 'annotation_filename' not in resources:
-                    print(f"The annotation filename must be specified in the resources section of the configuration"
-                          f" file.", file=sys.stderr)
-                    valid = False
-                else:
-                    annotation_file_path = \
-                        os.path.join(resources_index_files_directory_path, resources['annotation_filename'])
-                    if not(os.path.exists(annotation_file_path) and
-                           os.path.isfile(annotation_file_path)):
-                        print(f"The annotation file path, {annotation_file_path} must exist as a file",
-                              file=sys.stderr)
-                        valid = False
-        third_party_software_directory_path = os.path.join(resources['directory_path'], "third_party_software")
-        if not (os.path.exists(third_party_software_directory_path) and
-                os.path.isdir(third_party_software_directory_path)):
-                    print(f"The third party software directory path , {third_party_software_directory_path}, must exist"
-                          f" as a directory.", file=sys.stderr)
-                    valid = False
-        else:
-            beagle_filenames = [filename for filename in os.listdir(third_party_software_directory_path)
-                                if "beagle" in filename]
 
-            if not beagle_filenames:
-                print(f"No file is the third party software directory can be identified as the Beagle program",
-                      file=sys.stderr)
-                valid = False
-            else:
-                beagle_file_path = os.path.join(third_party_software_directory_path, beagle_filenames[0])
-                if not (os.path.exists(beagle_file_path) and os.path.isfile(beagle_file_path) and
-                        beagle_filenames[0].endswith('jar')):
-                    print(f"The beagle file path, {beagle_file_path}, must exist as an executable jar file.",
-                          file=sys.stderr)
-                    valid = False
-
-            star_filenames = [filename for filename in os.listdir(third_party_software_directory_path)
-                                if "STAR" in filename]
-
-            if not star_filenames:
-                print(f"No file is the third party software directory can be identified as the STAR program",
-                      file=sys.stderr)
-                valid = False
-            else:
-                star_file_path = os.path.join(third_party_software_directory_path, star_filenames[0])
-                if not (os.path.exists(star_file_path) and os.path.isfile(star_file_path)):
-                    print(f"The star file path, {star_file_path}, must exist as an executable",
-                          file=sys.stderr)
-                    valid = False
-
-
-            kallisto_filenames = [filename for filename in os.listdir(third_party_software_directory_path)
-                                if "kallisto" in filename]
-            if not kallisto_filenames:
-                print(f"No file is the third party software directory can be identified as the Kallisto program",
-                      file=sys.stderr)
-                valid = False
-            else:
-                kallisto_file_path = os.path.join(third_party_software_directory_path, kallisto_filenames[0])
-                if not (os.path.exists(kallisto_file_path) and os.path.isfile(kallisto_file_path)):
-                    print(f"The Kallisto file path, {kallisto_file_path}, must exist as an executable",
-                          file=sys.stderr)
-                    valid = False
-
-
-            bowtie2_dir_names = [filename for filename in os.listdir(third_party_software_directory_path)
-                                if "bowtie2" in filename]
-            if not bowtie2_dir_names:
-                print(f"No file is the third party software directory can be identified as the Bowtie2 program",
-                      file=sys.stderr)
-                valid = False
-            else:
-                bowtie2_dir_path = os.path.join(third_party_software_directory_path, bowtie2_dir_names[0])
-                # Make sure build and run files are there in the directory
-                if not (os.path.exists(bowtie2_dir_path)):
-                    print(f"The Bowtie2 directory path, {bowtie2_dir_path}, must exist as an executable",
-                          file=sys.stderr)
-                    valid = False
-
-        return valid, reference_genome_file_path, chr_ploidy_file_path, beagle_file_path, annotation_file_path, star_file_path, \
-            kallisto_file_path, bowtie2_dir_path, resources_index_files_directory_path
+        return valid
 
     def validate(self):
         valid = True
@@ -233,9 +232,9 @@ class ExpressionPipeline:
             bam_files[sample.sample_id] = bam_file
             self.run_step(step_name='GenomeAlignmentStep',
                           sample=sample,
-                          execute_args=[sample, self.resources_index_files_directory_path,
+                          execute_args=[sample, self.star_index_directory_path,
                                         self.star_file_path],
-                          cmd_line_args=[sample, self.resources_index_files_directory_path,
+                          cmd_line_args=[sample, self.star_index_directory_path,
                                          self.star_file_path],
                           scheduler_memory_in_mb=40000,
                           scheduler_num_processors=4)
@@ -437,7 +436,6 @@ class ExpressionPipeline:
     @staticmethod
     def main(configuration, dispatcher_mode, output_directory_path, input_samples):
         pipeline = ExpressionPipeline(configuration, dispatcher_mode, output_directory_path, input_samples)
-        os.sys.exit("Developer stop")
         if not pipeline.validate():
             raise CampareeValidationException("Expression Pipeline Validation Failed.  "
                                               "Consult the standard error file for details.")
