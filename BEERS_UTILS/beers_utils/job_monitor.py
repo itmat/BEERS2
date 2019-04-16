@@ -461,7 +461,7 @@ class Job:
                           'WAITING_FOR_DEPENDENCY'] #job not submitted and waiting for dependency to complete.
 
     def __init__(self, job_id, job_command, sample_id, step_name, scheduler_arguments,
-                 validation_attributes, output_directory_path, scheduler_name,
+                 validation_attributes, output_directory_path,
                  system_id=None, dependency_list=None):
         """
         Initialize job to track the status of a step/operation.
