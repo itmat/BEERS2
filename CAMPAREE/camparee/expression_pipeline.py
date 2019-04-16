@@ -23,7 +23,7 @@ class ExpressionPipeline:
 
     CAMPAREE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     THIRD_PARTY_SOFTWARE_DIR_PATH = os.path.join(CAMPAREE_ROOT_DIR, "third_party_software")
-    REQUIRED_RESOURCE_MAPPINGS = ['directory_path', 'species_model', 'star_genome_index_directory_name',
+    REQUIRED_RESOURCE_MAPPINGS = ['species_model', 'star_genome_index_directory_name',
                                   'reference_genome_filename', 'annotation_filename', 'chr_ploidy_filename']
     REQUIRED_OUTPUT_MAPPINGS = ['directory_path', 'type', 'override_sample_molecule_count', 'default_molecule_count']
 
@@ -148,9 +148,7 @@ class ExpressionPipeline:
         :param resources: dictionary containing resources from the configuration file
         :return: True if valid and False otherwise
         """
-        # TODO a some point STAR and samtools will be in thrid party software and may require validation
-        reference_genome_file_path, chr_ploidy_file_path, annotation_file_path, star_genome_directory_path = \
-            None, None, None, None
+        # TODO a some point STAR will be in third party software and may require validation
 
         valid = True
 
@@ -164,9 +162,19 @@ class ExpressionPipeline:
                   f"{(',').join(missing_resource_keys)}", file=sys.stderr)
             return False
 
+        # If user did not provide a path to the resources directory, use the
+        # directory contained in the CAMPAREE install path.
+        resources_directory_path = resources.get('directory_path', None)
+        if not resources_directory_path:
+            resources_directory_path = os.path.join(ExpressionPipeline.CAMPAREE_ROOT_DIR, "resources")
+        elif not(os.path.exists(resources_directory_path) and os.path.isdir(resources_directory_path)):
+            print(f"The given resources directory, {resources_directory_path}, must exist as a directory.",
+                  file=sys.stderr)
+            return False
+
         # Insure that the species model directory exists.  No point in continuing util this problem is
         # resolved.
-        species_model_directory_path = os.path.join(resources['directory_path'], resources['species_model'])
+        species_model_directory_path = os.path.join(resources_directory_path, resources['species_model'])
         if not(os.path.exists(species_model_directory_path) and os.path.isdir(species_model_directory_path)):
                 print(f"The species model directory, {species_model_directory_path}, must exist as a directory",
                       file=sys.stderr)
@@ -182,7 +190,7 @@ class ExpressionPipeline:
         # Insure that the chromosome ploidy file path exists and points to a file.
         self.chr_ploidy_file_path = os.path.join(species_model_directory_path, resources['chr_ploidy_filename'])
         if not(os.path.exists(self.chr_ploidy_file_path) and os.path.isfile(self.chr_ploidy_file_path)):
-            print(f"The chr ploidy file path, {chr_ploidy_file_path} must exist as a file", file=sys.stderr)
+            print(f"The chr ploidy file path, {self.chr_ploidy_file_path} must exist as a file", file=sys.stderr)
             valid = False
 
         # Insure that the annotations file path exists and points to a file.
