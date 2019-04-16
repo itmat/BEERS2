@@ -272,26 +272,25 @@ class ExpressionPipeline:
                           cmd_line_args=[sample, bam_filename],
                           dependency_list=[f"GenomeAlignmentStep.{sample.sample_id}"])
 
-        for sample_id, bam_file in bam_files.items():
-            # Use chr_ploidy as the gold std for alignment, variants, VCF, genome_maker
-            sample = self.expression_pipeline_monitor.get_sample(sample_id)
-            seed = seeds[f"VariantsFinderStep.{sample_id}"]
+        for sample in self.samples:
+            bam_filename = bam_files[sample.sample_id]
+            seed = seeds[f"VariantsFinderStep.{sample.sample_id}"]
             self.run_step(step_name='VariantsFinderStep',
                           sample=sample,
-                          execute_args=[sample, bam_file, self.chr_ploidy_data,
+                          execute_args=[sample, bam_filename, self.chr_ploidy_data,
                                         self.reference_genome, seed],
-                          cmd_line_args=[sample, bam_file, self.chr_ploidy_file_path,
+                          cmd_line_args=[sample, bam_filename, self.chr_ploidy_file_path,
                                          self.reference_genome_file_path, seed],
-                          dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
+                          dependency_list=[f"GenomeBamIndexStep.{sample.sample_id}"])
 
-        for sample_id, bam_file in bam_files.items():
+        for sample in self.samples:
             output_directory = os.path.join(self.data_directory_path, f"sample{sample.sample_id}")
-            sample = self.expression_pipeline_monitor.get_sample(sample_id)
+            bam_filename = bam_files[sample.sample_id]
             self.run_step(step_name='IntronQuantificationStep',
                           sample=sample,
-                          execute_args=[bam_file, output_directory, self.annotation_file_path],
-                          cmd_line_args=[bam_file, output_directory, self.annotation_file_path],
-                          dependency_list=[f"GenomeBamIndexStep.{sample_id}"])
+                          execute_args=[bam_filename, output_directory, self.annotation_file_path],
+                          cmd_line_args=[bam_filename, output_directory, self.annotation_file_path],
+                          dependency_list=[f"GenomeBamIndexStep.{sample.sample_id}"])
             #TODO: do we need to depend upon the index being done? or just the alignment?
             #      I'm hypothesizing that some failures are being caused by indexing and quantification happening
             #      on the same BAM file at the same time, though I don't know why this would be a problem.
