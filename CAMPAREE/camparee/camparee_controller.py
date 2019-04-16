@@ -301,7 +301,8 @@ class CampareeController:
         pipeline.
         """
         fastq_directory_path = self.configuration["input"]["fastq_directory_path"]
-        bam_directory_path = self.configuration['input']['bam_directory_path']
+        # BAM directory path and BAM files are optional
+        bam_directory_path = self.configuration['input'].get('bam_directory_path', None)
         self.input_samples = []
         # TODO handle the situation where the adapter kit is not specified or not found
         # The kit is really only needed for library prep.  So if the expression pipeline does not generate
