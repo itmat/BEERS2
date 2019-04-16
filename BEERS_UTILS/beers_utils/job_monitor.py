@@ -50,7 +50,9 @@ class JobMonitor:
         self.samples_by_ids = {}
 
         self.scheduler_name = scheduler_name
-        self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
+        self.job_scheduler = None
+        if self.scheduler_name != "serial":
+            beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
 
     def is_processing_complete(self):
         """
@@ -67,6 +69,16 @@ class JobMonitor:
         """
         # TODO: Could we merge this function with monitor_until_all_jobs_completed()?
         #       Would there every be any need to run is_processing_complete() alone?
+
+        # TODO: Maybe in stead of catching a serial scheduler here, we should make
+        #       a "serial" scheduler that implements the AbstractJobScheduler class,
+        #       that way it ceases to be a special case that needs extra code to
+        #       handle.
+
+        # If running in serial mode, the job monitor isn't being used to track
+        # the progress of any processes.
+        if self.scheduler_name == "serial":
+            return True
 
         #Note, I need to force python to create a copy of the running_list so
         #that if/when the code below removes jobs from the running_list it won't
@@ -215,8 +227,7 @@ class JobMonitor:
 
         submitted_job = Job(job_id, job_command, sample_id_for_job, step_name,
                             scheduler_arguments, validation_attributes,
-                            output_directory_path, self.scheduler_name,
-                            system_id, dependency_list)
+                            output_directory_path, system_id, dependency_list)
         #TODO: Condsider whether to add a check to see if both a system_id and
         #      a dependency list is provided (and throw an expection if both or
         #      neither are). As it's coded here, if a job has a system_id, it
@@ -482,9 +493,6 @@ class Job:
             of any output files or parameters.
         output_directory_path : string
             Path to data directory where job/process output is being stored.
-        scheduler_name : string
-            The mode used to submit the jobs/processes. Currently supports
-            {",".join(SUPPORTED_DISPATCHER_MODES)}.
         system_id : string
             System-level identifier for the running job. For example, if this
             job was submitted to a job schedule  like LSF or SGE, this will be
@@ -507,13 +515,6 @@ class Job:
         self.output_directory = output_directory_path
         self.log_directory = os.path.join(self.output_directory, CONSTANTS.LOG_DIRECTORY_NAME)
         self.data_directory = os.path.join(self.output_directory, CONSTANTS.DATA_DIRECTORY_NAME)
-
-        if scheduler_name not in SUPPORTED_DISPATCHER_MODES:
-            raise BeersUtilsException(f'{scheduler_name} is not a supported mode.\n'
-                                      f'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
-        else:
-            self.scheduler_name = scheduler_name
-
         self.system_id = system_id
         self.dependency_list = set()
         if dependency_list:
@@ -545,7 +546,6 @@ class Job:
                 f" scheduler_arguments=\"{repr(self.scheduler_arguments)}\","
                 f" validation_attributes=\"{repr(self.validation_attributes)}\","
                 f" output_directory={self.output_directory},"
-                f" scheduler_name={self.scheduler_name},"
                 f" system_id={self.system_id},"
                 f" \"{repr(self.dependency_list)}\")")
 
@@ -572,7 +572,7 @@ class Job:
         scheduler : AbstractJobScheduler
             Interface to the system's job scheduler currently tracking the job.
             If no job scheduler provided, the method assumes the job is running
-            in locally in serial mode [default].
+            locally in serial mode [default].
 
         Returns
         -------
@@ -589,7 +589,7 @@ class Job:
 
         if self.system_id is None:
             job_status = "WAITING_FOR_DEPENDENCY"
-        elif self.scheduler_name == "serial" or self.scheduler_name == "parallel" or not scheduler:
+        elif not scheduler:
             job_status = "COMPLETED"
         else:
 
