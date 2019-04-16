@@ -196,3 +196,14 @@ steps:
     # Update transcript annotation coordinates to reflect changes made when
     # constructring each parental genome sequence.
     'update_annotation_for_genome.UpdateAnnotationForGenomeStep':
+    # Use kalliston to quantify transcript- and gene-level read counts from the
+    # input data. Use bowtie2 to align input data to the transcriptome and
+    # quantify allele-specific read counts. Use these quantification results,
+    # in addition to the intron-quantification to generate backgroung
+    # distributions for each transcript in the simulated sample. Lastly, generate
+    # the specified number of simulated molecules using all of these distributions.
+    'transcriptomes.TranscriptQuantificatAndMoleculeGenerationStep':
+        parameters:
+            # Number of CPU threads to use when running bowtie2 for transcriptome
+            # alignments.
+            num_bowtie_threads: 7
