@@ -53,7 +53,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
 
         return True
 
-    def execute(self, sample, resources_index_files_directory_path, star_bin_path):
+    def execute(self, sample, star_index_directory_path, star_bin_path):
         """
         Use STAR to align fastq files for a given sample, to the reference genome.
 
@@ -62,8 +62,8 @@ class GenomeAlignmentStep(AbstractCampareeStep):
         sample : Sample
             Sample containing paths for FASTQ files to align, or pre-aligned
             BAM file.
-        resources_index_files_directory_path : string
-            Directory containing STAR index in 'genome' subdirectory.
+        star_index_directory_path : string
+            Path to directory containing STAR index.
         star_bin_path : string
             Path to STAR executable binary.
 
@@ -82,12 +82,11 @@ class GenomeAlignmentStep(AbstractCampareeStep):
 
         read_files = ' '.join(sample.fastq_file_paths)
         out_file_prefix = os.path.join(self.data_directory_path, f"sample{sample.sample_id}", self.STAR_BAMFILE_PREFIX)
-        star_index_path = os.path.join(resources_index_files_directory_path, "genome")
         star_cmd_options = ' '.join( f"{key} {value}" for key,value in self.star_cmd_options.items() )
 
         star_command = self.BASE_STAR_COMMAND.format(star_bin_path=star_bin_path,
                                                      out_file_prefix=out_file_prefix,
-                                                     star_index_path=star_index_path,
+                                                     star_index_path=star_index_directory_path,
                                                      star_cmd_options=star_cmd_options,
                                                      read_files=read_files)
 
@@ -128,7 +127,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
                                             f"{GenomeAlignmentStep.STAR_BAMFILE_FULLNAME}")
             return default_bam_path
 
-    def get_commandline_call(self, sample, resources_index_files_directory_path, star_bin_path):
+    def get_commandline_call(self, sample, star_index_directory_path, star_bin_path):
         """
         Prepare command to execute the GenomeAlignment from the command line, given
         all of the arugments used to run the execute() function.
@@ -138,8 +137,8 @@ class GenomeAlignmentStep(AbstractCampareeStep):
         sample : Sample
             Sample containing paths for FASTQ files to align, or pre-aligned
             BAM file.
-        resources_index_files_directory_path : string
-            Directory containing STAR index in 'genome' subdirectory.
+        star_index_directory_path : string
+            Path to directory containing STAR index.
         star_bin_path : string
             Path to STAR executable binary.
 
@@ -160,14 +159,14 @@ class GenomeAlignmentStep(AbstractCampareeStep):
         command = (f" python {genome_align_path} align"
                    f" --log_directory_path {self.log_directory_path}"
                    f" --data_directory_path {self.data_directory_path}"
-                   f" --resources_index_files_directory_path {resources_index_files_directory_path}"
+                   f" --star_index_directory_path {star_index_directory_path}"
                    f" --sample '{repr(sample)}'"
                    f" --star_bin_path {star_bin_path}"
                    f" --star_parameters '{json.dumps(self.star_cmd_options)}'")
 
         return command
 
-    def get_validation_attributes(self, sample, resources_index_files_directory_path, star_bin_path):
+    def get_validation_attributes(self, sample, star_index_directory_path, star_bin_path):
         """
         Prepare attributes required by is_output_valid() function to validate
         output generated the STAR genome job corresponding to the given sample.
@@ -176,10 +175,10 @@ class GenomeAlignmentStep(AbstractCampareeStep):
         ----------
         sample : Sample
             Sample defining the FASTQ files to be aligned, or the pre-aligned BAM.
-        resources_index_files_directory_path : string
-            Directory containing STAR index in 'genome' subdirectory. [Note: this
-            parameter is captured just so get_validation_attributes() accepts the
-            same arguments as get_commandline_call(). It is not used here.]
+        star_index_directory_path : string
+            Path to directory containing STAR index. [Note: this parameter is
+            captured just so get_validation_attributes() accepts the same arguments
+            as get_commandline_call(). It is not used here.]
         star_bin_path : string
             Path to STAR executable binary. [Note: this parameter is captured
             just so get_validation_attributes() accepts the same arguments as
@@ -217,7 +216,7 @@ class GenomeAlignmentStep(AbstractCampareeStep):
                                                data_directory_path=cmd_args.data_directory_path,
                                                parameters=parameters)
         genome_alignment.execute(sample=sample,
-                                 resources_index_files_directory_path=cmd_args.resources_index_files_directory_path,
+                                 star_index_directory_path=cmd_args.star_index_directory_path,
                                  star_bin_path=cmd_args.star_bin_path)
 
     @staticmethod
@@ -419,7 +418,7 @@ if __name__ == '__main__':
     required_named_genome_alignment_subparser = genome_alignment_subparser.add_argument_group('Required named arguments')
     required_named_genome_alignment_subparser.add_argument("--log_directory_path", required=True, help="Directory in which to save logging files.")
     required_named_genome_alignment_subparser.add_argument("--data_directory_path", required=True, help="Directory in which to save output files.")
-    required_named_genome_alignment_subparser.add_argument('--resources_index_files_directory_path', required=True, help="Directory containing STAR index in 'genome' subdirectory.")
+    required_named_genome_alignment_subparser.add_argument('--star_index_directory_path', required=True, help="Path to directory containing STAR index.")
     required_named_genome_alignment_subparser.add_argument('--sample', required=True, help="Serialized Sample object containing FASTQ file info.")
     required_named_genome_alignment_subparser.add_argument('--star_bin_path', required=True, help="Path to STAR executable binary.")
     required_named_genome_alignment_subparser.add_argument('--star_parameters', required=True, help="Jsonified STAR parameters.")
