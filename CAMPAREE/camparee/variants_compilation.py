@@ -8,13 +8,9 @@ import numpy
 
 from camparee.camparee_utils import CampareeUtils
 from camparee.abstract_camparee_step import AbstractCampareeStep
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
 
 class VariantsCompilationStep(AbstractCampareeStep):
-
-    #Name of the file where script output is stored.
-    VARIANTS_OUTPUT_FILENAME = "all_variants.vcf"
-    #Name of the file where script logging is stored.
-    VARIANTS_LOG_FILENAME = "VariantsCompilationStep.log"
 
     def __init__(self, log_directory_path, data_directory_path, parameters=None):
         self.data_directory_path = data_directory_path
@@ -44,7 +40,8 @@ class VariantsCompilationStep(AbstractCampareeStep):
         """
         self.chr_ploidy_data = chr_ploidy_data
         contig_order = list(reference_genome.keys())
-        log_file_path = os.path.join(self.log_directory_path, VariantsCompilationStep.VARIANTS_LOG_FILENAME)
+        log_file_path = os.path.join(self.log_directory_path,
+                                     CAMPAREE_CONSTANTS.VARIANTS_COMPILATION_LOG_FILENAME)
 
         # The common_variant() method defined below uses a random number when
         # choosing which of two equally prevalent variants to keep.
@@ -57,7 +54,8 @@ class VariantsCompilationStep(AbstractCampareeStep):
             contigs_so_far = []
             last_chromosome = None
             # Open then process all the files
-            all_variants_file_path = os.path.join(self.data_directory_path, self.VARIANTS_OUTPUT_FILENAME)
+            all_variants_file_path = os.path.join(self.data_directory_path,
+                                                  CAMPAREE_CONSTANTS.VARIANTS_COMPILATION_OUTPUT_FILENAME)
             with contextlib.ExitStack() as stack, open(all_variants_file_path, "w") as out:
                 # Output the header
                 out.write("##fileformat=VCFv4.0\n")
@@ -349,8 +347,8 @@ class VariantsCompilationStep(AbstractCampareeStep):
 
         valid_output = False
 
-        output_file_path = os.path.join(data_directory, VariantsCompilationStep.VARIANTS_OUTPUT_FILENAME)
-        log_file_path = os.path.join(log_directory, VariantsCompilationStep.VARIANTS_LOG_FILENAME)
+        output_file_path = os.path.join(data_directory, CAMPAREE_CONSTANTS.VARIANTS_COMPILATION_OUTPUT_FILENAME)
+        log_file_path = os.path.join(log_directory, CAMPAREE_CONSTANTS.VARIANTS_COMPILATION_LOG_FILENAME)
         if os.path.isfile(output_file_path) and os.path.isfile(log_file_path):
             #Read last line in variants_finder log file
             line = ""

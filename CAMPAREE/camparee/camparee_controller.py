@@ -8,6 +8,7 @@ import sys
 import traceback
 import string
 from datetime import datetime
+from camparee.camparee_constants import CAMPAREE_CONSTANTS,CAMPAREE_VERSION
 from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES
 from beers_utils.general_utils import GeneralUtils
 from camparee.expression_pipeline import ExpressionPipeline,CampareeValidationException
@@ -20,11 +21,6 @@ class CampareeController:
     calls one of the controller methods depending upon the pipeline-stage requested.  The other methods in the class
     are helper methods.
     """
-
-    """
-    Get CAMPAREE root directory. Used to determine path the 'third party software' subdirectory.
-    """
-    CAMPAREE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def __init__(self):
         """
@@ -50,7 +46,7 @@ class CampareeController:
         methods to run camparee.
         :param args: command line arguments
         """
-        stage_name = "expression_pipeline"
+        stage_name = CAMPAREE_CONSTANTS.CAMPAREE_OUTPUT_DIR_NAME
         self.perform_setup(args, [self.controller_name, stage_name])
         if not self.validate_samples():
             raise CampareeValidationException("Sample data is not valid.  Please consult the standard error file"
@@ -192,6 +188,7 @@ class CampareeController:
         with open(log_file_path, 'w') as controller_log_file:
             timestamp = time.time()
             current_datetime = datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            controller_log_file.write(f"CAMPAREE version {CAMPAREE_VERSION}\n")
             controller_log_file.write(f"Run Id:\t{self.run_id}\n")
             controller_log_file.write(f"Run Timestamp (UTC):\t{current_datetime}\n")
             controller_log_file.write(f"Seed:\t{self.seed}\n")

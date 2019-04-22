@@ -2,8 +2,6 @@ from collections import namedtuple
 import os
 
 Constants = namedtuple('Constants', ['ROOT_DIR',
-                                     'VARIANTS_FILE_NAME',
-                                     'BEAGLE_DATA_FILE_NAME',
                                      'MALE_GENDER',
                                      'FEMALE_GENDER',
                                      'AUDIT_FILENAME',
@@ -18,9 +16,17 @@ Provides a list of constants for the BEERS ecosystem.  Constants for steps are n
 subject to change by the user.
 """
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONSTANTS = Constants(ROOT_DIR, "variants.txt", "beagle.vcf.vcf.gz", "male", "female",
-                      "audit.txt", 100, 'data', 'logs', 'stdout', 'stderr', [1, 2])
+_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONSTANTS = Constants(ROOT_DIR=_ROOT_DIR,
+                      MALE_GENDER='male',
+                      FEMALE_GENDER='female',
+                      AUDIT_FILENAME='audit.txt',
+                      FILES_PER_DIRECTORY_LIMIT=100,
+                      DATA_DIRECTORY_NAME='data',
+                      LOG_DIRECTORY_NAME='logs',
+                      STDOUT_SUBDIRECTORY_NAME='stdout',
+                      STDERR_SUBDIRECTORY_NAME='stderr',
+                      DIRECTION_CONVENTION=[1, 2])
 
 SUPPORTED_SCHEDULER_MODES = ['lsf', 'serial']
 

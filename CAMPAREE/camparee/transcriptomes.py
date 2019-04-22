@@ -19,20 +19,22 @@ import pickle
 import numpy
 
 from beers_utils.constants import MAX_SEED
+from beers_utils.sample import Sample
 from camparee.gene_files_preparation import GeneFilesPreparation
 from camparee.transcript_gene_quant import TranscriptGeneQuantificationStep
 from camparee.allelic_imbalance_quant import AllelicImbalanceQuantificationStep
 from camparee.molecule_maker import MoleculeMaker
-from beers_utils.sample import Sample
 from camparee.abstract_camparee_step import AbstractCampareeStep
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
+
 
 # TODO: Split this class up into each of the separate steps. This way those that
 #       are independent from each other can run in parallel.
-class TranscriptQuantificatAndMoleculeGenerationStep():
+# TODO: Update all code here and in the various steps to use the file names
+#       encoded in CAMPAREE_CONSTANTS. Most stuff in here is currently hard-coded.
+class TranscriptQuantificatAndMoleculeGenerationStep(AbstractCampareeStep):
 
     MOLECULES_PER_PACKET = 10_000
-
-    TRANSCRIPTOMES_LOG_FILENAME = "TranscriptQuantificatAndMoleculeGenerationStep.log"
 
     def __init__(self, log_directory_path, data_directory_path, parameters=dict()):
         self.data_directory_path = data_directory_path
@@ -45,16 +47,12 @@ class TranscriptQuantificatAndMoleculeGenerationStep():
     def validate(self):
         return True
 
-    def done_file_name(self, sample_id):
-        return os.path.join(self.data_directory_path, f"sample{sample_id}", "transcriptome_prep_done.txt")
-
-
     def execute(self, sample, kallisto_file_path, bowtie2_dir_path, output_type, output_molecule_count, seed=None):
         if seed is not None:
             numpy.random.seed(seed)
         sample_dir = os.path.join(self.data_directory_path, f"sample{sample.sample_id}")
         transcriptome_logfile_path = os.path.join(self.log_directory_path, f"sample{sample.sample_id}",
-                                                  TranscriptQuantificatAndMoleculeGenerationStep.TRANSCRIPTOMES_LOG_FILENAME)
+                                                  CAMPAREE_CONSTANTS.TRANSCRIPTOMES_LOG_FILENAME)
         fastq_file_1, fastq_file_2 = sample.fastq_file_paths
 
         # Prepare the transcriptome fasta files
@@ -217,7 +215,7 @@ class TranscriptQuantificatAndMoleculeGenerationStep():
         valid_output = False
 
         transcriptome_logfile_path = os.path.join(log_directory, f"sample{sample_id}",
-                                                  TranscriptQuantificatAndMoleculeGenerationStep.TRANSCRIPTOMES_LOG_FILENAME)
+                                                  CAMPAREE_CONSTANTS.TRANSCRIPTOMES_LOG_FILENAME)
         molecule_file = os.path.join(data_directory, f"sample{sample_id}", "molecule_file")
         if os.path.isfile(transcriptome_logfile_path) and \
            os.path.isfile(molecule_file):
