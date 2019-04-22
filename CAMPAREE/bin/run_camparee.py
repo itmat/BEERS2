@@ -2,7 +2,7 @@
 import argparse
 from camparee.camparee_controller import CampareeController
 from beers_utils.constants import SUPPORTED_SCHEDULER_MODES
-from camparee.camparee_utils import CAMPAREE_VERSION
+from camparee.camparee_constants import CAMPAREE_VERSION
 
 controller = CampareeController()
 
