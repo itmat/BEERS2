@@ -64,3 +64,5 @@ CAMPAREE_CONSTANTS = \
                       UPDATEANNOT_LOG_FILENAME_PATTERN='UpdateAnnotationForGenomeStep_{genome_name}.log',
                       TRANSCRIPTOMES_LOG_FILENAME="TranscriptQuantificatAndMoleculeGenerationStep.log"
                      )
+
+CAMPAREE_VERSION="0.1.0"
