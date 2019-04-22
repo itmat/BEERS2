@@ -33,3 +33,5 @@ SUPPORTED_SCHEDULER_MODES = ['lsf', 'serial']
 # Maximum size for a job seed, generated from the controller's seed
 # which is specified in the config.json file
 MAX_SEED = 2_000_000_000
+
+BEERS_UTILS_VERSION = "0.1.0"
