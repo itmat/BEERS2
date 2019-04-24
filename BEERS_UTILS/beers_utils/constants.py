@@ -28,7 +28,7 @@ CONSTANTS = Constants(ROOT_DIR=_ROOT_DIR,
                       STDERR_SUBDIRECTORY_NAME='stderr',
                       DIRECTION_CONVENTION=[1, 2])
 
-SUPPORTED_SCHEDULER_MODES = ['lsf', 'serial']
+SUPPORTED_SCHEDULER_MODES = ['lsf', 'serial', 'sge']
 
 # Maximum size for a job seed, generated from the controller's seed
 # which is specified in the config.json file
