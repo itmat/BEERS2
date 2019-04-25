@@ -9,29 +9,44 @@ class LsfJobScheduler(AbstractJobScheduler):
     """
 
     #Regular expression for parsing bjobs output (including header)
-    LSF_BJOBS_OUTPUT_PATTERN = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
+    _LSF_BJOBS_OUTPUT_PATTERN = re.compile(r'''JOBID\s+USER\s+STAT\s+QUEUE\s+FROM_HOST\s+EXEC_HOST\s+JOB_NAME\s+SUBMIT_TIME\n(?P<job_id>\d+?)\s+\S+\s+(?P<job_status>\S+?)\s+.*''')
 
     #Regular expression for recognizing and extracting lsf job IDs following bsub.
-    LSF_BSUB_OUTPUT_PATTERN = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
+    _LSF_BSUB_OUTPUT_PATTERN = re.compile(r'Job <(?P<job_id>\d+?)> is submitted .*')
 
     #Regular expression for parsing bkill output.
-    LSF_BKILL_OUTPUT_PATTERN = re.compile(r'Job <(?P<job_id>\d+?)>(?P<bkill_message>[^\n]+?)\n?$')
+    _LSF_BKILL_OUTPUT_PATTERN = re.compile(r'Job <(?P<job_id>\d+?)>(?P<bkill_message>[^\n]+?)\n?$')
 
     #Default command used to check job status.
-    DEFAULT_BJOBS_COMMAND = ('bjobs {bjobs_args} {job_id}')
+    _DEFAULT_BJOBS_COMMAND = ('bjobs {bjobs_args} {job_id}')
 
     #Default command used to submit job.
-    DEFAULT_BSUB_COMMAND = ('bsub -J \"{job_name}\"'
-                            ' -n {num_processors}'
-                            ' -R \"span[hosts=1]\"'
-                            ' -M {mem_usage_in_mb}'
-                            ' -R \"rusage[mem={mem_usage_in_mb}]\"')
+    _DEFAULT_BSUB_COMMAND = ('bsub -J \"{job_name}\"'
+                             ' -n {num_processors}'
+                             ' -R \"span[hosts=1]\"'
+                             ' -M {mem_usage_in_mb}'
+                             ' -R \"rusage[mem={mem_usage_in_mb}]\"')
 
     #Default command used to kill job.
-    DEFAULT_BKILL_COMMAND = ('bkill {bkill_args} {job_id}')
+    _DEFAULT_BKILL_COMMAND = ('bkill {bkill_args} {job_id}')
 
-    @staticmethod
-    def check_job_status(job_id, additional_args=""):
+    def __init__(self, default_num_processors=1, default_memory_in_mb=6000):
+        """
+        Initialize LSF scheduler with default number of processors and memory
+        (in Mb) to request when submitting jobs through the scheduler.
+
+        Parameters
+        ----------
+        default_num_processors : int
+            Default number of processors/cores to request when submitting jobs.
+            Default: 1.
+        default_memory_in_mb : int
+            Default memory (in Mb) to request when submitting jobs. Default: 6000.
+
+        """
+        super().__init__(default_num_processors, default_memory_in_mb)
+
+    def check_job_status(self, job_id, additional_args=""):
         """
         Return status of given job in the LSF queue. This operation performed
         using the "bjobs" command.
@@ -57,7 +72,8 @@ class LsfJobScheduler(AbstractJobScheduler):
 
         job_status = "ERROR"
 
-        bjobs_command = LsfJobScheduler.DEFAULT_BJOBS_COMMAND.format(job_id=job_id, bjobs_args=additional_args)
+        bjobs_command = self._DEFAULT_BJOBS_COMMAND.format(job_id=job_id,
+                                                           bjobs_args=additional_args)
         bjobs_result = subprocess.run(bjobs_command, shell=True, check=True,
                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                       encoding="ascii")
@@ -66,9 +82,9 @@ class LsfJobScheduler(AbstractJobScheduler):
         #Skip first line bjobs output, since it just contains the header info.
         #job_status = bjobs_result.stdout.split("\n")[1].split()[2]
 
-        if LsfJobScheduler.LSF_BJOBS_OUTPUT_PATTERN.match(bjobs_result.stdout):
+        if self._LSF_BJOBS_OUTPUT_PATTERN.match(bjobs_result.stdout):
 
-            lsf_job_status = LsfJobScheduler.LSF_BJOBS_OUTPUT_PATTERN.match(bjobs_result.stdout).group("job_status")
+            lsf_job_status = self._LSF_BJOBS_OUTPUT_PATTERN.match(bjobs_result.stdout).group("job_status")
 
             if lsf_job_status == "RUN":
                 job_status = "RUNNING"
@@ -81,9 +97,8 @@ class LsfJobScheduler(AbstractJobScheduler):
 
         return job_status
 
-    @staticmethod
-    def submit_job(job_command, job_name, stdout_logfile=None, stderr_logfile=None,
-                   memory_in_mb=6000, num_processors=1, additional_args=""):
+    def submit_job(self, job_command, job_name, stdout_logfile=None, stderr_logfile=None,
+                   num_processors=None, memory_in_mb=None, additional_args=""):
         """
         Submit given job using the bsub command and return ID assigned to job by
         the LSF scheduler.
@@ -102,12 +117,14 @@ class LsfJobScheduler(AbstractJobScheduler):
         stderr_logfile : string
             Full path to file where job stderr should be stored. Specified using
             the "-eo" argument. Default: None.
-        memory_in_mb : int
-            Memory (in Mb) to request for running the job. Specified using both
-            the '-M' and '-R "rusage[mem=]"' arguments. Default: 6000.
         num_processors : int
             Number of processor units to request for running the job. Specified
-            using the '-n' argument. Default: 1.
+            using the '-n' argument. If not provided, use default values
+            specified during initialization.
+        memory_in_mb : int
+            Memory (in Mb) to request for running the job. Specified using both
+            the '-M' and '-R "rusage[mem=]"' arguments. If not provided, use
+            default values specified during initialization.
         additional_args : string
             Arguments and corresponding values to pass to the bsub command.
             Default: empty string.
@@ -121,9 +138,12 @@ class LsfJobScheduler(AbstractJobScheduler):
         """
         job_id = "ERROR"
 
-        bsub_command = LsfJobScheduler.DEFAULT_BSUB_COMMAND.format(job_name=job_name,
-                                                                   num_processors=num_processors,
-                                                                   mem_usage_in_mb=memory_in_mb)
+        request_processors = num_processors if num_processors else self.default_num_processors
+        request_mem = memory_in_mb if memory_in_mb else self.default_memory_in_mb
+
+        bsub_command = self._DEFAULT_BSUB_COMMAND.format(job_name=job_name,
+                                                         num_processors=request_processors,
+                                                         mem_usage_in_mb=request_mem)
         if stdout_logfile:
             bsub_command += f" -oo {stdout_logfile}"
         if stderr_logfile:
@@ -132,13 +152,12 @@ class LsfJobScheduler(AbstractJobScheduler):
         bsub_result = subprocess.run(' '.join([bsub_command, additional_args, job_command]),
                                      shell=True, check=True, stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, encoding="ascii")
-        if LsfJobScheduler.LSF_BSUB_OUTPUT_PATTERN.match(bsub_result.stdout):
-            job_id = LsfJobScheduler.LSF_BSUB_OUTPUT_PATTERN.match(bsub_result.stdout).group('job_id')
+        if self._LSF_BSUB_OUTPUT_PATTERN.match(bsub_result.stdout):
+            job_id = self._LSF_BSUB_OUTPUT_PATTERN.match(bsub_result.stdout).group('job_id')
 
         return job_id
 
-    @staticmethod
-    def kill_job(job_id, additional_args=""):
+    def kill_job(self, job_id, additional_args=""):
         """
         Kill given job using the bkill command.
 
@@ -158,7 +177,8 @@ class LsfJobScheduler(AbstractJobScheduler):
         """
         bkill_status = False
 
-        bkill_command = LsfJobScheduler.DEFAULT_BKILL_COMMAND.format(job_id=job_id, bkill_args=additional_args)
+        bkill_command = self._DEFAULT_BKILL_COMMAND.format(job_id=job_id,
+                                                           bkill_args=additional_args)
         #Note, set check=False here, since bkill command exits with an error code
         #if the given job does not exist or has already completed. These cases
         #are handled by the code afterward, so we don't need to check here (which
@@ -166,7 +186,7 @@ class LsfJobScheduler(AbstractJobScheduler):
         bkill_result = subprocess.run(bkill_command, shell=True, check=False,
                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                       encoding="ascii")
-        bkill_message = LsfJobScheduler.LSF_BKILL_OUTPUT_PATTERN.match(bkill_result.stdout).group('bkill_message')
+        bkill_message = self._LSF_BKILL_OUTPUT_PATTERN.match(bkill_result.stdout).group('bkill_message')
 
         if bkill_message == " is being terminated" or bkill_message == ": Job has already finished":
             bkill_status = True
