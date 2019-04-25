@@ -7,9 +7,25 @@ class AbstractJobScheduler(ABC):
     scheduler to submit, monitor, and kill jobs.
     """
 
-    @staticmethod
     @abstractmethod
-    def check_job_status(job_id, additional_args):
+    def __init__(self, default_num_processors, default_memory_in_mb):
+        """
+        Initialize scheduler with default number of processors and memory (in Mb)
+        to request when submitting jobs through the scheduler.
+
+        Parameters
+        ----------
+        default_num_processors : int
+            Default number of processors/cores to request when submitting jobs.
+        default_memory_in_mb : int
+            Default memory (in Mb) to request when submitting jobs.
+
+        """
+        self.default_memory_in_mb = default_memory_in_mb
+        self.default_num_processors = default_num_processors
+
+    @abstractmethod
+    def check_job_status(self, job_id, additional_args):
         """
         Execute command(s) to determine a job's current run status based on the
         system's scheduler.
@@ -35,10 +51,9 @@ class AbstractJobScheduler(ABC):
         """
         pass
 
-    @staticmethod
     @abstractmethod
-    def submit_job(job_command, job_name, stdout_logfile, stderr_logfile,
-                   memory_in_mb, num_processors, additional_args):
+    def submit_job(self, job_command, job_name, stdout_logfile, stderr_logfile,
+                   num_processors, memory_in_mb, additional_args):
         """
         Execute command(s) to submit job to system's scheduler.
 
@@ -54,10 +69,12 @@ class AbstractJobScheduler(ABC):
         stderr_logfile : string
             Full path to file where stderr from the scheduler/command should be
             stored.
-        memory_in_mb : int
-            Memory (in Mb) to request for running the job.
         num_processors : int
-            Number of processors/cores to request for running the job.
+            Number of processors/cores to request for running the job. If not
+            provided, use the default value specified during initialization.
+        memory_in_mb : int
+            Memory (in Mb) to request for running the job. If not provided, use
+            the default value specified during initialization.
         additional_args : string
             Additonal arguments to provide to the command(s) used to submit the job.
 
@@ -70,9 +87,8 @@ class AbstractJobScheduler(ABC):
         """
         pass
 
-    @staticmethod
     @abstractmethod
-    def kill_job(job_id, additional_args):
+    def kill_job(self, job_id, additional_args):
         """
         Execute command(s) to kill a running job.
 
