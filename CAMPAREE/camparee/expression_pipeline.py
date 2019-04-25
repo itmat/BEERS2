@@ -29,6 +29,9 @@ class ExpressionPipeline:
 
     def __init__(self, configuration, scheduler_mode, output_directory_path, input_samples):
         self.scheduler_mode = scheduler_mode
+        self.scheduler_default_params = {'default_num_processors': None,
+                                         'default_memory_in_mb': None,
+                                         'default_submission_args': None}
         self.samples = input_samples
         self.output_directory_path = output_directory_path
         log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -41,13 +44,18 @@ class ExpressionPipeline:
         #Track pathes of scripts for each step. This is needed when running the
         #steps from the command line, as we do when submitting to lsf.
         self.__step_paths = {}
+        # Individual steps can provide scheduler parameters that override
+        # the default values.
+        self.__step_scheduler_param_overrides = {}
         for step, props in configuration['steps'].items():
             module_name, step_name = step.rsplit(".")
             parameters = props["parameters"] if props and "parameters" in props else None
+            scheduler_parameters = props["scheduler_parameters"] if props and "scheduler_parameters" in props else None
             module = importlib.import_module(f'.{module_name}', package="camparee")
             step_class = getattr(module, step_name)
             self.steps[step_name] = step_class(log_directory_path, data_directory_path, parameters)
             self.__step_paths[step_name] = inspect.getfile(module)
+            self.__step_scheduler_param_overrides[step_name] = scheduler_parameters
             JobMonitor.PIPELINE_STEPS[step_name] = step_class
 
         # Validate the resources and set file and directory paths as needed.
@@ -67,13 +75,24 @@ class ExpressionPipeline:
             raise CampareeValidationException("The output data is not completely valid.  "
                                               "Consult the standard error file for details.")
 
-        self.expression_pipeline_monitor = JobMonitor(self.output_directory_path,
-                                                      self.scheduler_mode)
+        # Load default schduler parameters (if provided)
         if self.scheduler_mode != "serial":
             print(f"Running CAMPAREE using the {self.scheduler_mode} job scheduler.",
                   file=sys.stderr)
+            if configuration['setup'].get('default_scheduler_parameters'):
+                self.scheduler_default_params['default_num_processors'] = configuration['setup']['default_scheduler_parameters'].get('default_num_processors', None)
+                self.scheduler_default_params['default_memory_in_mb'] = configuration['setup']['default_scheduler_parameters'].get('default_memory_in_mb', None)
+                self.scheduler_default_params['default_submission_args'] = configuration['setup']['default_scheduler_parameters'].get('default_submission_args', None)
+                print("With the following default scheduler parameters:\n",
+                      '\n'.join({f"\t-{key} : {value}" for key, value in self.scheduler_default_params.items()}),
+                      file=sys.stderr)
         else:
             print("Running CAMPAREE in serial mode.", file=sys.stderr)
+
+        self.expression_pipeline_monitor = JobMonitor(output_directory_path=self.output_directory_path,
+                                                      scheduler_name=self.scheduler_mode,
+                                                      default_num_processors=self.scheduler_default_params['default_num_processors'],
+                                                      default_memory_in_mb=self.scheduler_default_params['default_memory_in_mb'])
 
     def create_intermediate_data_subdirectories(self, data_directory_path, log_directory_path):
         for sample in self.samples:
@@ -257,9 +276,7 @@ class ExpressionPipeline:
                           execute_args=[sample, self.star_index_directory_path,
                                         self.star_file_path],
                           cmd_line_args=[sample, self.star_index_directory_path,
-                                         self.star_file_path],
-                          scheduler_memory_in_mb=40000,
-                          scheduler_num_processors=4)
+                                         self.star_file_path])
 
         for sample in self.samples:
             bam_filename = bam_files[sample.sample_id]
@@ -347,9 +364,7 @@ class ExpressionPipeline:
                           cmd_line_args=[sample, self.kallisto_file_path, self.bowtie2_dir_path,
                                          self.output_type, num_molecules_to_generate, seed],
                           dependency_list=[f"UpdateAnnotationForGenomeStep.{sample.sample_id}.1",
-                                           f"UpdateAnnotationForGenomeStep.{sample.sample_id}.2"],
-                          scheduler_memory_in_mb=40000,
-                          scheduler_num_processors=7)
+                                           f"UpdateAnnotationForGenomeStep.{sample.sample_id}.2"])
 
         self.expression_pipeline_monitor.monitor_until_all_jobs_completed(queue_update_interval=10)
 
@@ -384,7 +399,7 @@ class ExpressionPipeline:
         return seeds
 
     def run_step(self, step_name, sample, execute_args, cmd_line_args, dependency_list=None,
-                 jobname_suffix=None, scheduler_memory_in_mb=6000, scheduler_num_processors=1):
+                 jobname_suffix=None):
         """
         Helper function that runs the given step, with the given parameters. If
         CAMPAREE is configured to use a scheduler/job monitor, this helper function
@@ -408,10 +423,6 @@ class ExpressionPipeline:
             List of job names (if any) the current step depends on. Default: None.
         jobname_suffix : string
             Suffix to add to job submission ID. Default: None.
-        scheduler_memory_in_mb : int
-            Amount of RAM (in MB) to request if submitting this step to a job scheduler.
-        scheduler_num_processors : int
-            Number of processors to request if submitting this step to a job scheduler.
 
         """
         if step_name not in list(self.steps.keys()):
@@ -429,6 +440,18 @@ class ExpressionPipeline:
             status_msg += f" on sample{sample.sample_id}" if sample else ""
             print(status_msg + "\n")
         else:
+            # Check if the current step has an overrides for scheduler parameters
+            scheduler_num_processors = None
+            scheduler_memory_in_mb = None
+            if self.__step_scheduler_param_overrides[step_name]:
+                scheduler_num_processors = self.__step_scheduler_param_overrides[step_name].get('num_processors',None)
+                scheduler_memory_in_mb = self.__step_scheduler_param_overrides[step_name].get('memory_in_mb',None)
+
+            # Check if there are any scheduler submission arguments to add
+            scheduler_submission_args = ""
+            if self.scheduler_default_params['default_submission_args']:
+                scheduler_submission_args = self.scheduler_default_params['default_submission_args']
+
             stdout_log = os.path.join(step_class.log_directory_path,
                                       f"sample{sample.sample_id}" if sample else "",
                                       f"{step_name}{f'.{jobname_suffix}' if jobname_suffix else ''}.bsub.%J.out")
@@ -440,8 +463,10 @@ class ExpressionPipeline:
             scheduler_args = {'job_name' : scheduler_job_name,
                               'stdout_logfile' : stdout_log,
                               'stderr_logfile' : stderr_log,
+                              'num_processors' : scheduler_num_processors,
                               'memory_in_mb' : scheduler_memory_in_mb,
-                              'num_processors' : scheduler_num_processors}
+                              'additional_args' : scheduler_submission_args
+                             }
             command = step_class.get_commandline_call(*cmd_line_args)
             validation_attributes = step_class.get_validation_attributes(*cmd_line_args)
             output_directory = os.path.join(step_class.data_directory_path,
