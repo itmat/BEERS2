@@ -6,14 +6,17 @@ from collections import namedtuple
 from operator import attrgetter, itemgetter
 import math
 from io import StringIO
-from beers_utils.constants import CONSTANTS
 from prettytable import PrettyTable
+from beers_utils.constants import CONSTANTS
+from camparee.abstract_camparee_step import AbstractCampareeStep
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
+
 #Imports required for main() method.
 import argparse
 import json
 from beers_utils.sample import Sample
 from camparee.camparee_utils import CampareeUtils
-from camparee.abstract_camparee_step import AbstractCampareeStep
+
 import numpy
 
 
@@ -247,9 +250,10 @@ class VariantsFinderStep(AbstractCampareeStep):
         :param chromosomes: A listing of chromosomes to replace the list obtained from the alignment file.  Used for
         debugging purposes.
         """
-        variants_filename = CONSTANTS.VARIANTS_FILE_NAME
-        variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}', variants_filename)
-        log_file_path = os.path.join(self.log_directory_path, f'sample{sample.sample_id}', __class__.__name__ + ".log")
+        variants_file_path = os.path.join(self.data_directory_path, f'sample{sample.sample_id}',
+                                          CAMPAREE_CONSTANTS.VARIANTS_FINDER_OUTPUT_FILENAME)
+        log_file_path = os.path.join(self.log_directory_path, f'sample{sample.sample_id}',
+                                     CAMPAREE_CONSTANTS.VARIANTS_FINDER_LOG_FILENAME)
         self.alignment_file = pysam.AlignmentFile(alignment_file_path, "rb")
         self.chromosomes = chromosomes if chromosomes else chr_ploidy_data.keys()
         self.reference_genome = reference_genome
@@ -459,8 +463,10 @@ class VariantsFinderStep(AbstractCampareeStep):
 
         valid_output = False
 
-        variants_outfile_path = os.path.join(data_directory, f"sample{sample_id}", "variants.txt")
-        variants_logfile_path = os.path.join(log_directory, f"sample{sample_id}", "VariantsFinderStep.log")
+        variants_outfile_path = os.path.join(data_directory, f"sample{sample_id}",
+                                             CAMPAREE_CONSTANTS.VARIANTS_FINDER_OUTPUT_FILENAME)
+        variants_logfile_path = os.path.join(log_directory, f"sample{sample_id}",
+                                             CAMPAREE_CONSTANTS.VARIANTS_FINDER_LOG_FILENAME)
         if os.path.isfile(variants_outfile_path) and \
            os.path.isfile(variants_logfile_path):
             #Read last line in variants_finder log file

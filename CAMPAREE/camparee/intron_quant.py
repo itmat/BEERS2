@@ -10,11 +10,7 @@ import pysam
 
 from camparee.annotation_info import AnnotationInfo
 from camparee.abstract_camparee_step import AbstractCampareeStep
-
-OUTPUT_INTRON_FILE_NAME = "intron_quantifications.txt"
-OUTPUT_INTRON_ANTISENSE_FILE_NAME = "intron_antisense_quantifications.txt"
-OUTPUT_INTERGENIC_FILE_NAME = "intergenic_quantifications.txt"
-
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
 
 class IntronQuantificationStep(AbstractCampareeStep):
     def __init__(self, log_directory_path, data_directory_path, parameters):
@@ -203,7 +199,7 @@ class IntronQuantificationStep(AbstractCampareeStep):
 
         # Write out the results to output file
         # SENSE INTRON OUTPUT
-        output_file_path = os.path.join(output_directory, OUTPUT_INTRON_FILE_NAME)
+        output_file_path = os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME)
         with open(output_file_path, "w") as output_file:
             output_file.write("#gene_id\ttranscript_id\tchr\tstrand\ttranscript_intron_reads_FPK\tintron_reads_FPK\n")
             # take transcripts from all chromosomes and combine them, sorting by gene id and then transcript id
@@ -223,7 +219,7 @@ class IntronQuantificationStep(AbstractCampareeStep):
                                             ]) + '\n')
 
         # ANTISENSE INTRON OUTPUT
-        output_file_path = os.path.join(output_directory, OUTPUT_INTRON_ANTISENSE_FILE_NAME)
+        output_file_path = os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME)
         with open(output_file_path, "w") as output_file:
             output_file.write("#gene_id\ttranscript_id\tchr\tstrand\ttranscript_intron_reads_FPK\tintron_reads_FPK\n")
             # take transcripts from all chromosomes and combine them, sorting by gene id and then transcript id
@@ -245,7 +241,7 @@ class IntronQuantificationStep(AbstractCampareeStep):
         # TODO: do we need to normalize intergenic regions?
         #   Not clear that just dividing by their length is right since usually you have just
         #   bits and pieces expressed throughout
-        output_intergenic_file_path = os.path.join(output_directory, OUTPUT_INTERGENIC_FILE_NAME)
+        output_intergenic_file_path = os.path.join(output_directory, CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME)
         with open(output_intergenic_file_path, "w") as output_file:
             output_file.write("#chromosome\tintergenic_region_number\tstart\tend\treads_FPK\n")
             # take transcripts from all chromosomes and combine them, sorting by gene id and then transcript id
@@ -273,8 +269,9 @@ class IntronQuantificationStep(AbstractCampareeStep):
             Path to BAM file aligned to genome.
         output_directory : string
             Directory where the following output files will be saved:
-            {OUTPUT_INTRON_FILE_NAME}, {OUTPUT_INTRON_ANTISENSE_FILE_NAME},
-            {OUTPUT_INTERGENIC_FILE_NAME}.
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME},
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME},
+            {CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME}.
         geneinfo_file_path : string
             Geneinfo file in BED format with 1-based, inclusive coordinates.
 
@@ -319,8 +316,9 @@ class IntronQuantificationStep(AbstractCampareeStep):
             arguments as get_commandline_call(). It is not used here.]
         output_directory : string
             Directory where the following output files are saved:
-            {OUTPUT_INTRON_FILE_NAME}, {OUTPUT_INTRON_ANTISENSE_FILE_NAME},
-            {OUTPUT_INTERGENIC_FILE_NAME}.
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME},
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME},
+            {CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME}.
         geneinfo_file_path : string
             Geneinfo file in BED format with 1-based, inclusive coordinates.
             [Note: this parameter is captured just so get_validation_attributes()
@@ -349,7 +347,7 @@ class IntronQuantificationStep(AbstractCampareeStep):
         parser.add_argument("--data_directory_path", help="data directory folder (unused)", default=None)
         parser.add_argument("-b", "--bam_file", help="BAM or SAM file of strand-specific genomic alignment")
         parser.add_argument("-i", "--info_file", help="Geneinfo file in BED format with 1-based, inclusive coordinates")
-        parser.add_argument("-o", "--output_directory", help=f"Directory where to output files {OUTPUT_INTRON_FILE_NAME}, {OUTPUT_INTRON_ANTISENSE_FILE_NAME}, {OUTPUT_INTERGENIC_FILE_NAME}")
+        parser.add_argument("-o", "--output_directory", help=f"Directory where to output files {CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME}, {CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME}, {CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME}")
         parser.add_argument("--forward_read_is_sense", help="Set if forward read is sense. Default is False. Strand-specificity is assumed", action="store_const", const=True, default=False)
         parser.add_argument("--parameters", help="jsonified config parameters", default='{}')
 
@@ -370,9 +368,9 @@ class IntronQuantificationStep(AbstractCampareeStep):
         output_directory = validation_attributes['output_directory']
 
         #Check for the existence of the 3 output files.
-        if os.path.isfile(os.path.join(output_directory, OUTPUT_INTRON_FILE_NAME)) and \
-           os.path.isfile(os.path.join(output_directory, OUTPUT_INTRON_ANTISENSE_FILE_NAME)) and \
-           os.path.isfile(os.path.join(output_directory, OUTPUT_INTERGENIC_FILE_NAME)):
+        if os.path.isfile(os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME)) and \
+           os.path.isfile(os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME)) and \
+           os.path.isfile(os.path.join(output_directory, CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME)):
             valid_output = True
 
         return valid_output

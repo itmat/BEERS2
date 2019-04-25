@@ -3,13 +3,13 @@ import argparse
 import sys
 import os
 
-from camparee.variants_compilation import VariantsCompilationStep
 from camparee.abstract_camparee_step import AbstractCampareeStep
 from camparee.camparee_utils import CampareeException
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
 
 class BeagleStep(AbstractCampareeStep):
 
-    #TODO: This is actually just the prefix of the output file. Beale will generate
+    #TODO: This is actually just the prefix of the output file. Beagle will generate
     #      two files in the data directory using this prefix: "beagle.vcf.log" and
     #      "beagle.vcf.vcf.gz". We should probably update the prefix so it at least
     #      doesn't contain the ".vcf" extension. However, before we do this, we need
@@ -18,13 +18,14 @@ class BeagleStep(AbstractCampareeStep):
     #      this or use beagle's own log file in place of the logging we currently do
     #      (which offers completely redundant information). Or, we update our own
     #      logging to track different things than beagle's native logging.
-    BEAGLE_OUTPUT_FILENAME = "beagle.vcf"
+    BEAGLE_OUTPUT_FILENAME = CAMPAREE_CONSTANTS.BEAGLE_OUTPUT_PREFIX
 
     #Beagle takes input from the VariantsCompilationStep. This will make sure the
     #input filename matches up with the name used by the VariantsCompilationStep.
-    BEAGLE_INTPUT_FILENAME = VariantsCompilationStep.VARIANTS_OUTPUT_FILENAME
+    BEAGLE_INTPUT_FILENAME = CAMPAREE_CONSTANTS.VARIANTS_COMPILATION_OUTPUT_FILENAME
+
     #Name of file where script logging stored.
-    BEAGLE_LOG_FILENAME = "BeagleStep.log"
+    BEAGLE_LOG_FILENAME = CAMPAREE_CONSTANTS.BEAGLE_LOG_FILENAME
 
     def __init__(self, log_directory_path, data_directory_path, parameters=None):
         self.data_directory_path = data_directory_path

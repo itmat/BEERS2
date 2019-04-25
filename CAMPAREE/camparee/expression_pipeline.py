@@ -2,7 +2,8 @@ import sys
 import os
 import importlib
 import time
-from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES, MAX_SEED
+from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES,MAX_SEED
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
 from beers_utils.job_monitor import JobMonitor
 from camparee.camparee_utils import CampareeUtils, CampareeException
 #To enable export of config parameter dictionaries to command line
@@ -21,8 +22,7 @@ class ExpressionPipeline:
     generation of packets of molecules that may be used to simulate RNA sequencing.
     """
 
-    CAMPAREE_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    THIRD_PARTY_SOFTWARE_DIR_PATH = os.path.join(CAMPAREE_ROOT_DIR, "third_party_software")
+    THIRD_PARTY_SOFTWARE_DIR_PATH = os.path.join(CAMPAREE_CONSTANTS.CAMPAREE_ROOT_DIR, "third_party_software")
     REQUIRED_RESOURCE_MAPPINGS = ['species_model', 'star_genome_index_directory_name',
                                   'reference_genome_filename', 'annotation_filename', 'chr_ploidy_filename']
     REQUIRED_OUTPUT_MAPPINGS = ['directory_path', 'type', 'override_sample_molecule_count', 'default_molecule_count']
@@ -181,7 +181,7 @@ class ExpressionPipeline:
         # directory contained in the CAMPAREE install path.
         resources_directory_path = resources.get('directory_path', None)
         if not resources_directory_path:
-            resources_directory_path = os.path.join(ExpressionPipeline.CAMPAREE_ROOT_DIR, "resources")
+            resources_directory_path = os.path.join(CAMPAREE_CONSTANTS.CAMPAREE_ROOT_DIR, "resources")
         elif not(os.path.exists(resources_directory_path) and os.path.isdir(resources_directory_path)):
             print(f"The given resources directory, {resources_directory_path}, must exist as a directory.",
                   file=sys.stderr)

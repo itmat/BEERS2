@@ -17,8 +17,9 @@ setup:
 
     # The method used to submit jobs for processing. If specified on command
     # line with the "-m" argument, it will override the value here. Currently
-    # supports "serial" (single-core) and "lsf" (distributed LSF system). Case-
-    # sensitive. Other modes may be added in later releases.
+    # supports "serial" (single-core), "lsf" (distributed LSF system) and "sge"
+    # (distributed SGE system). Case-sensitive. Other modes may be added in
+    # later releases.
     scheduler_mode: lsf
 
 ### System locations for genome annotation resources used by CAMPAREE
