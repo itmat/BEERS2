@@ -15,7 +15,7 @@ setup:
     # Alpha-numeric ID (including underscores) assigned to the CAMPAREE run.
     # Used to name output directories. If specified on command line with the
     # "-r" argument, it will override the value here.
-    run_id: null
+    run_id: 1
 
     # [OPTIONAL] Integer value used to see random number generator used in
     # various CAMPAREE steps. Used for reproducibility.
@@ -26,7 +26,7 @@ setup:
     # supports "serial" (single-core), "lsf" (distributed LSF system) and "sge"
     # (distributed SGE system). Case-sensitive. Other modes may be added in
     # later releases.
-    scheduler_mode: lsf
+    scheduler_mode: serial
 
     # [OPTIONAL] Specify the number of processors and the amount of RAM (in Mb)
     # the scheduler should request by default when submitting jobs. These values
@@ -59,8 +59,10 @@ resources:
     # Sub-directory name containing STAR index files This index must be built
     # using a version of STAR compatible with v2.5.2a. Also, the chromosome
     # names used in the index must match those used by the reference FASTA and
-    # annotation files below.
-    star_genome_index_directory_name: genome
+    # annotation files below. A compressed copy of the STAR index for the baby
+    # genome is packaged with the CAMPAREE install for testing purposes. It must
+    # be extracted before CAMPAREE can use it to run on the baby genome data.
+    star_genome_index_directory_name: star_index.genome
 
     # FASTA file containing complete genome sequence. Each chromosome sequence
     # must be on a single line. To generate files in this format from multi-line
@@ -83,8 +85,9 @@ resources:
 
 ### Information concerning input samples
 input:
-    # Path to directory containing FASTQ files for all samples.
-    fastq_directory_path: /path/to/fastq/files/
+    # Path to directory containing FASTQ files for all samples. Fastq files for
+    # the baby genome dataset are packaged in the CAMPAREE install directory.
+    fastq_directory_path: test_data/fastq_files/
     # [OPTIONAL] Path to directory containing BAM files for all samples. Note,
     # BAM files are only read from here. If CAMPAREE performs the alignment,
     # the resulting BAM files are saved to the output directory (specified
@@ -94,14 +97,14 @@ input:
     data:
         # Alpha-numerica name (including underscores) for each sample. This
         # will be used to name the output directory specific to this sample.
-        '9576':
+        'Test_Sample_1':
             # Names for the forward and reverse fastq files (order matters).
             # Both forward and reverse must be provided, and they must have
             # been generated using a strand-specific protocol (both of these
             # requirements will be removed in later releases).
             fastq_files:
-                - 9576_forward.fq.gz
-                - 9576_reverse.fq.gz
+                - Test_Sample_1.forward.fq.gz
+                - Test_Sample_1.reverse.fq.gz
             # [OPTIONAL] STAR-aligned BAM files generated from the same FASTQ
             # files listed above. Must have been aligned using the
             # '--outSAMtype BAM SortedByCoordinate' option (or some other means
@@ -127,10 +130,10 @@ input:
             # provided at the sample level, or if it is overriden in the
             # 'output' section of this config file.
             molecule_count: 10000
-        '9577':
+        'Test_Sample_2':
             fastq_files:
-                - 9577_forward.fq.gz
-                - 9577_reverse.fq.gz
+                - Test_Sample_2.forward.fq.gz
+                - Test_Sample_2.reverse.fq.gz
             #bam_file:
             pooled: False
             gender: male
@@ -139,7 +142,8 @@ input:
 ### Output directory and parameters
 output:
     # Path to upper-level directory in which all CAMPAREE output will be saved.
-    directory_path: /path/to/output/directory/
+    #
+    directory_path: test_data/results/
     # This is likely to be removed or changed drastically.
     type: molecule_file
     # Simulate the default number of RNA transcript molecules for all samples
@@ -170,7 +174,7 @@ steps:
             # number may increase the speed of STAR alignments. This value should
             # match the number of processors the scheduler requests when submitting
             # the STAR job. If omitted, STAR uses 1 thread.
-            '--runThreadN': 4
+            '--runThreadN': 1
             '--outFilterMismatchNmax': 33
             '--seedSearchStartLmax': 33
             '--alignSJoverhangMin': 8
@@ -188,7 +192,7 @@ steps:
         scheduler_parameters:
             # STAR support multi-threading to improve alignment speed. This value
             # should match the number given the the '--runThreadN' argument above.
-            num_processors: 4
+            num_processors: 1
             # For a mammalian-sized genome, STAR requires 30-40 GB of RAM. Adjust
             # this number according to the size of your organism's STAR index.
             # The baby genome is small and requires much less memory.
