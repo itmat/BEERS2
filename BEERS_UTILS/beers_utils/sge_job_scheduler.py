@@ -47,6 +47,12 @@ class SgeJobScheduler(AbstractJobScheduler):
     # Default command used to submit job.
     _DEFAULT_QSUB_COMMAND = ('qsub -N \"{job_name}\"'
                              ' -V -cwd'
+                             # Required because "python" is a binary
+                             ' -b y'
+                             # Required because qsub will do some pre-processing that strips
+                             # away single-quotes and brackets from the arguments sent to
+                             # the python script.
+                             ' -shell no'
                              ' -pe smp {num_processors}'
                              ' -l h_vmem={mem_usage_in_mb}M')
 
