@@ -16,6 +16,8 @@ venv*
 # Ignore contents of resources directory, except for baby genome files. Note,
 # this ignores the uncompressed STAR index, but not the tar.gz one.
 resources/*
+!resources/baby_genome.mm10
+resources/baby_genome.mm10/*
 !resources/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa
 !resources/baby_genome.mm10/baby_genome.mm10.annotation.txt
 !resources/baby_genome.mm10/baby_genome.mm10.chr_ploidy.txt
