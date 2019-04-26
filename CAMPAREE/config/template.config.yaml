@@ -165,16 +165,8 @@ steps:
             # match the number of processors the scheduler requests when submitting
             # the STAR job. If omitted, STAR uses 1 thread.
             '--runThreadN': 4
-            '--outFilterMismatchNmax': 33
-            '--seedSearchStartLmax': 33
-            '--alignSJoverhangMin': 8
+            # This is needed if the input FASTQ files are gzipped.
             '--readFilesCommand': zcat
-            '--outSAMstrandField': intronMotif
-            '--limitOutSJcollapsed': 1000000
-            '--limitSjdbInsertNsj': 1000000
-            '--outFilterMultimapNmax': 10
-            '--outFilterMismatchNoverLmax': 0.3
-            '--alignEndsType': Local
         # [OPTIONAL] For this step, override the default parameters the scheduler
         # uses to submit jobs. STAR alignment is often resource intensive, requiring
         # more resources than the other steps in the CAMPAREE pipeline. These values

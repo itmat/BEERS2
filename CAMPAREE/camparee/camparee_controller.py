@@ -119,7 +119,7 @@ class CampareeController:
             if 'run_id' not in self.configuration['setup'] or not self.configuration['setup']['run_id']:
                 raise CampareeValidationException('No run id was given either on the command line '
                                                   'or in the configuration file')
-            # If integer given as run ID in the config file, need to cast to string
+            # If numeric given as run ID in the config file, need to cast to string
             # for the next command to work.
             self.run_id = str(self.configuration['setup']['run_id'])
         if not set(self.run_id).issubset(self.allowed_directory_name_set):
