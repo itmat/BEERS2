@@ -145,9 +145,9 @@ class LsfJobScheduler(AbstractJobScheduler):
                                                          num_processors=request_processors,
                                                          mem_usage_in_mb=request_mem)
         if stdout_logfile:
-            bsub_command += f" -oo {stdout_logfile}"
+            bsub_command += f" -o {stdout_logfile}"
         if stderr_logfile:
-            bsub_command += f" -eo {stderr_logfile}"
+            bsub_command += f" -e {stderr_logfile}"
 
         bsub_result = subprocess.run(' '.join([bsub_command, additional_args, job_command]),
                                      shell=True, check=True, stdout=subprocess.PIPE,
