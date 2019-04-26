@@ -1,4 +1,4 @@
-# Configuration File for CAMPAREE
+# Configuration File for CAMPAREE (v0.1.0)
 # This config file is prepared to work with the "baby genome" included with
 # the CAMPAREE install. The baby genome and test data are derived from short
 # (280KB-1MB) segments of mouse (GRCm38/mm10) chromosomes 1, 2, 3, X, and Y,

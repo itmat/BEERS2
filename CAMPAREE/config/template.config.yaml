@@ -1,4 +1,4 @@
-# Configuration File for CAMPAREE
+# Configuration File for CAMPAREE (v0.1.0)
 # See baby.config.yaml for an example of a fully specified config file.
 # Everything listed below is required, except for those labeled [OPTIONAL].
 # To remove optional arguments, they can be commented out by placing a "#"
