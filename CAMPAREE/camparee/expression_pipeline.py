@@ -454,10 +454,10 @@ class ExpressionPipeline:
 
             stdout_log = os.path.join(step_class.log_directory_path,
                                       f"sample{sample.sample_id}" if sample else "",
-                                      f"{step_name}{f'.{jobname_suffix}' if jobname_suffix else ''}.bsub.%J.out")
+                                      f"{step_name}{f'.{jobname_suffix}' if jobname_suffix else ''}.{self.scheduler_mode}.out")
             stderr_log = os.path.join(step_class.log_directory_path,
                                       f"sample{sample.sample_id}" if sample else "",
-                                      f"{step_name}{f'.{jobname_suffix}' if jobname_suffix else ''}.bsub.%J.err")
+                                      f"{step_name}{f'.{jobname_suffix}' if jobname_suffix else ''}.{self.scheduler_mode}.err")
             scheduler_job_name = (f"{step_name}{f'.sample{sample.sample_id}_{sample.sample_name}' if sample else ''}"
                                   f"{f'.{jobname_suffix}' if jobname_suffix else ''}")
             scheduler_args = {'job_name' : scheduler_job_name,
