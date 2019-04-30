@@ -11,16 +11,17 @@ Make sure you have the following installed on your system:
 - python version 3.6
 - Java 1.8
 
-Pull the git repo into a convenient location::
+Pull the git repo for CAMPAREE and BEERS_UTILS the into a convenient location::
 
-    git clone -b camparee git@github.com:itmat/BEERS2.0
+    git clone git@github.com:itmat/CAMPAREE.git
+    git clone git@github.com:itmat/BEERS_UTILS.git
 
 Create a Python virtual environment to install required Python libraries to::
 
-    cd BEERS2.0
+    cd CAMPAREE
     python3 -m venv ./venv_beers
 
-and activate the environment::
+And activate the environment::
 
     source ./venv_beers/bin/activate
 
@@ -28,9 +29,15 @@ Install required libraries::
 
     pip install -r requirements.txt
 
-Install BEERS package in your Python environemtn::
+Install BEERS package in your Python environment::
 
-    pip install .
+    pip install -e .
+
+Next, install the BEERS_UTILS package that CAMPAREE uses::
+
+    pip install -e ../BEERS_UTILS
+
+Note that we currently require the use of the ``-e`` flag during these installs, otherwise CAMPAREE will not run successfully.
 
 Baby Genome
 -----------
@@ -46,6 +53,7 @@ Perform Test Run
 
 We are now ready to run CAMPAREE on a two small sample fastq files aligning to the baby genome.
 If you have not aleady done so for installation, activate the python environment::
+
     source ./venv_beers/bin/activate
 
 The default config file for the baby genome has CAMPAREE run all operations serially on a single machine.
@@ -69,6 +77,6 @@ Check Results
 -------------
 
 When the run completes, output will be created in ``CAMPAREE/test_data/results/_run1/``.
-The final outputs will be in the text files ``CAMPAREE/test_data/results/_run1/expression_pipeline/data/Test_Sample_1/molecule_file`` and  ``CAMPAREE/test_data/results/_run1/expression_pipeline/data/Test_Sample_2/molecule_file``.
+The final outputs will be in the text files ``test_data/results/_run1/CAMPAREE/data/sample1/molecule_file`` and  ``test_data/results/_run1/CAMPAREE/data/sample2/molecule_file``.
 Each line (after the header line) corresponds to a sequence of a single molecule in a tab-separated format.
 The default config file outputs 10000 molecules.
