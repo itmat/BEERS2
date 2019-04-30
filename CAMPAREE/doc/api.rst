@@ -1,94 +1,108 @@
 The Controller Module
 =====================
 
-.. automodule:: beers.controller
+.. automodule:: camparee.camparee_controller
     :members:
 
-The Expression Package
-======================
+Abstract Camparee Step
+--------------------------------
 
-.. automodule:: beers.expression
+.. automodule:: camparee.abstract_camparee_step
+    :members:
+
+Camparee Step Provider
+--------------------------------
+
+.. automodule:: camparee.camparee_step_provider
+    :members:
 
 The Expression Pipeline
 -----------------------
 
-.. automodule:: beers.expression.expression_pipeline
+.. automodule:: camparee.expression_pipeline
     :members:
 
 Genome Alignment
 ----------------
 
-.. automodule:: beers.expression.genome_alignment
+.. automodule:: camparee.genome_alignment
     :members:
 
 Indexing
 --------
 
-.. automodule:: beers.expression.run_pysam_index
+.. automodule:: camparee.run_pysam_index
     :members:
 
 Variants Finding
 ----------------
 
-.. automodule:: beers.expression.variants_finder
+.. automodule:: camparee.variants_finder
     :members:
 
 Intron Quantification
 ---------------------
 
-.. automodule:: beers.expression.intron_quant
+.. automodule:: camparee.intron_quant
     :members:
 
 Variants Compilation
 --------------------
 
-.. automodule:: beers.expression.variants_compilation
+.. automodule:: camparee.variants_compilation
+    :members:
+
+Gene Files Preparation
+----------------------
+
+.. automodule:: camparee.gene_files_preparation
     :members:
 
 Beagle
 ------
 
-.. automodule:: beers.expression.beagle
+.. automodule:: camparee.beagle
     :members:
 
 Genome Builder
 --------------
 
-.. automodule:: beers.expression.genome_builder
+.. automodule:: camparee.genome_builder
     :members:
 
 Annotation Updater
 ------------------
 
-.. automodule:: beers.expression.update_annotation_for_genome
+.. automodule:: camparee.update_annotation_for_genome
     :members:
+
+Annotation Info
+------------------
+
+.. automodule:: camparee.annotation_info
+    :members:
+
 
 Transcriptome Preparation
 -------------------------
 
-.. automodule:: beers.expression.transcriptomes
+.. automodule:: camparee.transcriptomes
     :members:
 
 Allelic Imbalance Quantification
 --------------------------------
 
-.. automodule:: beers.expression.allelic_imbalance_quant
+.. automodule:: camparee.allelic_imbalance_quant
     :members:
 
-Utilities Package
-=================
+Molecule Maker
+--------------------------------
 
-.. automodule:: beers.utilities
+.. automodule:: camparee.molecule_maker
     :members:
 
-General Utilities
------------------
+Camparee Utils
+--------------------------------
 
-.. automodule:: beers.utilities.general_utils
-    :members:
-
-Expression Pipeline Utilities
------------------------------
-
-.. automodule:: beers.utilities.expression_utils
+.. automodule:: camparee.camparee_utils
     :members:
