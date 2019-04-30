@@ -1,5 +1,5 @@
 The Controller Module
-=====================
+---------------------
 
 .. automodule:: camparee.camparee_controller
     :members:
