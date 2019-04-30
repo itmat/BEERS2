@@ -116,7 +116,7 @@ class MoleculeMaker:
 
         Moreover, return a dictionary chrom -> (offset_starts, offset_values)
         where offset_starts is as indel_starts, a sorted numpy array with indicating the positions
-        where the offset (i.e. reference_genome_position - custom_genome_position values) change
+        where the offset (i.e. custom_genome_position - reference_genome_position values) change
         and offset_values is a list in the same order indicating these values.
         Note that the offset value is to be used for all bases AFTER the offset position, not on that base
         """
@@ -414,6 +414,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Molecule Maker")
     parser.add_argument("sample", help="sample object (as output by repr() in single quotes)")
     parser.add_argument("sample_directory", help="directory in which sample results go")
+    parser.add_argument("out_path", help="path to write output molecule file")
+    parser.add_argument("-N", help="number of molecules to make", default=10_000, type=int)
 
     args = parser.parse_args()
 
@@ -422,13 +424,8 @@ if __name__ == "__main__":
 
     print("Starting to make molecules...")
     mm = MoleculeMaker(sample_object, args.sample_directory)
-    packet = mm.make_packet()
-
-    import pickle
-    print("Writing packet out to molecule_packet.pickle")
-    with open(os.path.join(args.sample_directory, "molecule_packet.pickle")) as out_file:
-        pickle.dump(packet, out_file)
+    packet = mm.make_molecule_file(args.out_path, N=args.N)
 
 ''' Example:
-python molecule_maker.py 'Sample(1, "Sample 1", "/", ["ACGT", "CGCA"], gender="male")' data/_run1/sample1/
+python molecule_maker.py 'Sample(1, "Sample 1", "/", ["ACGT", "CGCA"], gender="male")' data/_run1/sample1/ data/_run1/sample1/molecule_file -N 100
 '''
