@@ -10,5 +10,6 @@ venv*
 *.egg-info
 config/*_config.json
 Log.out
+cris_*
 
 *.swp

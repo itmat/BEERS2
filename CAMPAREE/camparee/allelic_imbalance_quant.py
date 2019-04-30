@@ -14,8 +14,7 @@ class AllelicImbalanceQuantificationStep:
     This class contains scripts to output quantification of allelic imbalance
     """
 
-    def __init__(self,
-                sample_directory):
+    def __init__(self, sample_directory, sample):
         """
         The object is constructed with
         (i) an input file source for gene info
@@ -33,6 +32,10 @@ class AllelicImbalanceQuantificationStep:
         self.geneinfo_filename_1 = os.path.join(self.sample_directory, 'updated_annotation_1.txt')
         self.geneinfo_filename_2 = os.path.join(self.sample_directory, 'updated_annotation_2.txt')
         self.genome_alignment_file = os.path.join(self.sample_directory, "genome_alignment.Aligned.sortedByCoord.out.bam")
+
+        # Check if user provided bam file.
+        if sample.bam_file_path:
+            self.genome_alignment_file = sample.bam_file_path
 
         self.align_filename_1 = os.path.join(self.sample_directory, '1_Aligned.out.sam')
         self.align_filename_2 = os.path.join(self.sample_directory, '2_Aligned.out.sam')
@@ -52,7 +55,7 @@ class AllelicImbalanceQuantificationStep:
         self.gene_final_count = collections.defaultdict(lambda: collections.defaultdict(int))
         self.exclusive_genes = []
 
-    
+
     def create_transcript_gene_map(self):
         """
         Create dictionary to map transcript id to gene id using geneinfo file
@@ -117,8 +120,8 @@ class AllelicImbalanceQuantificationStep:
                 # This means both forward and reverse reads are non-mappers
                 # So store 'transcript_id' as '*' and 'NM' as 2*read_length
                 if fwd_transcript_id == '*' and rev_transcript_id == '*':
-                    read_info_map[fwd_fields[0]]['transcript_id'] =  '*' 
-                    read_info_map[fwd_fields[0]]['NM'] =  200 
+                    read_info_map[fwd_fields[0]]['transcript_id'] =  '*'
+                    read_info_map[fwd_fields[0]]['NM'] =  200
                     continue
                 # Get transcript_id for mapped reads
                 elif fwd_transcript_id == rev_transcript_id:
@@ -145,7 +148,7 @@ class AllelicImbalanceQuantificationStep:
                     NM_count = 100
 
                 # Update read_info dictionary with transcript_id and corresponding edit distance
-                read_info_map[fwd_fields[0]]['transcript_id'] = transcript_id 
+                read_info_map[fwd_fields[0]]['transcript_id'] = transcript_id
                 read_info_map[fwd_fields[0]]['NM'] = NM_count
 
         return read_info_map
@@ -192,11 +195,11 @@ class AllelicImbalanceQuantificationStep:
             # The read mapped to atleast one transcript in each parent
             elif transcript_1 != '*' and transcript_2 != '*':
                 # Get the genes in parent 1 to which the read mapped
-                gene_1 = self.transcript_gene_map[transcript_1] 
+                gene_1 = self.transcript_gene_map[transcript_1]
                 NM_count_1 = read_info_1[read]['NM']
 
                 # Get the genes in parent 2 to which the read mapped
-                gene_2 = self.transcript_gene_map[transcript_2] 
+                gene_2 = self.transcript_gene_map[transcript_2]
                 NM_count_2 = read_info_2[read]['NM']
 
                 # Amongst the genes to which the read mapped,
@@ -287,9 +290,11 @@ class AllelicImbalanceQuantificationStep:
 
         parser = argparse.ArgumentParser(description='Quantifier')
         parser.add_argument('-d', '--sample_directory')
+        parser.add_argument("--sample", help="Serialized Sample object containing FASTQ file info.")
         args = parser.parse_args()
 
-        allelic_imbalance_quant = AllelicImbalanceQuantificationStep(args.sample_directory)
+        sample = eval(args.sample)
+        allelic_imbalance_quant = AllelicImbalanceQuantificationStep(args.sample_director, sample)
         allelic_imbalance_quant.quantify_allelic_imbalance()
         allelic_imbalance_quant.make_allele_imbalance_dist_file()
 
@@ -299,6 +304,4 @@ if __name__ == "__main__":
     sys.exit(AllelicImbalanceQuantificationStep.main())
 
 # Example command
-# python allelic_imbalance_quant.py -d 'sampleA' 
-
-
+# python allelic_imbalance_quant.py -d 'sampleA'

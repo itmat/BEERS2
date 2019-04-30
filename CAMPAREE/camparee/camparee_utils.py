@@ -107,6 +107,21 @@ class CampareeUtils:
         return comparison
 
     @staticmethod
+    def parse_variant_line(line):
+        ''' reads a line of a variant file from CAMPAREE'''
+        # sample line is: (note tabs and spaces both used)
+        # 1:28494 | C:1 | T:1    TOT=2   0.5,0.5 E=1.0
+        if line == '':
+            return "DONE", 0, {}
+        entries = line.split('\t')
+        loc_and_vars, total, fractions, entropy = entries
+        loc, *variants = loc_and_vars.split(" | ")
+        chromosome, position = loc.split(":")
+        position = int(position)
+        variants = {base: int(count) for base, count in [variant.split(":") for variant in variants]}
+        return chromosome, position, variants
+
+    @staticmethod
     def convert_gtf_to_annot_file_format(gtf_filename):
         """Convert a GTF file to a tab-delimited annotation file with one line
         per transcript. Each line in the annotation file will have the following

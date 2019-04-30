@@ -1,6 +1,7 @@
 import collections
 import itertools
 import os
+import sys
 import argparse
 import json
 
@@ -8,14 +9,14 @@ import numpy
 import pysam
 
 from camparee.annotation_info import AnnotationInfo
+from camparee.abstract_camparee_step import AbstractCampareeStep
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
 
-OUTPUT_INTRON_FILE_NAME = "intron_quantifications.txt"
-OUTPUT_INTRON_ANTISENSE_FILE_NAME = "intron_antisense_quantifications.txt"
-OUTPUT_INTERGENIC_FILE_NAME = "intergenic_quantifications.txt"
-
-
-class IntronQuantificationStep:
+class IntronQuantificationStep(AbstractCampareeStep):
     def __init__(self, log_directory_path, data_directory_path, parameters):
+        #TODO: I dont thing the data directory or the log directory are ever
+        #      used in the code below. Should we remove them? Or adapt the code
+        #      to make use of them instead?
         self.log_directory_path = log_directory_path
         self.data_directory_path = data_directory_path
         self.info = None
@@ -216,7 +217,7 @@ class IntronQuantificationStep:
 
         # Write out the results to output file
         # SENSE INTRON OUTPUT
-        output_file_path = os.path.join(output_directory, OUTPUT_INTRON_FILE_NAME)
+        output_file_path = os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME)
         with open(output_file_path, "w") as output_file:
             output_file.write("#gene_id\ttranscript_id\tchr\tstrand\ttranscript_intron_reads_FPK\tintron_reads_FPK\n")
             # take transcripts from all chromosomes and combine them, sorting by gene id and then transcript id
@@ -236,7 +237,7 @@ class IntronQuantificationStep:
                                             ]) + '\n')
 
         # ANTISENSE INTRON OUTPUT
-        output_file_path = os.path.join(output_directory, OUTPUT_INTRON_ANTISENSE_FILE_NAME)
+        output_file_path = os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME)
         with open(output_file_path, "w") as output_file:
             output_file.write("#gene_id\ttranscript_id\tchr\tstrand\ttranscript_intron_reads_FPK\tintron_reads_FPK\n")
             # take transcripts from all chromosomes and combine them, sorting by gene id and then transcript id
@@ -258,7 +259,7 @@ class IntronQuantificationStep:
         # TODO: do we need to normalize intergenic regions?
         #   Not clear that just dividing by their length is right since usually you have just
         #   bits and pieces expressed throughout
-        output_intergenic_file_path = os.path.join(output_directory, OUTPUT_INTERGENIC_FILE_NAME)
+        output_intergenic_file_path = os.path.join(output_directory, CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME)
         with open(output_intergenic_file_path, "w") as output_file:
             output_file.write("#chromosome\tintergenic_region_number\tstart\tend\treads_FPK\n")
             # take transcripts from all chromosomes and combine them, sorting by gene id and then transcript id
@@ -275,29 +276,126 @@ class IntronQuantificationStep:
                                                  str(count),
                                                 ]) + '\n')
 
-    @staticmethod
-    def is_output_valid(job_arguments):
-        # TODO: check that the output file actually exists
-        return True
+    def get_commandline_call(self, aligned_file_path, output_directory, geneinfo_file_path):
+        """
+        Prepare command to execute the IntronQuantification from the command line,
+        given all of the arugments used to run the execute() method.
 
+        Parameters
+        ----------
+        aligned_file_path : string
+            Path to BAM file aligned to genome.
+        output_directory : string
+            Directory where the following output files will be saved:
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME},
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME},
+            {CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME}.
+        geneinfo_file_path : string
+            Geneinfo file in BED format with 1-based, inclusive coordinates.
+
+        Returns
+        -------
+        string
+            Command to execute on the command line. It will perform the same
+            operations as a call to execute() with the same parameters.
+
+        """
+
+        #Retrieve path to the intron_quant.py script.
+        intron_quant_path = os.path.realpath(__file__)
+        #If the above command returns a string with a "pyc" extension, instead
+        #of "py", strip off "c" so it points to this script.
+        intron_quant_path = intron_quant_path.rstrip('c')
+
+        intron_quant_params = {}
+        intron_quant_params['forward_read_is_sense'] = self.forward_read_is_sense
+        intron_quant_params['flank_size'] = self.flank_size
+
+        command = (f"python {intron_quant_path}"
+                   f" --log_directory_path {self.log_directory_path}"
+                   f" --data_directory_path {self.data_directory_path}"
+                   f" --bam_file {aligned_file_path}"
+                   f" --output_directory {output_directory}"
+                   f" --info_file {geneinfo_file_path}"
+                   f" --parameters '{json.dumps(intron_quant_params)}'")
+
+        return command
+
+    def get_validation_attributes(self, aligned_file_path, output_directory, geneinfo_file_path):
+        """
+        Prepare attributes required by is_output_valid() function to validate
+        output generated the IntronQuantification job.
+
+        Parameters
+        ----------
+        aligned_file_path : string
+            Path to BAM file aligned to genome. [Note: this parameter is
+            captured just so get_validation_attributes() accepts the same
+            arguments as get_commandline_call(). It is not used here.]
+        output_directory : string
+            Directory where the following output files are saved:
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME},
+            {CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME},
+            {CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME}.
+        geneinfo_file_path : string
+            Geneinfo file in BED format with 1-based, inclusive coordinates.
+            [Note: this parameter is captured just so get_validation_attributes()
+            accepts the same arguments as get_commandline_call(). It is not used
+            here.]
+
+        Returns
+        -------
+        dict
+            A IntronQuantification job's output_directory.
+        """
+
+        validation_attributes = {"output_directory" : output_directory}
+        return validation_attributes
+
+    @staticmethod
+    def main():
+        """
+        Entry point into script. Allows script to be executed/submitted via the
+        command line.
+        """
+
+        parser = argparse.ArgumentParser(description='Command line wrapper around'
+                                                     ' the intron quantifier')
+        parser.add_argument("--log_directory_path", help="directory to output logging files to", default=None)
+        parser.add_argument("--data_directory_path", help="data directory folder (unused)", default=None)
+        parser.add_argument("-b", "--bam_file", help="BAM or SAM file of strand-specific genomic alignment")
+        parser.add_argument("-i", "--info_file", help="Geneinfo file in BED format with 1-based, inclusive coordinates")
+        parser.add_argument("-o", "--output_directory", help=f"Directory where to output files {CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME}, {CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME}, {CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME}")
+        parser.add_argument("--forward_read_is_sense", help="Set if forward read is sense. Default is False. Strand-specificity is assumed", action="store_const", const=True, default=False)
+        parser.add_argument("--parameters", help="jsonified config parameters", default='{}')
+
+        args = parser.parse_args()
+
+        print("Starting Intron/Intergenic Quantification step")
+        parameters = json.loads(args.parameters)
+        intron_quant = IntronQuantificationStep(args.log_directory_path, args.data_directory_path, parameters=parameters)
+        intron_quant.execute(args.bam_file, args.output_directory, args.info_file)
+
+    @staticmethod
+    def is_output_valid(validation_attributes):
+        #TODO: Add more thorought checks? Also check logging when that's added
+        #      to the rest of the script.
+
+        valid_output = False
+
+        output_directory = validation_attributes['output_directory']
+
+        #Check for the existence of the 3 output files.
+        if os.path.isfile(os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_FILENAME)) and \
+           os.path.isfile(os.path.join(output_directory, CAMPAREE_CONSTANTS.INTRON_OUTPUT_ANTISENSE_FILENAME)) and \
+           os.path.isfile(os.path.join(output_directory, CAMPAREE_CONSTANTS.INTERGENIC_OUTPUT_FILENAME)):
+            valid_output = True
+
+        return valid_output
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--log_directory_path", help="directory to output logging files to", default=None)
-    parser.add_argument("--data_directory_path", help="data directory folder (unused)", default=None)
-    parser.add_argument("-b", "--bam_file", help="BAM or SAM file of strand-specific genomic alignment")
-    parser.add_argument("-i", "--info_file", help="Geneinfo file in BED format with 1-based, inclusive coordinates")
-    parser.add_argument("-o", "--output_directory", help=f"Directory where to output files {OUTPUT_INTRON_FILE_NAME}, {OUTPUT_INTRON_ANTISENSE_FILE_NAME}, {OUTPUT_INTERGENIC_FILE_NAME}")
-    parser.add_argument("--forward_read_is_sense", help="Set if forward read is sense. Default is False. Strand-specificity is assumed", action="store_const", const=True, default=False)
-    parser.add_argument("--parameters", help="jsonified config parameters", default='{}')
-
-    args = parser.parse_args()
-
-    print("Starting Intron/Intergenic Quantification step")
-    parameters = json.loads(args.parameters)
-    intron_quant = IntronQuantificationStep(args.log_directory_path, args.data_directory_path, parameters=parameters)
-    intron_quant.execute(args.bam_file, args.output_directory, args.info_file)
+    sys.exit(IntronQuantificationStep.main())
 
 """
 Example:

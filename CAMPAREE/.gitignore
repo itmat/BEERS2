@@ -4,11 +4,7 @@ data
 __pycache__
 *.pyc
 *.html
-camparee/personal/
-resources/index_files/
 venv*
 camparee.egg-info
-config/*_config.json
-Log.out
 
 *.swp

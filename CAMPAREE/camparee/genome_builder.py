@@ -1,23 +1,27 @@
 from io import StringIO
 import re
 import os
+import sys
 import gzip
 import argparse
 from collections import namedtuple
 import itertools
 from camparee.camparee_utils import CampareeUtils, CampareeException
+from camparee.abstract_camparee_step import AbstractCampareeStep
 from beers_utils.sample import Sample
 from beers_utils.constants import CONSTANTS
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
 
 
 SingleInstanceVariant = namedtuple('SingleInstanceVariant', ['chromosome', 'position', 'description'])
 
 
-class GenomeBuilderStep:
+class GenomeBuilderStep(AbstractCampareeStep):
 
     def __init__(self, log_directory_path, data_directory_path, parameters=dict()):
         self.data_directory_path = data_directory_path
-        self.beagle_data_file_path = os.path.join(self.data_directory_path, CONSTANTS.BEAGLE_DATA_FILE_NAME)
+        self.beagle_data_file_path = os.path.join(self.data_directory_path,
+                                                  CAMPAREE_CONSTANTS.BEAGLE_OUTPUT_FILENAME)
         self.variant_line_pattern = re.compile(r'^([^|]+):(\d+) \| (.*)\tTOT')
         self.ignore_indels = parameters.get('ignore_indels', False)
         self.ignore_snps = parameters.get('ignore_snps', False)
@@ -123,19 +127,6 @@ class GenomeBuilderStep:
         base_to_append = variant[0]
         genome.append_segment(base_to_append)
 
-    @staticmethod
-    def group_data(lines, group_function):
-        """
-        Returns data grouped by the provided function
-        :param lines:  the lines of data to be grouped
-        :param group_function: The function to apply to determine the
-        groupping.
-        :return: a generator providing the next key (the groupping
-        parameter) and the groupped data as a list.
-        """
-        for key, values in itertools.groupby(lines, key=group_function):
-            yield key, list(values)
-
     def locate_sample(self):
         """
         Find the position of the sample in the beagle data
@@ -157,7 +148,7 @@ class GenomeBuilderStep:
                     raise CampareeException(f"No sample data found.")
         return sample_index
 
-    def execute(self, sample, chr_ploidy_data, reference_genome, chromosome_list=[]):
+    def execute(self, sample, chr_ploidy_data, reference_genome, chromosome_list=None):
         """
         Entry point for genome builder.  Uses the chr_ploidy_data and reference_genome resources along with beagle and
         variant finder output to build two custom genomes.
@@ -172,13 +163,17 @@ class GenomeBuilderStep:
         self.reference_genome = reference_genome
         # The chromosome list derived from the chr_ploidy_data is the gold standard.  Only those chromosomes/contigs
         # are processed.
-        self.chromosome_list = chromosome_list or list(chr_ploidy_data.keys())
+        self.chromosome_list = chromosome_list if chromosome_list else list(chr_ploidy_data.keys())
         self.sample_id = f'sample{sample.sample_id}'
         self.gender = sample.gender
-        self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id, CONSTANTS.VARIANTS_FILE_NAME)
+        self.variants_file_path = os.path.join(self.data_directory_path, self.sample_id,
+                                               CAMPAREE_CONSTANTS.VARIANTS_FINDER_OUTPUT_FILENAME)
         sample_index = self.locate_sample()
-        self.genome_output_file_stem = os.path.join(self.data_directory_path, self.sample_id, 'custom_genome')
-        self.log_file_path = os.path.join(self.log_directory_path, self.sample_id, __class__.__name__ + ".log")
+        self.genome_output_file_stem = os.path.join(self.data_directory_path,
+                                                    self.sample_id,
+                                                    CAMPAREE_CONSTANTS.GENOMEBUILDER_OUTPUT_PREFIX)
+        self.log_file_path = os.path.join(self.log_directory_path, self.sample_id,
+                                          CAMPAREE_CONSTANTS.GENOMEBUILDER_LOG_FILENAME)
         self.unpaired_chr_list = self.get_unpaired_chr_list()
         self.unpaired_chr_variants = self.get_unpaired_chr_variant_data()
         self.paired_chr_list = self.get_paired_chr_list()
@@ -191,6 +186,106 @@ class GenomeBuilderStep:
             elif chromosome not in self.get_missing_chr_list() and chromosome in self.chr_ploidy_data.keys():
                 # We should never get here since the conditions above should be mutually exclusive.
                 self.make_reference_chromosome(chromosome)
+        #Final entry in log file to indicate execution() method finished.
+        with open(self.log_file_path, 'a') as log_file:
+            log_file.write('\nALL DONE!\n')
+
+    def get_commandline_call(self, sample, chr_ploidy_file_path, reference_genome_file_path, chromosome_list=None):
+        """
+        Prepare command to execute the GenomeBuilderStep from the command line,
+        given all of the arugments used to run the execute() function.
+
+        Parameters
+        ----------
+        sample : Sample
+            Sample for which to construct parental genomes
+        chr_ploidy_file_path : string
+            File that maps chromosome names to their male/female ploidy.
+        reference_genome_file_path : string
+            File that maps chromosome names in reference to nucleotide sequence.
+        chromosome_list : list
+            A debug feature that overrides the chr_ploidy_data chr list. Useful
+            for testing a specific chromosome only or a small subset of
+            chromosomes.
+
+        Returns
+        -------
+        string
+            Command to execute on the command line. It will perform the same
+            operations as a call to execute() with the same parameters.
+
+        """
+        #Retrieve path to the genome_builder.py script.
+        genome_builder_path = os.path.realpath(__file__)
+        #If the above command returns a string with a "pyc" extension, instead
+        #of "py", strip off "c" so it points to this script.
+        genome_builder_path = genome_builder_path.rstrip('c')
+
+        #Note, the construction of this command line call deviates a bit from the
+        #other steps (various options are specified explicitly, rather than passing
+        #a json dump of the config parameters). This command was already in place
+        #before we added command line functionality to the majority of the other
+        #steps. I'm leaving this as-is to maintain functionalty with anyone else's
+        #previous code or tests.
+
+        command = (f" python {genome_builder_path}"
+                   f" --log_directory_path {self.log_directory_path}"
+                   f" --data_directory_path {self.data_directory_path}"
+                   f" --sample '{repr(sample)}'"
+                   f" --chr_ploidy_file_path {chr_ploidy_file_path}"
+                   f" --reference_genome_file_path {reference_genome_file_path}")
+
+        if self.ignore_indels:
+            command += " --ignore_indels"
+        if self.ignore_snps:
+            command += " --ignore_snps"
+        if chromosome_list:
+            #Create comma-searated list of chromosomes
+            command += f" --chromosomes {','.join(str(chr) for chr in chromosome_list)}"
+
+        return command
+
+    def get_validation_attributes(self, sample, chr_ploidy_file_path, reference_genome_file_path, chromosome_list=None):
+        """
+        Prepare attributes required by is_output_valid() function to validate
+        output generated the GenomeBuilderStep job corresponding to the given
+        sample.
+
+        Parameters
+        ----------
+        sample : Sample
+            Sample for which custom parental genomes will be generated.
+        chr_ploidy_file_path : string
+            File that maps chromosome names to their male/female ploidy. [Note:
+            this parameter is captured just so get_validation_attributes() accepts
+            the same arguments as get_commandline_call(). It is not used here.]
+        reference_genome_file_path : string
+            File that maps chromosome names in reference to nucleotide sequence.
+            [Note: this parameter is captured just so get_validation_attributes()
+            accepts the same arguments as get_commandline_call(). It is not used
+            here.]
+        chromosome_list : list
+            A debug feature that overrides the chr_ploidy_data chr list. Useful
+            for testing a specific chromosome only or a small subset of
+            chromosomes. [Note: this parameter is captured just so
+            get_validation_attributes() accepts the same arguments as
+            get_commandline_call(). It is not used here.]
+
+
+        Returns
+        -------
+        dict
+            A GenomeBuilderStep job's data_directory, log_directory, sample_id,
+            and a list of the genome names used by the GenomeBuilderStep to refer
+            to each of the parental genomes (i.e. 1 and 2 for male and female
+            parent, respectively).
+        """
+        validation_attributes = {}
+        validation_attributes['data_directory'] = self.data_directory_path
+        validation_attributes['log_directory'] = self.log_directory_path
+        validation_attributes['sample_id'] = sample.sample_id
+        validation_attributes['genome_names'] = self.genome_names
+        return validation_attributes
 
     def make_reference_chromosome(self, chromosome):
         """
@@ -371,6 +466,153 @@ class GenomeBuilderStep:
                     log_file.write(f"Final Genome for chromosome {chromosome}: {genome}\n")
                     genome.save_to_file()
 
+    @staticmethod
+    def group_data(lines, group_function):
+        """
+        Returns data grouped by the provided function
+        :param lines:  the lines of data to be grouped
+        :param group_function: The function to apply to determine the
+        groupping.
+        :return: a generator providing the next key (the groupping
+        parameter) and the groupped data as a list.
+        """
+        for key, values in itertools.groupby(lines, key=group_function):
+            yield key, list(values)
+
+    @staticmethod
+    def is_output_valid(validation_attributes):
+        """
+        Check if output of GenomeBuilderStep for a specific job/execution is
+        correctly formed and valid, given a job's data directory, log directory,
+        and sample id. Prepare these attributes for a given sample's jobs using
+        the get_validation_attributes() method.
+
+        Parameters
+        ----------
+        validation_attributes : dict
+            A job's data_directory, log_directory, sample_id, and the list of
+            genome names used by the GenomeBuilderStep to refer to each of the
+            parental genomes (i.e. 1 and 2 for male and female parent, respectively).
+
+        Returns
+        -------
+        boolean
+            True  - GenomeBuilderStep output files were created and are well formed.
+            False - GenomeBuilderStep output files do not exist or are missing data.
+
+        """
+        data_directory = validation_attributes['data_directory']
+        log_directory = validation_attributes['log_directory']
+        sample_id = validation_attributes['sample_id']
+        genome_names = validation_attributes['genome_names']
+
+        valid_output = False
+
+        genome_builder_outfile_path = os.path.join(data_directory, f"sample{sample_id}",
+                                                   CAMPAREE_CONSTANTS.GENOMEBUILDER_OUTPUT_PREFIX)
+        genome_builder_logfile_path = os.path.join(log_directory, f"sample{sample_id}",
+                                                   CAMPAREE_CONSTANTS.GENOMEBUILDER_LOG_FILENAME)
+
+        if os.path.isfile(genome_builder_logfile_path):
+            #Read last line in genome_builder log file
+            line = ""
+            with open(genome_builder_logfile_path, "r") as genome_builder_log_file:
+                for line in genome_builder_log_file:
+                    line = line.rstrip()
+            if line == "ALL DONE!":
+                #Now check all output files were created for each of the custom
+                #parental genomes. There are multiple files per genome. The naming
+                #schemes for these output files are defined in the Genome class
+                #below.
+                custom_genome_output_list = []
+
+                for name in genome_names:
+                    genome_output_filename = \
+                        Genome.GENOME_OUTPUT_FILENAME_PATTERN.format(
+                            genome_output_file_stem=genome_builder_outfile_path,
+                            genome_name=name
+                        )
+                    indel_output_filename = \
+                        Genome.INDEL_OUTPUT_FILENAME_PATTERN.format(
+                            genome_output_file_stem=genome_builder_outfile_path,
+                            genome_name=name
+                        )
+                    genome_mapper_filename = \
+                        Genome.GENOME_MAPPER_FILENAME_PATTERN.format(
+                            genome_output_file_stem=genome_builder_outfile_path,
+                            genome_name=name
+                        )
+                    custom_genome_output_list.append(os.path.isfile(genome_output_filename))
+                    custom_genome_output_list.append(os.path.isfile(indel_output_filename))
+                    custom_genome_output_list.append(os.path.isfile(genome_mapper_filename))
+
+                if all(custom_genome_output_list):
+                    valid_output = True
+
+        return valid_output
+
+    @staticmethod
+    def main():
+        """
+        Entry point into script. Allows script to be executed/submitted via the
+        command line.
+        """
+
+        parser = argparse.ArgumentParser(description='Make Genome Files')
+
+        parser.add_argument('-l', '--log_directory_path', required=True,
+                            help="Path to log directory.")
+        parser.add_argument('-d', '--data_directory_path', required=True,
+                            help='Path to data directory')
+        parser.add_argument('-p', '--chr_ploidy_file_path', required=True, type=str,
+                            help="Path to chromosome ploidy file")
+        parser.add_argument('-r', '--reference_genome_file_path', required=True,
+                            help="Fasta file containing the reference genome")
+        parser.add_argument('-i', '--ignore_indels', action='store_true',
+                            help="Use the reference genome base in place of an indel. "
+                                 "Defaults to false.")
+        parser.add_argument('-j', '--ignore_snps', action='store_true',
+                            help="Use the reference genome base in place of a snp. "
+                                 "Defaults to False.")
+        parser.add_argument('--sample', default=None,
+                            help='String representation of a Sample object. Must provide '
+                                 'this argument or the "--sample_id" and "--gender" arguments.')
+        parser.add_argument('-s', '--sample_id', type=int, default=None,
+                            help='sample name in vcf when prepended with sample. Overrides id from '
+                                 'the "--sample" argument, if it is provided.')
+        parser.add_argument('-x', '--gender', action='store', choices=['male', 'female'], default=None,
+                            help='Gender of input sample (male or female). Overrides gender from '
+                                 'the "--sample" argument, if it is provided.')
+        parser.add_argument('-c', '--chromosomes', type=lambda chrs: [chr_ for chr_ in chrs.split(',')],
+                            help="optional, comma-separated chromosome list")
+
+        args = parser.parse_args()
+
+        config_parameters = {"ignore_snps": args.ignore_snps,
+                             "ignore_indels": args.ignore_indels}
+        genome_builder = GenomeBuilderStep(args.log_directory_path,
+                                           args.data_directory_path,
+                                           config_parameters)
+
+        if args.sample:
+            sample = eval(args.sample)
+        else:
+            #Create dummy sample for debug purposes.
+            sample = Sample(None, "debug sample", None, None, None)
+
+        #Update sample if sample_id and gender, if specified.
+        if args.sample_id:
+            sample.sample_id = args.sample_id
+        if args.gender:
+            sample.gender = args.gender
+
+        reference_genome = CampareeUtils.create_genome(args.reference_genome_file_path)
+        chr_ploidy_data = CampareeUtils.create_chr_ploidy_data(args.chr_ploidy_file_path)
+        genome_builder.execute(sample=sample,
+                               chr_ploidy_data=chr_ploidy_data,
+                               reference_genome=reference_genome,
+                               chromosome_list=args.chromosomes)
+
 
 class Genome:
     """
@@ -380,6 +622,17 @@ class Genome:
     upon instructions in the variants input file.
     """
 
+    #Patterns used to name all of the output files generated by the Genome class:
+
+    #FASTA file containing the custom genome's sequence
+    GENOME_OUTPUT_FILENAME_PATTERN = CAMPAREE_CONSTANTS.GENOMEBUILDER_SEQUENCE_FILENAME_PATTERN
+    #List of all indel operations performed on the reference, to generate the
+    #custom genome.
+    INDEL_OUTPUT_FILENAME_PATTERN = CAMPAREE_CONSTANTS.GENOMEBUILDER_INDEL_FILENAME_PATTERN
+    #File mapping coordinates from custom genome to their corresponding coordinates
+    #in the reference.
+    GENOME_MAPPER_FILENAME_PATTERN = CAMPAREE_CONSTANTS.GENOMEBUILDER_MAPPER_FILENAME_PATTERN
+
     def __init__(self, name, chromosome, start_sequence, start_position, genome_output_file_stem):
         self.name = name
         self.chromosome = chromosome
@@ -387,9 +640,32 @@ class Genome:
         self.sequence.write(start_sequence)
         self.position = start_position
         self.offset = 0
-        self.genome_output_filename = genome_output_file_stem + '_' + self.name + ".fa"
-        self.genome_indels_filename = genome_output_file_stem + '_indels_' + self.name + ".txt"
+        self.genome_output_filename = \
+            self.GENOME_OUTPUT_FILENAME_PATTERN.format(
+                genome_output_file_stem=genome_output_file_stem,
+                genome_name=self.name
+            )
+        self.genome_indels_filename = \
+            self.INDEL_OUTPUT_FILENAME_PATTERN.format(
+                genome_output_file_stem=genome_output_file_stem,
+                genome_name=self.name
+            )
         self.indels_file = open(self.genome_indels_filename, 'a')
+        self.genome_mapper_filename = \
+            self.GENOME_MAPPER_FILENAME_PATTERN.format(
+                genome_output_file_stem=genome_output_file_stem,
+                genome_name=self.name
+            )
+        self.mapper_file = open(self.genome_mapper_filename, 'a')
+
+        # These variables are used to control the mapper.  The last construct indicates what the last construct event
+        # was (A = append, I = insert, D = delete).  The placeholders for the reference and this genome indicate where
+        # the last append after an insert or delete started so we can mash all consecutive appends (due to snps)
+        # together.
+        #self.mapper_file.write("#CHR\tREF GENOME\tNEW GENOME\n")
+        self.last_construct = "A"
+        self.ref_placeholder = 0
+        self.gen_placeholder = 0
 
     def append_segment(self, sequence):
         """
@@ -400,6 +676,10 @@ class Genome:
         remains unchangeed.
         :param sequence: sequence segment to append
         """
+
+        # Last construct now was an append
+        self.last_construct = "A"
+
         self.sequence.write(sequence)
         self.position += len(sequence)
 
@@ -413,6 +693,28 @@ class Genome:
         :param sequence: sequence segment to insert
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tI\t{len(sequence)}\n")
+
+        # Spans just before this insert (only done if the last construct was an append)
+        if self.last_construct == "A":
+
+            # Starts bumped for 1 index, ends not bumped because we are 1 base prior to insert
+            reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+            genome_span = f"{self.gen_placeholder + 1}-{self.position}"
+            self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+
+        # Span for this insert
+        # Genome start bumped for 1 index but end not bumped because length includes starting base.
+        genome_span = f"{self.position + 1}-{self.position + len(sequence)}"
+        self.mapper_file.write(f"{self.chromosome}\t*-*\t{genome_span}\n")
+
+        # Placeholders set to last positions after insert
+        self.ref_placeholder = self.position + self.offset
+        self.gen_placeholder = self.position + len(sequence)
+
+        # Last construct now was an insert
+        self.last_construct = "I"
+
+        # This does the real insert work
         self.sequence.write(sequence)
         self.position += len(sequence)
         self.offset += -1 * len(sequence)
@@ -426,6 +728,28 @@ class Genome:
         :param length: number of bases in the reference sequence to skip over.
         """
         self.indels_file.write(f"{self.chromosome}:{self.position + self.offset + 1}\tD\t{length}\n")
+
+        # Spans just before this delete (only done if the last construct was an append)
+        if self.last_construct == "A":
+
+            # Starts bumped for 1 index, ends not bumped because we are 1 base prior to delete
+            reference_span = f"{self.ref_placeholder + 1}-{self.position + self.offset}"
+            genome_span = f"{self.gen_placeholder + 1}-{self.position}"
+            self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t{genome_span}\n")
+
+        # Span for this delete
+        # Ref start bumped for 1 index but end not bumped because length includes starting base
+        reference_span = f"{self.position + self.offset + 1}-{self.position + self.offset + length}"
+        self.mapper_file.write(f"{self.chromosome}\t{reference_span}\t*-*\n")
+
+        # Placeholders set to last positions after delete
+        self.ref_placeholder = self.position + self.offset + length
+        self.gen_placeholder = self.position
+
+        # Last construct now was a delete
+        self.last_construct = "D"
+
+        # This does the real delete work
         self.offset += length
 
     def save_to_file(self):
@@ -443,6 +767,7 @@ class Genome:
 
         # TODO might be a better place for this - say using a context manager?
         self.indels_file.close()
+        self.mapper_file.close()
 
     def __str__(self):
         """
@@ -453,6 +778,13 @@ class Genome:
 
 
 if __name__ == "__main__":
+    sys.exit(GenomeBuilderStep.main())
+
+    '''
+    #The code below was originally here for diagnostic purposes. Command line input
+    #is now processed directly by the main() method, and is used to submit the
+    #GenomeBuilderStep to the system job scheduler (e.g. LSF, SGE).
+
     import pandas as pd
     parser = argparse.ArgumentParser(description='Make Genome Files')
     parser.add_argument('-r', '--reference_genome_file_path',
@@ -497,6 +829,7 @@ if __name__ == "__main__":
                                                             args.chromosomes or chr_ploidy_data_.keys())
     df = pd.DataFrame.from_dict(results, orient='index', columns=['Reference Genome', 'Genome 1', 'Genome 2'])
     print(df)
+    '''
 
 '''
 Example
@@ -511,9 +844,9 @@ python genome_builder.py \
 
 python genome_builder.py \
 -s 1 \
--d ../../data/pipeline_results_run89/expression_pipeline/data \
--r ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.reference_genome.fa.gz \
--p ../../resources/index_files/GRCh38/Homo_sapiens.GRCh38.chr_ploidy.txt \
--l ../../data/pipeline_results_run89/expression_pipeline/logs \
--x female
+-d ../../data/_run600/expression_pipeline/data \
+-r ../resources/index_files/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa \
+-p ../resources/index_files/baby_genome.mm10/baby_genome.mm10.chr_ploidy.txt \
+-l ../../data/_run600/expression_pipeline/logs \
+-x male
 '''
