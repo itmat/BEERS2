@@ -27,15 +27,15 @@ class MoleculeFileToFastaAndCountTable():
     def __init__(self, molecule_file, output_directory):
 
         if not os.path.isdir(output_directory):
-            raise(f"The following output directory does not exist:\n{output_directory}")
+            raise Exception(f"The following output directory does not exist:\n{output_directory}")
         if not os.path.isfile(molecule_file):
-            raise(f"The following molecule file does not exist:\n{molecule_file}")
+            raise Exception(f"The following molecule file does not exist:\n{molecule_file}")
 
         self.molecule_file = molecule_file
         self.output_directory = output_directory
         self.parental_suffix_list = ['_1', '_2']
 
-    def execute(self, output_prefix="", separate_by_parent=False):
+    def execute(self, output_prefix="", separate_by_parent=False, trim_polya_tails=False):
 
         """
         Track various aspects of molecules in the molecule file by source transcript ID.
@@ -52,11 +52,21 @@ class MoleculeFileToFastaAndCountTable():
                 molecule_data = molecule.rstrip().split("\t")
                 transcript_id = molecule_data[0]
                 transcript_seq = molecule_data[5]
+                transcript_cigar = molecule_data[3]
+                transcript_strand = molecule_data[4]
+
+                if trim_polya_tails:
+                    trimmed_seq, trimmed_cigar = self._trim_tail_and_cigar(transcript_seq,
+                                                                           transcript_cigar,
+                                                                           transcript_strand)
+                    transcript_seq = trimmed_seq
+                    transcript_cigar = trimmed_cigar
 
                 if not counts_by_transcript.get(transcript_id, None):
                     counts_by_transcript[transcript_id] = 1
                     sequences_by_transcript[transcript_id] = transcript_seq
-                    fasta_headers_by_transcript[transcript_id] = f">{transcript_id} {' '.join(molecule_data[1:5])}"
+                    molecule_metadata = [molecule_data[1], molecule_data[2], transcript_cigar, transcript_strand]
+                    fasta_headers_by_transcript[transcript_id] = f">{transcript_id} {';'.join(molecule_metadata)}"
                 else:
                     counts_by_transcript[transcript_id] += 1
 
@@ -114,6 +124,53 @@ class MoleculeFileToFastaAndCountTable():
                         fasta_file.write(sequences_by_transcript[transcript_id] + "\n")
 
     @staticmethod
+    def _trim_tail_and_cigar(sequence, cigar, strand):
+        """
+        Helper method which identifies the number (if any) of soft-clipped bases
+        at the 3' end of the CIGAR string, trims that many bases from the 3' end
+        of the transcript, and removes the soft-clipping entry from the CIGAR string.
+        If there is no soft-clipping on the appropriate end of the CIGAR string,
+        this method returns the original sequence and CIGAR strings.
+
+        Parameters
+        ----------
+        sequence : string
+            Nucleotide sequence to be trimmed.
+        cigar : string
+            CIGAR string mapping molecule in the plus-strand orientation.
+        strand : string
+            Strand molecule is transcribed from. This is used to determine which
+            end of the CIGAR string to search for clipped bases.
+
+        Returns
+        -------
+        tuple
+            1 - sequence with tail trimmed from its 5' end (if it had a tail).
+            2 - CIGAR string with soft-clipping entry corresponding to tail removed
+                (if there was a soft-clipping entry at the appropriate end).
+
+        """
+        trimmed_sequence = sequence
+        trimmed_cigar = cigar
+
+        # Two regular expression for identifying and extracting the soft-clipping
+        # entry from the appropriate and of the CIGAR string, depending upon the
+        # transcript's source strand.
+        plus_strand_tail_pattern = re.compile('(?P<remaining_cigar>.*?)(?P<soft_clip_pattern>(?P<num_clipped_bases>[0-9]+)S)$')
+        minus_strand_tail_pattern = re.compile('^(?P<soft_clip_pattern>(?P<num_clipped_bases>[0-9]+)S)(?P<remaining_cigar>.*?)$')
+
+        if strand == "+" and plus_strand_tail_pattern.match(cigar):
+            num_clipped_bases = int(plus_strand_tail_pattern.match(cigar).group("num_clipped_bases"))
+            trimmed_cigar = plus_strand_tail_pattern.match(cigar).group("remaining_cigar")
+            trimmed_sequence = sequence[:-num_clipped_bases]
+        elif strand == "-" and minus_strand_tail_pattern.match(cigar):
+            num_clipped_bases = int(minus_strand_tail_pattern.match(cigar).group("num_clipped_bases"))
+            trimmed_cigar = minus_strand_tail_pattern.match(cigar).group("remaining_cigar")
+            trimmed_sequence = sequence[:-num_clipped_bases]
+
+        return trimmed_sequence, trimmed_cigar
+
+    @staticmethod
     def main():
         """Entry point into script when called directly.
 
@@ -135,13 +192,18 @@ class MoleculeFileToFastaAndCountTable():
                                  " molecules from each parental genome. Assumes transcript"
                                  " IDs in molecule file have _1/_2 suffixes to identify the"
                                  " source parent.")
+        parser.add_argument('-t', '--trim_polya_tails', action='store_true',
+                            help="Trim polyA tails from the molecules before returning the"
+                                 " FASTA. Tail length determined by soft-clipping at the end"
+                                 " of the molecule CIGAR string.")
 
         args = parser.parse_args()
 
         molecule_file_converter = MoleculeFileToFastaAndCountTable(molecule_file=args.input_molecule_file,
                                                                    output_directory=args.output_directory)
         molecule_file_converter.execute(output_prefix=args.output_prefix,
-                                        separate_by_parent=args.separate_by_parent)
+                                        separate_by_parent=args.separate_by_parent,
+                                        trim_polya_tails=args.trim_polya_tails)
 
 if __name__ == '__main__':
     sys.exit(MoleculeFileToFastaAndCountTable.main())
