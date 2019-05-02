@@ -10,7 +10,7 @@ import numpy
 parser = argparse.ArgumentParser(description="Given a molecule file (as output by CAMPAREE), generate a coverage file in the bedGraph format")
 parser.add_argument("molecule_file", help="path to the input molecule file")
 parser.add_argument("output_file", help="prefix for the output coverage files, two are output as output_file.forward.cov and output_file.reverse.cov")
-parser.add_argument("-m", "--max_chromosome_size", help="size of largest chromosome in megabases (250 for humans, 196 for mouse), this can be an overestimate, determines memory use", default=260)
+parser.add_argument("-m", "--max_chromosome_size", help="size of largest chromosome in megabases (250 for humans, 196 for mouse), this can be an overestimate, determines memory use", default=260, type=int)
 
 args = parser.parse_args()
 
@@ -25,7 +25,7 @@ with open(args.molecule_file) as molecule_file:
         if line.startswith("#"):
             continue #Skip comment/header line
 
-        
+
         transcript_id, chrom, start, cigar, ref_start, ref_cigar, strand, sequence = line.split('\t')
         # Really just need the ref_start, ref_cigar, chromosome and strand for coverage
         ref_start = int(ref_start)
