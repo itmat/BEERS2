@@ -4,8 +4,8 @@ import sys
 
 import numpy
 
-from beers.molecule import Molecule
-from beers.molecule_packet import MoleculePacket
+from beers_utils.molecule import Molecule
+from beers_utils.molecule_packet import MoleculePacket
 
 
 METHODS = {"uniform", "beta"}

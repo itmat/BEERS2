@@ -7,8 +7,11 @@ __pycache__
 beers/personal/
 resources/index_files/
 venv*
-beers.egg-info
+*.egg-info
 config/*_config.json
 Log.out
+cris_*
 
 *.swp
+
+CAMPAREE/doc/_build/

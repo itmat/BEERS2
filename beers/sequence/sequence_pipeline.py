@@ -5,7 +5,7 @@ import numpy as np
 import resource
 import json
 import re
-from beers.constants import CONSTANTS
+from beers_utils.constants import CONSTANTS
 from beers.cluster_packet import ClusterPacket
 from beers.utilities.general_utils import GeneralUtils
 from beers.auditor import Auditor

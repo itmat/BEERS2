@@ -7,9 +7,9 @@ import math
 
 import numpy as np
 
-from beers.constants import CONSTANTS
-from beers.molecule import Molecule
-from beers.molecule_packet import MoleculePacket
+from beers_utils.constants import CONSTANTS
+from beers_utils.molecule import Molecule
+from beers_utils.molecule_packet import MoleculePacket
 from beers.utilities.general_utils import GeneralUtils
 
 

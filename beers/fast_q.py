@@ -1,7 +1,7 @@
 import os
 import glob
 from beers.cluster_packet import ClusterPacket
-from beers.constants import CONSTANTS
+from beers_utils.constants import CONSTANTS
 
 
 class FastQ:
