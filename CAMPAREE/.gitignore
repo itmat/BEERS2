@@ -1,10 +1,29 @@
-data
+# Ignore all config files, except for the template and the baby genome config.
+config/*.yaml
+!config/baby.config.yaml
+!config/template.config.yaml
+
+# Ignore temp and system files created by python during package installation.
 .idea
 .DS_Store
 __pycache__
 *.pyc
 *.html
 venv*
-camparee.egg-info
-
+*.egg-info
 *.swp
+
+# Ignore contents of resources directory, except for baby genome files. Note,
+# this ignores the uncompressed STAR index, but not the tar.gz one.
+resources/*
+!resources/baby_genome.mm10
+resources/baby_genome.mm10/*
+!resources/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa
+!resources/baby_genome.mm10/baby_genome.mm10.annotation.txt
+!resources/baby_genome.mm10/baby_genome.mm10.chr_ploidy.txt
+
+# Ignore any results generated in the test_data/ directory as part of validating
+# the CAMPAREE installation, but keep track of the gzipped fastq files for the
+# baby genome.
+test_data/results/*
+!test_data/fastq_files/*.fq.gz

@@ -47,6 +47,12 @@ class SgeJobScheduler(AbstractJobScheduler):
     # Default command used to submit job.
     _DEFAULT_QSUB_COMMAND = ('qsub -N \"{job_name}\"'
                              ' -V -cwd'
+                             # Required because "python" is a binary
+                             ' -b y'
+                             # Required because qsub will do some pre-processing that strips
+                             # away single-quotes and brackets from the arguments sent to
+                             # the python script.
+                             ' -shell no'
                              ' -pe smp {num_processors}'
                              ' -l h_vmem={mem_usage_in_mb}M')
 
@@ -56,8 +62,23 @@ class SgeJobScheduler(AbstractJobScheduler):
     # Default command used to get detailed accounting info for a given job.
     _DEFAULT_QACCT_COMMAND = ('qacct {qacct_args} -j {job_id}')
 
-    @staticmethod
-    def check_job_status(job_id, additional_args=""):
+    def __init__(self, default_num_processors=1, default_memory_in_mb=6000):
+        """
+        Initialize SGE scheduler with default number of processors and memory
+        (in Mb) to request when submitting jobs through the scheduler.
+
+        Parameters
+        ----------
+        default_num_processors : int
+            Default number of processors/cores to request when submitting jobs.
+            Default: 1.
+        default_memory_in_mb : int
+            Default memory (in Mb) to request when submitting jobs. Default: 6000.
+
+        """
+        super().__init__(default_num_processors, default_memory_in_mb)
+
+    def check_job_status(self, job_id, additional_args=""):
         """
         Return status of given job in the SGE queue. This operation performed
         using the "qstat" command.
@@ -82,7 +103,7 @@ class SgeJobScheduler(AbstractJobScheduler):
         """
         job_status = "ERROR"
 
-        jobid_to_run_state = SgeJobScheduler._run_and_parse_qstat()
+        jobid_to_run_state = self._run_and_parse_qstat()
         # Convert job_id to string, since keys in jobid_to_run_state are strings
         # also (and integer keys won't return anything).
         sge_job_status = jobid_to_run_state.get(str(job_id))
@@ -125,11 +146,11 @@ class SgeJobScheduler(AbstractJobScheduler):
         else:
 
             #Check list of completed jobs
-            jobid_to_run_state = SgeJobScheduler._run_and_parse_qstat(additional_args="-s z")
+            jobid_to_run_state = self._run_and_parse_qstat(additional_args="-s z")
 
             if jobid_to_run_state.get(str(job_id)):
                 #Use qacct to find the exit code for this job.
-                job_exit_code = SgeJobScheduler._get_exit_code_from_qacct(job_id)
+                job_exit_code = self._get_exit_code_from_qacct(job_id)
 
                 '''
                 There is often a short lag period bewteen when a job is finished
@@ -148,8 +169,8 @@ class SgeJobScheduler(AbstractJobScheduler):
                       any accounting information.
                 '''
                 if job_exit_code == -1:
-                    time.sleep(SgeJobScheduler._MAX_WAIT_FOR_QACCT_AFTER_JOB_COMPLETE)
-                    job_exit_code = SgeJobScheduler._get_exit_code_from_qacct(job_id)
+                    time.sleep(self._MAX_WAIT_FOR_QACCT_AFTER_JOB_COMPLETE)
+                    job_exit_code = self._get_exit_code_from_qacct(job_id)
 
                 if job_exit_code == 0:
                     job_status = "COMPLETED"
@@ -158,12 +179,12 @@ class SgeJobScheduler(AbstractJobScheduler):
 
         return job_status
 
-    @staticmethod
-    def submit_job(job_command, job_name, stdout_logfile=None, stderr_logfile=None,
-                   memory_in_mb=6000, num_processors=1, additional_args=""):
+    def submit_job(self, job_command, job_name, stdout_logfile=None, stderr_logfile=None,
+                   num_processors=1, memory_in_mb=6000, additional_args=""):
         """
         Submit given job using the qsub command and return ID assigned to job by
-        the SGE scheduler.
+        the SGE scheduler. Runs qsub with the '-V -cwd' arguments to run in the
+        current environment, from the current working directory.
 
         Parameters
         ----------
@@ -172,19 +193,21 @@ class SgeJobScheduler(AbstractJobScheduler):
             contain any unix output redirection (i.e. useing ">" or "2>") unless
             the entire command is enclosed in single-quotes.
         job_name : string
-            Name assigned to job by SGE. Specified with '-J' argument.
+            Name assigned to job by SGE. Specified with '-N' argument.
         stdout_logfile : string
             Full path to file where SGE/job stdout should be stored. Specified
             using the "-o" argument. Default: None.
         stderr_logfile : string
             Full path to file where job stderr should be stored. Specified using
             the "-e" argument. Default: None.
-        memory_in_mb : int
-            Memory (in Mb) to request for running the job. Specified using both
-            the '-M' and '-R "rusage[mem=]"' arguments. Default: 6000.
         num_processors : int
             Number of processor units to request for running the job. Specified
-            using the '-n' argument. Default: 1.
+            using the '-pe smp' argument. Default: 1. If not provided, use default
+            values specified during initialization.
+        memory_in_mb : int
+            Memory (in Mb) to request for running the job. Specified using both
+            the '-l h_vmem=' arguments. If not provided, use default values
+            specified during initialization.
         additional_args : string
             Arguments and corresponding values to pass to the qsub command.
             Default: empty string.
@@ -198,9 +221,12 @@ class SgeJobScheduler(AbstractJobScheduler):
         """
         job_id = "ERROR"
 
-        qsub_command = SgeJobScheduler._DEFAULT_QSUB_COMMAND.format(job_name=job_name,
-                                                                    num_processors=num_processors,
-                                                                    mem_usage_in_mb=memory_in_mb)
+        request_processors = num_processors if num_processors else self.default_num_processors
+        request_mem = memory_in_mb if memory_in_mb else self.default_memory_in_mb
+
+        qsub_command = self._DEFAULT_QSUB_COMMAND.format(job_name=job_name,
+                                                         num_processors=request_processors,
+                                                         mem_usage_in_mb=request_mem)
         if stdout_logfile:
             qsub_command += f" -o {stdout_logfile}"
         if stderr_logfile:
@@ -209,13 +235,12 @@ class SgeJobScheduler(AbstractJobScheduler):
         qsub_result = subprocess.run(' '.join([qsub_command, additional_args, job_command]),
                                      shell=True, check=True, stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, encoding="ascii")
-        if SgeJobScheduler._SGE_QSUB_OUTPUT_PATTERN.match(qsub_result.stdout):
-            job_id = SgeJobScheduler._SGE_QSUB_OUTPUT_PATTERN.match(qsub_result.stdout).group('job_id')
+        if self._SGE_QSUB_OUTPUT_PATTERN.match(qsub_result.stdout):
+            job_id = self._SGE_QSUB_OUTPUT_PATTERN.match(qsub_result.stdout).group('job_id')
 
         return job_id
 
-    @staticmethod
-    def kill_job(job_id, additional_args=""):
+    def kill_job(self, job_id, additional_args=""):
         """
         Kill given job using the qdel command.
 
@@ -235,7 +260,7 @@ class SgeJobScheduler(AbstractJobScheduler):
         """
         qdel_status = False
 
-        qdel_command = SgeJobScheduler._DEFAULT_QDEL_COMMAND.format(job_id=job_id, qdel_args=additional_args)
+        qdel_command = self._DEFAULT_QDEL_COMMAND.format(job_id=job_id, qdel_args=additional_args)
         # Note, set check=False here, since qdel command exits with an error code
         # if the given job does not exist or has already completed. These cases
         # are handled by the code afterward, so we don't need to check here (which
@@ -245,9 +270,9 @@ class SgeJobScheduler(AbstractJobScheduler):
                                      encoding="ascii")
         qdel_message = qdel_result.stdout.rstrip()
 
-        if SgeJobScheduler._SGE_QDEL_OUTPUT_PATTERN_1.match(qdel_message) or \
-           SgeJobScheduler._SGE_QDEL_OUTPUT_PATTERN_2.match(qdel_message) or \
-           SgeJobScheduler._SGE_QDEL_OUTPUT_PATTERN_3.match(qdel_message):
+        if self._SGE_QDEL_OUTPUT_PATTERN_1.match(qdel_message) or \
+           self._SGE_QDEL_OUTPUT_PATTERN_2.match(qdel_message) or \
+           self._SGE_QDEL_OUTPUT_PATTERN_3.match(qdel_message):
             qdel_status = True
 
         #TODO: Wait and check job status to make sure job was really killed. Could
@@ -256,8 +281,7 @@ class SgeJobScheduler(AbstractJobScheduler):
         #      to handle this.
         return qdel_status
 
-    @staticmethod
-    def _run_and_parse_qstat(additional_args=""):
+    def _run_and_parse_qstat(self, additional_args=""):
         """
         Helper function that uses the qstat command to get the run status for all
         jobs in the SGE queue. Returns a dictionary of job ID's mapped to their
@@ -283,24 +307,23 @@ class SgeJobScheduler(AbstractJobScheduler):
         """
         jobid_to_run_state = {}
 
-        qstat_command = SgeJobScheduler._DEFAULT_QSTAT_COMMAND.format(qstat_args=additional_args)
+        qstat_command = self._DEFAULT_QSTAT_COMMAND.format(qstat_args=additional_args)
         qstat_result = subprocess.run(qstat_command, shell=True, check=True,
                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                       encoding="ascii")
 
-        if SgeJobScheduler._SGE_QSTAT_OUTPUT_PATTERN.match(qstat_result.stdout):
+        if self._SGE_QSTAT_OUTPUT_PATTERN.match(qstat_result.stdout):
             for line in qstat_result.stdout.splitlines():
                 #This will skip header line, since "job-ID" column label doesn't
                 #consist entire of digits.
-                if SgeJobScheduler._SGE_QSTAT_OUTPUT_LINE_PATTERN.match(line):
-                    job_id = SgeJobScheduler._SGE_QSTAT_OUTPUT_LINE_PATTERN.match(line).group('job_id')
-                    job_status = SgeJobScheduler._SGE_QSTAT_OUTPUT_LINE_PATTERN.match(line).group('job_status')
+                if self._SGE_QSTAT_OUTPUT_LINE_PATTERN.match(line):
+                    job_id = self._SGE_QSTAT_OUTPUT_LINE_PATTERN.match(line).group('job_id')
+                    job_status = self._SGE_QSTAT_OUTPUT_LINE_PATTERN.match(line).group('job_status')
                     jobid_to_run_state[job_id] = job_status
 
         return jobid_to_run_state
 
-    @staticmethod
-    def _get_exit_code_from_qacct(job_id, additional_args=""):
+    def _get_exit_code_from_qacct(self, job_id, additional_args=""):
         """
         Helper method that runs the qacct command for the given job ID, and parses
         the output to find and return the job's exit code. This is necessary because
@@ -326,8 +349,8 @@ class SgeJobScheduler(AbstractJobScheduler):
         """
         exit_code = -1
 
-        qacct_command = SgeJobScheduler._DEFAULT_QACCT_COMMAND.format(job_id=job_id,
-                                                                      qacct_args=additional_args)
+        qacct_command = self._DEFAULT_QACCT_COMMAND.format(job_id=job_id,
+                                                           qacct_args=additional_args)
         # Note, set check=False here, since qacct command exits with an error code
         # if accoungint for the given job does not exist. This case is handled by
         # the code afterward, so we don't need to check here (which causes the whole

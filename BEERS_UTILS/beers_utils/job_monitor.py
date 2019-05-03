@@ -18,7 +18,8 @@ class JobMonitor:
     #job output.
     PIPELINE_STEPS = {}
 
-    def __init__(self, output_directory_path, scheduler_name, max_resub_limit=3):
+    def __init__(self, output_directory_path, scheduler_name, max_resub_limit=3,
+                 default_num_processors=None, default_memory_in_mb=None):
         """
         Initialize the monitor to track a specific set of jobs/processes running on
         a list of corresponding samples.
@@ -32,6 +33,10 @@ class JobMonitor:
         max_resub_limit : int
             The maximum number of times a job can be resubmitted before the
             pipeline halts.
+        default_num_processors : int
+            Default number of processors/cores to request when submitting jobs.
+        default_memory_in_mb : int
+            Default memory (in Mb) to request when submitting jobs.
 
         """
         self.output_directory = output_directory_path
@@ -53,7 +58,10 @@ class JobMonitor:
         if self.scheduler_name == "serial":
             self.job_scheduler = None
         else:
-            self.job_scheduler = beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
+            scheduler_class = beers_utils.job_scheduler_provider.SCHEDULERS.get(scheduler_name)
+            self.job_scheduler = scheduler_class(default_num_processors=default_num_processors,
+                                                 default_memory_in_mb=default_memory_in_mb)
+
 
     def is_processing_complete(self):
         """
@@ -601,13 +609,8 @@ class Job:
             elif scheduler_job_status == "FAILED":
                 job_status = "FAILED"
             elif scheduler_job_status == "COMPLETED":
-
-                #TODO: To clean up the code, we should probably create
-                #      separate methods to check the status of various steps,
-                #      rather than build them all in here. This code will
-                #      check the name of the step and call the appropriate
-                #      one of these methods.
-
+                # TODO: Should probably find some way of generalizing this, rather
+                #       than specifying it here. Or create this list elsewhere.
                 #Check output files
                 if self.step_name in ["GenomeAlignmentStep",
                                       "GenomeBamIndexStep",
