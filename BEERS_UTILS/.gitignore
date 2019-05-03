@@ -1,14 +1,9 @@
-data
+# Ignore temp and system files created by python during package installation.
 .idea
 .DS_Store
 __pycache__
 *.pyc
 *.html
-utilities/personal/
-resources/index_files/
 venv*
-utilities.egg-info
-config/*_config.json
-Log.out
-
+*.egg-info
 *.swp
