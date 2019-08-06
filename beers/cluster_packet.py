@@ -1,4 +1,4 @@
-from beers.sample import Sample
+from beers_utils.sample import Sample
 from beers.cluster import Cluster
 import os
 import gzip

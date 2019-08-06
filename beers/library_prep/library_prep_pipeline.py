@@ -10,7 +10,7 @@ import numpy as np
 from beers_utils.constants import CONSTANTS
 from beers_utils.molecule import Molecule
 from beers_utils.molecule_packet import MoleculePacket
-from beers.utilities.general_utils import GeneralUtils
+from beers_utils.general_utils import GeneralUtils
 
 
 class LibraryPrepPipeline:

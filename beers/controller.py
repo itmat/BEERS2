@@ -7,12 +7,9 @@ import sys
 import traceback
 import copy
 from datetime import datetime
-from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
-from beers.utilities.general_utils import GeneralUtils
-from beers.expression.expression_pipeline import ExpressionPipeline
+from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES
+from beers_utils.general_utils import GeneralUtils
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
-from beers.sample import Sample
-from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
 from beers_utils.molecule_packet import MoleculePacket
 from beers.dispatcher import Dispatcher
@@ -47,35 +44,6 @@ class Controller:
         self.seed = None
         self.output_directory_path = None
         self.input_samples = []
-
-    def run_expression_pipeline(self, args):
-        """
-        This is how run_beers.py calls the expression pipeline by itself.  Little is in place here because the
-        expression pipeline is in a state of 'undress'.
-        :param args: command line arguments
-        """
-        stage_name = "expression_pipeline"
-        self.perform_setup(args, [self.controller_name, stage_name])
-        if not self.validate_samples():
-            raise ControllerValidationException("Sample data is not valid.  Please consult the standard error file"
-                                                "for details.")
-        #TODO: Once a dispatcher is more integrated with the epxpression pipeline,
-        #we may want to move this check elsewhere.
-        dispatcher_mode = ""
-        if not args.dispatcher_mode:
-            if not self.controller_configuration.get('dispatcher_mode', None):
-                raise ControllerValidationException('No dispatcher_mode given either on the command line'
-                                                    ' or in the configuration file')
-            dispatcher_mode = self.controller_configuration['dispatcher_mode']
-        else:
-            dispatcher_mode = args.dispatcher_mode
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise ControllerValidationException(f'{dispatcher_mode} is not a supported mode.\n'
-                                                'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
-        self.assemble_input_samples()
-        ExpressionPipeline.main(self.configuration['expression_pipeline'], dispatcher_mode,
-                                self.resources, os.path.join(self.output_directory_path,stage_name),
-                                self.input_samples)
 
     def run_library_prep_pipeline(self, args):
         """
@@ -228,7 +196,7 @@ class Controller:
                 raise ControllerValidationException('No dispatcher_mode given either on the command line'
                                                     ' or in the configuration file')
             dispatcher_mode = self.controller_configuration['dispatcher_mode']
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
+        if dispatcher_mode not in SUPPORTED_SCHEDULER_MODES:
             raise ControllerValidationException(f'{dispatcher_mode} is not a supported mode.\n'
                                                 'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         self.dispatcher = Dispatcher(self.run_id,
@@ -365,42 +333,6 @@ class Controller:
                 print(f"The input sample, {input_sample['filenames']} has no gender specified.  Consequently, no"
                       f" gender specific chromosomes will be processed for this sample.")
         return valid
-
-
-
-    def assemble_input_samples(self):
-        """
-        Creates a list of sample objects, attached to the controller, that represent those samples that are to be
-        run in the expression pipeline.  If not running from the expression pipeline, this method is not used since
-        the sample data is already contained in each packet.  For each sample, a unique combination of adapter sequences
-        are provided.  The sample name is assumed to be that of the input filename without the extension.  Gender may
-        or may not be provided in the configuration data.  If not set, the gender will be inferred by the expression
-        pipeline.
-        """
-        input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
-        self.input_samples = []
-        # TODO handle the situation where the adapter kit is not specified or not found
-        # The kit is really only needed for library prep.  So if the expression pipeline does not generate
-        # molecule packets, we could postpone this step until when that assembly occurs.  But we don't want to
-        # make the addition to thousands of molecule packets after the fact.
-        adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
-        AdapterGenerator.generate_adapters(adapter_kit_file_path)
-        for sample_name, input_sample in self.configuration['expression_pipeline']["input"]["data"].items():
-            #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
-            fastq_file_paths = [os.path.join(input_directory_path, filename)
-                                       for filename in input_sample["fastq_files"]]
-            bam_file_path = os.path.join(input_directory_path, input_sample["bam_file"]) if "bam_file" in input_sample else ''
-            gender = input_sample.get("gender", None)
-            if gender:
-                gender = gender.lower()
-            self.input_samples.append(
-                Sample(Sample.next_sample_id,
-                       sample_name,
-                       fastq_file_paths,
-                       AdapterGenerator.get_unique_adapter_sequences(),
-                       bam_file_path=bam_file_path,
-                       gender=gender))
-            Sample.next_sample_id += 1
 
     def create_step_log_directories(self, file_count, stage_name, log_directory_path):
         """
