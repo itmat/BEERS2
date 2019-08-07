@@ -53,8 +53,13 @@ class Controller:
         output folder structure, which may have nested sub-directories in the case of a very large number of input
         molecule packets.  The step log directories are created.  The dispatcher is instantiated and finally, the
         dispatcher is run with the molecule_packet_file_paths provided.  Note that this pipeline stage assumes all
-        molecule packets are immediately available.  That will likely not be the case when the expression and library
-        prep pipelines are run together.  That will be a different run_beers.py call.
+        molecule packets are immediately available.
+
+        Note that the molecule packets output from this procedure have been pared down in size according to the
+        flowcell retention percentage specified in the configuration file.  This is a final process after all steps
+        complete and was done to reduce amount of disk space needed to store these packets.  In the subsequent
+        sequence pipeline, all molecular packets will populate the flow cell since the wash out has essentially
+        already been simulated here.
         :param args: command line arguements
         """
         stage_name = "library_prep_pipeline"
@@ -77,12 +82,11 @@ class Controller:
         """
         This is how run_beers.py calls the sequence pipeline by itself.  This pipeline is complete and functional.
         Controller attributes are set up.  All molecule packet file are located - note that these molecule packet files
-        are really the outputs of the various library prep processes as such one can point the input directory for the
-        sequence pipeline to the location of the files created by an earlier call to the library pipeline via the
+        are really the outputs of the various library prep processes and as such one can point the input directory for
+        the sequence pipeline to the location of the files created by an earlier call to the library pipeline via the
         configuration file.  In that way, the library prep pipeline and the sequence pipeline can be run one after the
         other.  However, here again, the sequence pipeline assumes all molecule packets needed for processing are
-        already in place.  That will not necessarily be the case when the library_prep_and_sequence pipeline is called
-        as the molecule packets and subsequent cluster packets may be handled individually.
+        already in place.
 
         This pipeline stage is more elaborate than that of the library prep pipeline because it handles flowcell
         loading and FASTQ reporting.  Both of these processes are handled by the controller since a knowledge of all
