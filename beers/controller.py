@@ -23,7 +23,7 @@ class Controller:
     """
     The object essentially controls the flow of the pipeline.  The run_beers.py command instantiates a controller and
     calls one of the controller methods depending upon the pipeline-stage requested.  The other methods in the class
-    are helper methods.
+    are helper methods.  Additionally, the controller handles those tasks that cannot be distributed to isolated nodes.
     """
 
     def __init__(self):
@@ -267,8 +267,6 @@ class Controller:
         directory, are folders named after the stage names provided (i.e., controller, library_prep_pipeline,
         sequence_pipeline) and beneath each of these are data and log folders.  Additional subdirectories are created
         later to organize the numerous files expected and avoid overloading any one directory.
-        :param stage_names: names of folders directly below the top level output directory (e.g., controller,
-        library_prep)
 
         Example of top level output folder structure:
 
@@ -280,6 +278,8 @@ class Controller:
                 data
                 logs
 
+        :param stage_names: names of folders directly below the top level output directory (e.g., controller,
+        library_prep)
         """
         self.output_directory_path = f"{self.controller_configuration['output_directory_path']}_run{self.run_id}"
         if not os.path.exists(self.output_directory_path):
@@ -354,7 +354,7 @@ class Controller:
         The number and type of steps in either the library_prep pipeline or the sequence pipeline will depend upon the
         user.  That information is provided in the configuration data.  Since there will be as many step logs as there
         are packets to process, they too must be organized into subdirectories.  We also need the same subdirectory
-        organization for the standard out, stadard error and pipeline log file.  So that is created here along with
+        organization for the standard out, standard error and pipeline log file.  So that is created here along with
         the subdirectory structure for each step discovered in the configuration data for the given stage.
         :param file_count: number of files to house in the subdirectory structure (i.e., number of pipeline processes
         to run)
