@@ -94,19 +94,19 @@ class Controller:
 
         Here too, the data directory path and the number of packets to be processed are used to fully develop the
         output folder structure, which again may have nested sub-directories in the case of a very large number of
-        input molecule packets.  Then each molecule packet is loaded in turn onto the flowcell.  Those molecules that
-        are retained by the flowcell are located by flowcell coordinates and returned as clusters bundled into a
-        cluster packet.  Those cluster packets are then serialized into a gzip file located inside the controller
-        data folder in the output directory.  Note that this is really intermediate data that will be fed into the
-        sequence pipeline stage proper.
+        input molecule packets.  Then each molecule packet is loaded in turn onto the flowcell.  Those molecules to be
+        washed out have already been so in the prior pipeline step.  These molecules are located by flowcell coordinates
+        and returned as clusters bundled into a cluster packet.  Those cluster packets are then serialized into a gzip
+        file located inside the controller data folder in the output directory.  Note that this is really intermediate
+        data that will be fed into the sequence pipeline stage proper.
 
         Finally as with the library prep pipeline, the data and log output directories are identified and the data
         directory and number of packets to be processed are used to fully develop the output folder structure, which
         may have nested sub-directories in the case of a very large number of input cluster packets.  Again, the step
         log directories are created. An auditor is created with a path to an audit file and a list of the number of
         packet processes to expect.  The dispatcher is instantiated and finally, the dispatcher is run with the
-        cluster_packet_file_paths provided.  The auditor loops waiting under all sequence pipeline processes are
-        complete.  Once that happens the collected reads are formatted into 1 or 2 FASTQ files for each lane of the
+        cluster_packet_file_paths provided.  The auditor loops waiting until all sequence pipeline processes are
+        complete.  Once that happens, the collected reads are formatted into 1 or 2 FASTQ files for each lane of the
         flowcell used.
         :param args: The command line arguments
         """
@@ -164,7 +164,7 @@ class Controller:
         This helper method sets up a number of attributes and behaviors in the controller.  Stacktraces are suppressed
         and only user friendly errors are shown when the debugger is off (just a command line arg right now).  The full
         configuration file data and run id are salted away and the random seed is set.  The initial output folder
-        structure (excluding the subdirectory structure needed to accommodate large numbers of file) is created.  The
+        structure (excluding the subdirectory structure needed to accommodate large numbers of files) is created.  The
         output folder structure depends on the stage names.  Also, the controller log is started.
         :param args: The command line arguments
         :param stage_names: The stage names
@@ -214,7 +214,7 @@ class Controller:
 
     def setup_flowcell(self):
         """
-        Instantiates the flowcell, valudates the flowcell parameters and attaches it to the controller.
+        Instantiates the flowcell, validates the flowcell parameters and attaches it to the controller.
         """
         self.flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
         valid, msg = self.flowcell.validate()
@@ -224,8 +224,8 @@ class Controller:
     def retrieve_configuration(self, configuration_file_path):
         """
         Helper method to parse the configuration file given by the path info a dictionary attached to the controller
-        object.  For convenience, the portion of the configuration file that contains parametric data specific to the
-        controller is set to a separate dictionary also attached to the controller.
+        object.  For convenience, the portions of the configuration file that contains parametric data specific to the
+        controller and the resources are set to separate dictionaries also attached to the controller.
         :param configuration_file_path: The absolute file path of the configuration file
         """
         with open(configuration_file_path, "r+") as configuration_file:
@@ -266,9 +266,20 @@ class Controller:
         insufficient permissions to create the directory. Created in the level directly below the top level output
         directory, are folders named after the stage names provided (i.e., controller, library_prep_pipeline,
         sequence_pipeline) and beneath each of these are data and log folders.  Additional subdirectories are created
-        later to organize the numerous files exprected and avoid congestion.
+        later to organize the numerous files expected and avoid overloading any one directory.
         :param stage_names: names of folders directly below the top level output directory (e.g., controller,
         library_prep)
+
+        Example of top level output folder structure:
+
+        lib_prep_results_run101
+            controller
+                data
+                logs
+            library_prep_pipline
+                data
+                logs
+
         """
         self.output_directory_path = f"{self.controller_configuration['output_directory_path']}_run{self.run_id}"
         if not os.path.exists(self.output_directory_path):
