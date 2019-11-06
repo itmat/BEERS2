@@ -2,7 +2,7 @@ import sys
 from timeit import default_timer as timer
 from scipy.stats import norm
 import numpy as np
-import pylab as pl
+#import pylab as pl
 import pickle
 from beers.utilities.library_prep_utils import Utils
 
@@ -84,8 +84,8 @@ class SizingStep:
         """
         x_values = np.linspace(0, self.mean_length + 6*self.sd_length, self.mean_length + 6*self.sd_length)
         y_values = [self.dist_function(x) for x in x_values]
-        pl.plot(x_values, y_values)
-        pl.show()
+        #pl.plot(x_values, y_values)
+        #pl.show()
 
     def validate(self):
         """

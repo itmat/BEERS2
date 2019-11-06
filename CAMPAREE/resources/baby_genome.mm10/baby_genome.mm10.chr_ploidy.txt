@@ -1,7 +1,0 @@
-chr	male	female
-chr1	2	2
-chr2	2	2
-chr3	2	2
-chrM	1	1
-chrX	1	2
-chrY	1	0

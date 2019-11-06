@@ -1,3 +1,0 @@
--r requirements.txt
-pandas==0.23.3
-plotly==3.1.0

@@ -7,12 +7,9 @@ import sys
 import traceback
 import copy
 from datetime import datetime
-from beers_utils.constants import CONSTANTS,SUPPORTED_DISPATCHER_MODES
-from beers.utilities.general_utils import GeneralUtils
-from beers.expression.expression_pipeline import ExpressionPipeline
+from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES
+from beers_utils.general_utils import GeneralUtils
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
-from beers.sample import Sample
-from beers.utilities.adapter_generator import AdapterGenerator
 from beers.flowcell import Flowcell
 from beers_utils.molecule_packet import MoleculePacket
 from beers.dispatcher import Dispatcher
@@ -26,7 +23,7 @@ class Controller:
     """
     The object essentially controls the flow of the pipeline.  The run_beers.py command instantiates a controller and
     calls one of the controller methods depending upon the pipeline-stage requested.  The other methods in the class
-    are helper methods.
+    are helper methods.  Additionally, the controller handles those tasks that cannot be distributed to isolated nodes.
     """
 
     def __init__(self):
@@ -48,35 +45,6 @@ class Controller:
         self.output_directory_path = None
         self.input_samples = []
 
-    def run_expression_pipeline(self, args):
-        """
-        This is how run_beers.py calls the expression pipeline by itself.  Little is in place here because the
-        expression pipeline is in a state of 'undress'.
-        :param args: command line arguments
-        """
-        stage_name = "expression_pipeline"
-        self.perform_setup(args, [self.controller_name, stage_name])
-        if not self.validate_samples():
-            raise ControllerValidationException("Sample data is not valid.  Please consult the standard error file"
-                                                "for details.")
-        #TODO: Once a dispatcher is more integrated with the epxpression pipeline,
-        #we may want to move this check elsewhere.
-        dispatcher_mode = ""
-        if not args.dispatcher_mode:
-            if not self.controller_configuration.get('dispatcher_mode', None):
-                raise ControllerValidationException('No dispatcher_mode given either on the command line'
-                                                    ' or in the configuration file')
-            dispatcher_mode = self.controller_configuration['dispatcher_mode']
-        else:
-            dispatcher_mode = args.dispatcher_mode
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
-            raise ControllerValidationException(f'{dispatcher_mode} is not a supported mode.\n'
-                                                'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
-        self.assemble_input_samples()
-        ExpressionPipeline.main(self.configuration['expression_pipeline'], dispatcher_mode,
-                                self.resources, os.path.join(self.output_directory_path,stage_name),
-                                self.input_samples)
-
     def run_library_prep_pipeline(self, args):
         """
         This is how run_beers.py calls the library prep pipeline by itself.  This pipeline is complete and functional.
@@ -85,8 +53,13 @@ class Controller:
         output folder structure, which may have nested sub-directories in the case of a very large number of input
         molecule packets.  The step log directories are created.  The dispatcher is instantiated and finally, the
         dispatcher is run with the molecule_packet_file_paths provided.  Note that this pipeline stage assumes all
-        molecule packets are immediately available.  That will likely not be the case when the expression and library
-        prep pipelines are run together.  That will be a different run_beers.py call.
+        molecule packets are immediately available.
+
+        Note that the molecule packets output from this procedure have been pared down in size according to the
+        flowcell retention percentage specified in the configuration file.  This is a final process after all steps
+        complete and was done to reduce amount of disk space needed to store these packets.  In the subsequent
+        sequence pipeline, all molecular packets will populate the flow cell since the wash out has essentially
+        already been simulated here.
         :param args: command line arguements
         """
         stage_name = "library_prep_pipeline"
@@ -109,12 +82,11 @@ class Controller:
         """
         This is how run_beers.py calls the sequence pipeline by itself.  This pipeline is complete and functional.
         Controller attributes are set up.  All molecule packet file are located - note that these molecule packet files
-        are really the outputs of the various library prep processes as such one can point the input directory for the
-        sequence pipeline to the location of the files created by an earlier call to the library pipeline via the
+        are really the outputs of the various library prep processes and as such one can point the input directory for
+        the sequence pipeline to the location of the files created by an earlier call to the library pipeline via the
         configuration file.  In that way, the library prep pipeline and the sequence pipeline can be run one after the
         other.  However, here again, the sequence pipeline assumes all molecule packets needed for processing are
-        already in place.  That will not necessarily be the case when the library_prep_and_sequence pipeline is called
-        as the molecule packets and subsequent cluster packets may be handled individually.
+        already in place.
 
         This pipeline stage is more elaborate than that of the library prep pipeline because it handles flowcell
         loading and FASTQ reporting.  Both of these processes are handled by the controller since a knowledge of all
@@ -122,19 +94,19 @@ class Controller:
 
         Here too, the data directory path and the number of packets to be processed are used to fully develop the
         output folder structure, which again may have nested sub-directories in the case of a very large number of
-        input molecule packets.  Then each molecule packet is loaded in turn onto the flowcell.  Those molecules that
-        are retained by the flowcell are located by flowcell coordinates and returned as clusters bundled into a
-        cluster packet.  Those cluster packets are then serialized into a gzip file located inside the controller
-        data folder in the output directory.  Note that this is really intermediate data that will be fed into the
-        sequence pipeline stage proper.
+        input molecule packets.  Then each molecule packet is loaded in turn onto the flowcell.  Those molecules to be
+        washed out have already been so in the prior pipeline step.  These molecules are located by flowcell coordinates
+        and returned as clusters bundled into a cluster packet.  Those cluster packets are then serialized into a gzip
+        file located inside the controller data folder in the output directory.  Note that this is really intermediate
+        data that will be fed into the sequence pipeline stage proper.
 
         Finally as with the library prep pipeline, the data and log output directories are identified and the data
         directory and number of packets to be processed are used to fully develop the output folder structure, which
         may have nested sub-directories in the case of a very large number of input cluster packets.  Again, the step
         log directories are created. An auditor is created with a path to an audit file and a list of the number of
         packet processes to expect.  The dispatcher is instantiated and finally, the dispatcher is run with the
-        cluster_packet_file_paths provided.  The auditor loops waiting under all sequence pipeline processes are
-        complete.  Once that happens the collected reads are formatted into 1 or 2 FASTQ files for each lane of the
+        cluster_packet_file_paths provided.  The auditor loops waiting until all sequence pipeline processes are
+        complete.  Once that happens, the collected reads are formatted into 1 or 2 FASTQ files for each lane of the
         flowcell used.
         :param args: The command line arguments
         """
@@ -192,7 +164,7 @@ class Controller:
         This helper method sets up a number of attributes and behaviors in the controller.  Stacktraces are suppressed
         and only user friendly errors are shown when the debugger is off (just a command line arg right now).  The full
         configuration file data and run id are salted away and the random seed is set.  The initial output folder
-        structure (excluding the subdirectory structure needed to accommodate large numbers of file) is created.  The
+        structure (excluding the subdirectory structure needed to accommodate large numbers of files) is created.  The
         output folder structure depends on the stage names.  Also, the controller log is started.
         :param args: The command line arguments
         :param stage_names: The stage names
@@ -228,7 +200,7 @@ class Controller:
                 raise ControllerValidationException('No dispatcher_mode given either on the command line'
                                                     ' or in the configuration file')
             dispatcher_mode = self.controller_configuration['dispatcher_mode']
-        if dispatcher_mode not in SUPPORTED_DISPATCHER_MODES:
+        if dispatcher_mode not in SUPPORTED_SCHEDULER_MODES:
             raise ControllerValidationException(f'{dispatcher_mode} is not a supported mode.\n'
                                                 'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         self.dispatcher = Dispatcher(self.run_id,
@@ -242,7 +214,7 @@ class Controller:
 
     def setup_flowcell(self):
         """
-        Instantiates the flowcell, valudates the flowcell parameters and attaches it to the controller.
+        Instantiates the flowcell, validates the flowcell parameters and attaches it to the controller.
         """
         self.flowcell = Flowcell(self.run_id, self.configuration, self.configuration[self.controller_name]['flowcell'])
         valid, msg = self.flowcell.validate()
@@ -252,8 +224,8 @@ class Controller:
     def retrieve_configuration(self, configuration_file_path):
         """
         Helper method to parse the configuration file given by the path info a dictionary attached to the controller
-        object.  For convenience, the portion of the configuration file that contains parametric data specific to the
-        controller is set to a separate dictionary also attached to the controller.
+        object.  For convenience, the portions of the configuration file that contains parametric data specific to the
+        controller and the resources are set to separate dictionaries also attached to the controller.
         :param configuration_file_path: The absolute file path of the configuration file
         """
         with open(configuration_file_path, "r+") as configuration_file:
@@ -294,7 +266,18 @@ class Controller:
         insufficient permissions to create the directory. Created in the level directly below the top level output
         directory, are folders named after the stage names provided (i.e., controller, library_prep_pipeline,
         sequence_pipeline) and beneath each of these are data and log folders.  Additional subdirectories are created
-        later to organize the numerous files exprected and avoid congestion.
+        later to organize the numerous files expected and avoid overloading any one directory.
+
+        Example of top level output folder structure:
+
+        lib_prep_results_run101
+            controller
+                data
+                logs
+            library_prep_pipline
+                data
+                logs
+
         :param stage_names: names of folders directly below the top level output directory (e.g., controller,
         library_prep)
         """
@@ -366,48 +349,12 @@ class Controller:
                       f" gender specific chromosomes will be processed for this sample.")
         return valid
 
-
-
-    def assemble_input_samples(self):
-        """
-        Creates a list of sample objects, attached to the controller, that represent those samples that are to be
-        run in the expression pipeline.  If not running from the expression pipeline, this method is not used since
-        the sample data is already contained in each packet.  For each sample, a unique combination of adapter sequences
-        are provided.  The sample name is assumed to be that of the input filename without the extension.  Gender may
-        or may not be provided in the configuration data.  If not set, the gender will be inferred by the expression
-        pipeline.
-        """
-        input_directory_path = self.configuration["expression_pipeline"]["input"]["directory_path"]
-        self.input_samples = []
-        # TODO handle the situation where the adapter kit is not specified or not found
-        # The kit is really only needed for library prep.  So if the expression pipeline does not generate
-        # molecule packets, we could postpone this step until when that assembly occurs.  But we don't want to
-        # make the addition to thousands of molecule packets after the fact.
-        adapter_kit_file_path = os.path.join(self.resources['resources_folder'], self.resources['adapter_kit'])
-        AdapterGenerator.generate_adapters(adapter_kit_file_path)
-        for sample_name, input_sample in self.configuration['expression_pipeline']["input"]["data"].items():
-            #sample_name = os.path.splitext(input_sample["filenames"][0])[0]
-            fastq_file_paths = [os.path.join(input_directory_path, filename)
-                                       for filename in input_sample["fastq_files"]]
-            bam_file_path = os.path.join(input_directory_path, input_sample["bam_file"]) if "bam_file" in input_sample else ''
-            gender = input_sample.get("gender", None)
-            if gender:
-                gender = gender.lower()
-            self.input_samples.append(
-                Sample(Sample.next_sample_id,
-                       sample_name,
-                       fastq_file_paths,
-                       AdapterGenerator.get_unique_adapter_sequences(),
-                       bam_file_path=bam_file_path,
-                       gender=gender))
-            Sample.next_sample_id += 1
-
     def create_step_log_directories(self, file_count, stage_name, log_directory_path):
         """
         The number and type of steps in either the library_prep pipeline or the sequence pipeline will depend upon the
         user.  That information is provided in the configuration data.  Since there will be as many step logs as there
         are packets to process, they too must be organized into subdirectories.  We also need the same subdirectory
-        organization for the standard out, stadard error and pipeline log file.  So that is created here along with
+        organization for the standard out, standard error and pipeline log file.  So that is created here along with
         the subdirectory structure for each step discovered in the configuration data for the given stage.
         :param file_count: number of files to house in the subdirectory structure (i.e., number of pipeline processes
         to run)

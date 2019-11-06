@@ -2,7 +2,7 @@ import subprocess
 import os
 import re
 import json
-from beers.utilities.general_utils import GeneralUtils
+from beers_utils.general_utils import GeneralUtils
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sequence.sequence_pipeline import SequencePipeline
 from multiprocessing import Pool
@@ -16,6 +16,8 @@ class Dispatcher:
     """
 
     packet_pattern = re.compile(r'^.*_pkt(\d+).*$')
+
+    _ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def __init__(self,
                  run_id,
@@ -76,7 +78,7 @@ class Dispatcher:
         :return: The absolute file paths to the input packets
         """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        stage_process = f"{CONSTANTS.ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
+        stage_process = f"{Dispatcher._ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
             command = f"{stage_process} " \
                       f"-s {self.seed} " \
@@ -109,7 +111,7 @@ class Dispatcher:
         :param packet_file_paths:  The absolute file paths to the input packets
         """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        stage_process = f"{CONSTANTS.ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
+        stage_process = f"{Dispatcher._ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
         for packet_file_path in packet_file_paths:
             stdout_file_path, stderr_file_path, packet_id = self.get_stdout_and_stderr_subdirectories(packet_file_path)
             command = f"bsub -o {stdout_file_path} -e {stderr_file_path} " \
