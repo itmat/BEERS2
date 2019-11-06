@@ -3,3 +3,15 @@ data
 .DS_Store
 __pycache__
 *.pyc
+*.html
+beers/personal/
+resources/index_files/
+venv*
+*.egg-info
+config/*_config.json
+Log.out
+cris_*
+
+*.swp
+
+CAMPAREE/doc/_build/

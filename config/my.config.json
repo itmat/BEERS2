@@ -2,8 +2,8 @@
   "controller": {
     "run_id": null,
     "seed": 100,
-    "dispatcher_mode": "lsf",
-    "output_directory_path": "/home/thobr/BEERS2.0/data/",
+    "dispatcher_mode": "serial",
+    "output_directory_path": "/project/itmatlab/for_tom/BEERS2.0_dev/BEERS2.0/data/pipeline_results",
     "flowcell": {
       "flowcell_geometry": {
         "min_x": 1012,
@@ -22,35 +22,17 @@
     "input": {
       "directory_path": "/project/itmatlab/for_cris/Test_Mouse_Samples/data/expression/GRCm38/",
       "data": {
-            "ILB1": {
-                "fastq_files":[ "FGC1130_Illumina_ILB_9577_s_6_1_GCCAAT.fastq.gz", "FGC1130_Illumina_ILB_9577_s_6_2_GCCAAT.fastq.gz" ],
-                "gender":"male"
-            },
-            "ILB2": {
-                "fastq_files":[ "FGC1130_Illumina_ILB_9578_s_6_1_CAGATC.fastq.gz", "FGC1130_Illumina_ILB_9578_s_6_2_CAGATC.fastq.gz"],
-                "gender":"male"
-            },
-            "ILB3": {
-                "fastq_files":["FGC1130_Illumina_ILB_9583_s_6_1_ATGTCA.fastq.gz", "FGC1130_Illumina_ILB_9583_s_6_2_ATGTCA.fastq.gz"],
-                "gender":"male"
-            },
-            "UNT1": {
-                "fastq_files":["FGC1130_Illumina_UNT_9576_s_6_1_ACAGTG.fastq.gz", "FGC1130_Illumina_UNT_9576_s_6_2_ACAGTG.fastq.gz"],
-                "gender":"male"
-            },
-            "UNT2": {
-                "fastq_files":["FGC1130_Illumina_UNT_9580_s_6_1_AGTCAA.fastq.gz", "FGC1130_Illumina_UNT_9580_s_6_2_AGTCAA.fastq.gz"],
-                "gender":"male"
-            },
-            "UNT3": {
-                "fastq_files":["FGC1130_Illumina_UNT_9584_s_6_1_CCGTCC.fastq.gz", "FGC1130_Illumina_UNT_9584_s_6_2_CCGTCC.fastq.gz"],
-                "gender":"male"
-            }
+        "ILB_9577":
+        {
+          "filenames": ["Small_1mil_reads.FGC1130_Illumina_ILB_9577_s_6_1_GCCAAT.fastq.gz", "Small_1mil_reads.FGC1130_Illumina_ILB_9577_s_6_2_GCCAAT.fastq.gz"],
+          "gender": "male"
+        },
+        "UNT_9576":
+        {
+          "filenames": ["Small_1mil_reads.FGC1130_Illumina_UNT_9576_s_6_1_ACAGTG.fastq.gz", "Small_1mil_reads.FGC1130_Illumina_UNT_9576_s_6_2_ACAGTG.fastq.gz"],
+          "gender": "male"
+        }
       }
-    },
-    "output": {
-        "type": "molecule_file",
-        "molecule_count": 50000
     },
     "steps": [
       {
@@ -94,13 +76,6 @@
       },
       {
         "step_name": "update_annotation_for_genome.UpdateAnnotationForGenomeStep"
-      },
-      {
-          "step_name": "intron_quant.IntronQuantificationStep",
-          "parameters": {
-            "forward_read_is_sense": false,
-            "flank_size": 1500
-          }
       }
     ]
   },
@@ -196,10 +171,11 @@
     }
   },
   "resources":{
-    "species_model": "Mus_musculus.GRCm38",
-    "reference_genome_filename": "Mus_musculus.GRCm38.dna.oneline_seqs.fa",
+    "species_model": "GRCm38",
+    "reference_genome_filename": "Mus_musculus.GRCm38.dna.oneline_seqs.fa.gz",
     "chr_ploidy_filename": "Mus_musculus.GRCm38.chr_ploidy.txt",
     "annotation_filename": "Mus_musculus.GRCm38.93.annotation.txt",
     "adapter_kit": "TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa"
   }
+
 }

@@ -1,0 +1,2 @@
+class BeersException(Exception):
+    pass

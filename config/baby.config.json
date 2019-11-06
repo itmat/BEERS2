@@ -20,32 +20,20 @@
   },
   "expression_pipeline": {
     "input": {
-      "directory_path": "/project/itmatlab/for_cris/Test_Mouse_Samples/data/expression/GRCm38/",
+      "directory_path": "/project/itmatlab/for_cris/Baby.Test_mouse_samples/data/expression/baby_genome.mm9/",
       "data": {
-            "ILB1": {
-                "fastq_files":[ "FGC1130_Illumina_ILB_9577_s_6_1_GCCAAT.fastq.gz", "FGC1130_Illumina_ILB_9577_s_6_2_GCCAAT.fastq.gz" ],
-                "gender":"male"
-            },
-            "ILB2": {
-                "fastq_files":[ "FGC1130_Illumina_ILB_9578_s_6_1_CAGATC.fastq.gz", "FGC1130_Illumina_ILB_9578_s_6_2_CAGATC.fastq.gz"],
-                "gender":"male"
-            },
-            "ILB3": {
-                "fastq_files":["FGC1130_Illumina_ILB_9583_s_6_1_ATGTCA.fastq.gz", "FGC1130_Illumina_ILB_9583_s_6_2_ATGTCA.fastq.gz"],
-                "gender":"male"
-            },
-            "UNT1": {
-                "fastq_files":["FGC1130_Illumina_UNT_9576_s_6_1_ACAGTG.fastq.gz", "FGC1130_Illumina_UNT_9576_s_6_2_ACAGTG.fastq.gz"],
-                "gender":"male"
-            },
-            "UNT2": {
-                "fastq_files":["FGC1130_Illumina_UNT_9580_s_6_1_AGTCAA.fastq.gz", "FGC1130_Illumina_UNT_9580_s_6_2_AGTCAA.fastq.gz"],
-                "gender":"male"
-            },
-            "UNT3": {
-                "fastq_files":["FGC1130_Illumina_UNT_9584_s_6_1_CCGTCC.fastq.gz", "FGC1130_Illumina_UNT_9584_s_6_2_CCGTCC.fastq.gz"],
-                "gender":"male"
-            }
+        "9576":
+        {
+          "fastq_files": ["9576_forward.fq.gz", "9576_reverse.fq.gz"],
+          "bam_file": "aligned/baby_sample1.bam",
+          "gender": "male"
+        },
+        "9577":
+        {
+          "fastq_files": ["9577_forward.fq.gz", "9577_reverse.fq.gz"],
+          "bam_file": "aligned/baby_sample2.bam",
+          "gender": "male"
+        }
       }
     },
     "output": {
@@ -192,14 +180,14 @@
       }
     ],
     "input": {
-      "directory_path": "/project/itmatlab/for_cris/Test_Mouse_Samples/resources/index_files/GRCm38/"
+      "directory_path": "/project/itmatlab/for_cris/Baby.Test_mouse_samples/resources/index_files/baby_genome.mm9/"
     }
   },
   "resources":{
-    "species_model": "Mus_musculus.GRCm38",
-    "reference_genome_filename": "Mus_musculus.GRCm38.dna.oneline_seqs.fa",
-    "chr_ploidy_filename": "Mus_musculus.GRCm38.chr_ploidy.txt",
-    "annotation_filename": "Mus_musculus.GRCm38.93.annotation.txt",
+    "species_model": "baby_genome.mm10",
+    "reference_genome_filename": "baby_genome.mm10.oneline_seqs.fa",
+    "chr_ploidy_filename": "baby_genome.mm10.chr_ploidy.txt",
+    "annotation_filename": "annotations",
     "adapter_kit": "TruSeq_adapter_sequences_with_barcodes.MiSeq_HiSeq2000_HiSeq2500.fa"
   }
 }
