@@ -1,8 +1,8 @@
 [submodule "BEERS_UTILS"]
 	path = BEERS_UTILS
 	url = git@github.com:itmat/BEERS_UTILS.git
-	branch = master
+	branch = main
 [submodule "CAMPAREE"]
 	path = CAMPAREE
 	url = git@github.com:itmat/CAMPAREE.git
-	branch = master
+	branch = main
