@@ -3,6 +3,7 @@ import time
 import numpy as np
 import termcolor
 import os
+import shutil
 import sys
 import traceback
 import copy
@@ -182,7 +183,7 @@ class Controller:
         self.set_run_id(args.run_id)
         Validator.validate(stage_names, self.configuration)
         self.plant_seed()
-        self.create_output_folder_structure(stage_names)
+        self.create_output_folder_structure(stage_names, overwrite=args.force_overwrite)
         self.create_controller_log()
 
     def setup_dispatcher(self, dispatcher_mode, stage_name, input_directory_path, output_directory_path, nested_depth):
@@ -263,7 +264,7 @@ class Controller:
         self.seed = self.controller_configuration.get('seed', GeneralUtils.generate_seed())
         np.random.seed(self.seed)
 
-    def create_output_folder_structure(self, stage_names):
+    def create_output_folder_structure(self, stage_names, overwrite=False):
         """
         Use the provided stage names, the run id and the top level output directory path from the configuration data
         to create the top level directory of a preliminary directory structure.  The attempt fails if either the top
@@ -297,8 +298,12 @@ class Controller:
                 raise ControllerValidationException(f"The output directory path, {self.output_directory_path},"
                                                     f" is not a directory.")
             if os.listdir(self.output_directory_path):
-                raise ControllerValidationException(f"The output directory path, {self.output_directory_path},"
-                                                    f" must be empty.")
+                if overwrite:
+                    print(f"Clearing output directory {self.output_directory_path}")
+                    shutil.rmtree(self.output_directory_path)
+                else:
+                    raise ControllerValidationException(f"The output directory path, {self.output_directory_path},"
+                                                        f" must be empty.")
         for stage_name in stage_names:
             os.makedirs(os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME),
                         mode=0o0755, exist_ok=True)
