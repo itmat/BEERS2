@@ -25,7 +25,7 @@ class AdapterLigationStep:
                 cigar = f"{molecule.cigar or len(sequence)}M"
                 molecule.sequence = adapter_5_prime + sequence + adapter_3_prime
                 molecule.cigar = f"{len(adapter_5_prime)}S{cigar}{len(adapter_3_prime)}S"
-                molecule.source_cigar = f"{len(adapter_5_prime)}S{molecule.source_cigar}{len(adapter_3_prime)}S"
+                molecule.source_cigar = f"{len(adapter_5_prime)}S{molecule.source_cigar}{len(adapter_3_prime)}S" #TODO: this may be incorrect
                 log_file.write(molecule.log_entry())
         return molecule_packet
 

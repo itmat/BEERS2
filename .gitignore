@@ -13,5 +13,6 @@ Log.out
 cris_*
 
 *.swp
+doc/_build/
 
 CAMPAREE/doc/_build/
