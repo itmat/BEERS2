@@ -65,6 +65,7 @@ class Controller:
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
+        # TODO: allow the specific molecule files to be set explicitly in configuration
         molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.txt', recursive=True)
         file_count = len(molecule_packet_file_paths)
         data_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
@@ -229,7 +230,11 @@ class Controller:
         :param configuration_file_path: The absolute file path of the configuration file
         """
         with open(configuration_file_path, "r+") as configuration_file:
-            self.configuration = json.load(configuration_file)
+            try:
+                self.configuration = json.load(configuration_file)
+            except json.decoder.JSONDecodeError:
+                print(f"ERROR: JSON Error reading in {configuration_file_path}:")
+                raise
         self.controller_configuration = self.configuration[self.controller_name]
         self.resources = self.configuration[self.resources_name]
         self.resources['resources_folder'] = os.path.join(CONSTANTS.ROOT_DIR, "resources")
