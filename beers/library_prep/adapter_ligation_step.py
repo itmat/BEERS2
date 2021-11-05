@@ -17,7 +17,7 @@ class AdapterLigationStep:
     def execute(self, molecule_packet):
         print(f"{self.name} starting")
         sample = molecule_packet.sample
-        adapter_5_prime, adapter_3_prime = sample.adapter_sequences[0], sample.adapter_sequences[1]
+        adapter_5_prime, adapter_3_prime = self.parameters['sample_to_adapters'][sample.sample_id]
         with open(self.log_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
