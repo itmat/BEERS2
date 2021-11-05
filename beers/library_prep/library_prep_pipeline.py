@@ -191,7 +191,7 @@ class LibraryPrepPipeline:
         """
         np.random.seed(int(seed))
         configuration = json.loads(configuration)
-        molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path, molecule_packet_filename)
+        molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, directory_structure,
                                                     molecule_packet)
         library_prep_pipeline.execute(configuration['flowcell_retention_percentage']/100)
