@@ -9,6 +9,7 @@ parser.add_argument('-i', '--input_directory', required=True, help='Path to inpu
 parser.add_argument('-o', '--output_directory', required=True, help='Path to output directory.')
 parser.add_argument('-p', '--molecule_packet_filename', required=True, help="Serialized molecule packet filename.")
 parser.add_argument('-d', '--directory_structure', required=True, help="Structure of data and logs directories.")
+parser.add_argument('--packet_id', required=True, help="ID of the packet to be used (either int or None if using id from the packet")
 args = parser.parse_args()
 LibraryPrepPipeline.main(args.seed, args.config, args.input_directory, args.output_directory,
-                         args.directory_structure, args.molecule_packet_filename)
+                         args.directory_structure, args.molecule_packet_filename, args.packet_id)

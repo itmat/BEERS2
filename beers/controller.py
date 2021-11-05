@@ -69,6 +69,7 @@ class Controller:
         # TODO: allow the specific molecule files to be set explicitly in configuration
         molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.txt', recursive=True)
         file_count = len(molecule_packet_file_paths)
+        packet_ids = list(range(file_count))
         data_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
         log_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
         directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory)
@@ -78,7 +79,7 @@ class Controller:
                               input_directory_path,
                               os.path.join(self.output_directory_path, stage_name),
                               directory_structure)
-        self.dispatcher.dispatch(molecule_packet_file_paths)
+        self.dispatcher.dispatch(molecule_packet_file_paths, packet_ids)
 
     def run_sequence_pipeline(self, args):
         """
@@ -147,7 +148,7 @@ class Controller:
                               intermediate_directory_path,
                               os.path.join(self.output_directory_path, stage_name),
                               directory_structure)
-        self.dispatcher.dispatch(cluster_packet_file_paths)
+        self.dispatcher.dispatch(cluster_packet_file_paths, molecule_packet_ids)
         while not auditor.is_processing_complete():
             time.sleep(1)
         for lane in self.flowcell.lanes_to_use:
