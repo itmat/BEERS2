@@ -176,7 +176,7 @@ class LibraryPrepPipeline:
 
     @staticmethod
     def main(seed, configuration, input_directory_path, output_directory_path,
-             directory_structure, molecule_packet_filename):
+             directory_structure, molecule_packet_filename, packet_id):
         """
         This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
         directory containing the relevant parts of the user's configuration file, unmarshalls a molecule packet from
@@ -188,10 +188,12 @@ class LibraryPrepPipeline:
         :param output_directory_path: top level output directory path for this pipeline stage
         :param directory_structure: instructions for creating the scaffolding needed to house the pipeline data and logs
         :param molecule_packet_filename: the file from which to unmarshall the molecule packet
+        :param packet_id: id number to assign the packet
         """
         np.random.seed(int(seed))
         configuration = json.loads(configuration)
-        molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename)
+        packet_id = None if packet_id == 'None' else int(packet_id)
+        molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id)
         library_prep_pipeline = LibraryPrepPipeline(configuration, output_directory_path, directory_structure,
                                                     molecule_packet)
         library_prep_pipeline.execute(configuration['flowcell_retention_percentage']/100)
