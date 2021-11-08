@@ -1,5 +1,6 @@
 from beers_utils.molecule import Molecule
 from beers.utilities.library_prep_utils import Utils
+import beers_utils.cigar
 
 
 class FirstStrandPrimeStep:
@@ -13,7 +14,7 @@ class FirstStrandPrimeStep:
     def execute(self, molecule_packet):
         """
         Starting with a basic implementation that assumes all fragments get
-        primed perfectly at their 3' ends by random hexamers.
+        primed perfectly at their 5' ends by random hexamers.
         """
         print("First strand prime step starting")
         primer_length = 6
@@ -21,8 +22,11 @@ class FirstStrandPrimeStep:
         with open(self.history_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
+                if len(molecule.sequence) < primer_length:
+                    # Too short to prime
+                    continue
                 primer_sequence = Utils.create_complement_strand(molecule.sequence[-primer_length:])
-                primer_start = len(molecule) - primer_length
+                primer_start = 1
                 primer_num = 1
                 primer_molecule = Molecule(primer_num, primer_sequence, primer_start)
                 molecule.bind(primer_molecule)

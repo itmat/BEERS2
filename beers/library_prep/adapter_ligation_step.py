@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 from timeit import default_timer as timer
 from beers.utilities.adapter_generator import AdapterGenerator
+import beers_utils.cigar
 
 
 class AdapterLigationStep:
@@ -22,10 +23,12 @@ class AdapterLigationStep:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
                 sequence = molecule.sequence
-                cigar = f"{molecule.cigar or len(sequence)}M"
+                cigar = molecule.cigar or f"{len(sequence)}M"
                 molecule.sequence = adapter_5_prime + sequence + adapter_3_prime
                 molecule.cigar = f"{len(adapter_5_prime)}S{cigar}{len(adapter_3_prime)}S"
-                molecule.source_cigar = f"{len(adapter_5_prime)}S{molecule.source_cigar}{len(adapter_3_prime)}S" #TODO: this may be incorrect
+                new_source_start, new_source_cigar = beers_utils.cigar.chain(molecule.start, molecule.cigar, molecule.source_start, molecule.source_cigar)
+                molecule.source_start = new_source_start
+                molecule.source_cigar = new_source_cigar
                 log_file.write(molecule.log_entry())
         return molecule_packet
 
