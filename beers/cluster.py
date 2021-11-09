@@ -9,6 +9,8 @@ from beers_utils.molecule import Molecule
 from beers_utils.constants import CONSTANTS
 
 
+# BaseCounts - tuple of counts for each nucleotide G,A,T,C a numpy
+#              array of count values, one per base of the sequence
 BaseCounts = namedtuple('BaseCounts', ["G", "A", "T", "C"])
 
 
@@ -62,11 +64,12 @@ class Cluster:
         self.quality_scores = quality_scores or []
         self.called_sequences = called_sequences or []
         self.called_barcode = called_barcode
-        encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
-        counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"}
         if base_counts:
             self.base_counts = base_counts
         else:
+            # From sequence, we start with 1 count for each base in the sequence
+            encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
+            counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"}
             self.base_counts = BaseCounts(counts['G'], counts['A'], counts['T'], counts['C'])
         self.forward_is_5_prime = forward_is_5_prime
 
@@ -244,7 +247,7 @@ class Cluster:
             output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\n"
         with closing(StringIO()) as counts:
             for index in range(len(self.molecule.sequence)):
-                [counts.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
+                counts.write("\t".join([str(base_count) for base_count in self.get_base_counts_by_position(index)]))
                 counts.write("\n")
             output += counts.getvalue()
         return output
@@ -257,7 +260,7 @@ class Cluster:
         :param data: The string data containing the serialized version of the object
         :return The Cluster object created from the data provided.
         """
-        data = data.rstrip()
+        data = data.rstrip('\n')
         called_sequences = []
         quality_scores = []
         g_counts = []
@@ -266,19 +269,19 @@ class Cluster:
         c_counts = []
         for line_number, line in enumerate(data.split("\n")):
             if line.startswith("##"):
-                called_sequence, quality_score = line[2:].rstrip().split("\t")
+                called_sequence, quality_score = line[2:].rstrip('\n').split("\t")
                 called_sequences.append(called_sequence)
                 quality_scores.append(quality_score)
             elif line.startswith("#"):
                 if line_number == 0:
                     cluster_id, run_id, molecule_count, diameter, lane, forward_is_5_prime, called_barcode \
-                        = line[1:].rstrip().split("\t")
+                        = line[1:].rstrip('\n').split("\t")
                 if line_number == 1:
-                    coordinates = LaneCoordinates.deserialize(line[1:].rstrip())
+                    coordinates = LaneCoordinates.deserialize(line[1:].rstrip('\n'))
                 if line_number == 2:
-                    molecule = Molecule.deserialize(line[1:].rstrip())
+                    molecule = Molecule.deserialize(line[1:].rstrip('\n'))
             else:
-                g_count, a_count, t_count, c_count = line.rstrip().split("\t")
+                g_count, a_count, t_count, c_count = line.rstrip('\n').split("\t")
                 g_counts.append(int(g_count))
                 a_counts.append(int(a_count))
                 t_counts.append(int(t_count))

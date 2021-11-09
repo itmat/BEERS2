@@ -69,7 +69,7 @@ class ClusterPacket:
         sample = None
         with gzip.open(file_path, 'rb') as obj_file:
             for line_number, line in enumerate(obj_file):
-                line = line.rstrip()
+                line = line.rstrip(b'\n')
                 if line_number == 0:
                     cluster_packet_id = int(line[1:].decode())
                 elif line_number == 1:
