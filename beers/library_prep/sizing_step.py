@@ -19,12 +19,13 @@ class SizingStep:
 
     name = "Sizing Step"
 
-    def __init__(self, step_log_file_path, parameters):
+    def __init__(self, step_log_file_path, parameters, global_config):
         """
         Initializes the step with a file path to the step log and a dictionary of parameters.
         :param step_log_file_path: location of step logfile
         :param parameters: dictionary of parameters, all of which are optional.  However either sharp cutoff parameters
         or mean/std dev parameters are required.
+        :param global_config: dictionary of step-independent configuration settings
         """
         self.idealized = False
         self.log_filename = step_log_file_path
@@ -40,6 +41,7 @@ class SizingStep:
             self.normalize_coefficient = 1 / mean_prob
             self.lower_breakpoint = self.mean_length + 0.25 * self.sd_length
             self.upper_breakpoint = self.mean_length + 6 * self.sd_length
+        self.global_config = global_config
         print("Sizing step instantiated")
 
     def execute(self, molecule_packet):

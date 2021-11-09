@@ -16,17 +16,19 @@ class BridgeAmplificationStep:
 
     name = "Bridge Amplification Step"
 
-    def __init__(self, step_log_file_path, parameters):
+    def __init__(self, step_log_file_path, parameters, global_config):
         """
         Initializes the step with a file path to the step log and a dictionary of parameters.  Missing parameters that
         control non-idealized behavior are replaced with default values that produce idealized step behavior.
         :param step_log_file_path: location of step logfile
         :param parameters: dictionary of parameters.  Any required parameters not provided are identified by the
         validate method.
+        :param global_config: dictionary of general parameters
         """
         self.log_filename = step_log_file_path
         self.cycles = parameters.get("bridge_amplification_cycles")
         self.snp_rate = parameters.get("bridge_amplification_snp_percentage", 0)/100
+        self.global_config = global_config
         print(f"{BridgeAmplificationStep.name} instantiated")
 
 

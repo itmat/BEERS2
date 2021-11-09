@@ -17,7 +17,7 @@ class PCRAmplificationStep:
     # a virtually runaway population of molecule objects.
     MAX_CYCLE_NUMBER = 16
 
-    def __init__(self, step_log_file_path, parameters):
+    def __init__(self, step_log_file_path, parameters, global_config):
         """
         Instantiates the step with a log file name and a list of parameters.  For PCR Amplification, the only
         parameter at this point is the number of cycles.
@@ -26,6 +26,7 @@ class PCRAmplificationStep:
         """
         self.log_filename = step_log_file_path
         self.number_cycles = parameters.get("number_cycles")
+        self.global_config = global_config
 
         # The sample id counter maintains a counter for each of the molecules input into this step so that
         # unique ids may be assigned to those molecule's descendants.

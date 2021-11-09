@@ -21,7 +21,7 @@ class FragmentStep:
 
     name = "Fragment Step"
 
-    def __init__(self, logfile, parameters):
+    def __init__(self, logfile, parameters, global_config):
         """
         Make fragmentation step that with rate of fragmentation lambda_ running for run_time
 
@@ -31,6 +31,7 @@ class FragmentStep:
                 at positions k and k+1 of the fragment that goes from (start,end) in molecule
         runtime -- length of running the experiment (Has the inverse units of lambda_)
         """
+        self.global_config = global_config
         self.history_filename = logfile
         self.method = parameters["method"]
         self.lambda_ = parameters["lambda"]
@@ -46,9 +47,11 @@ class FragmentStep:
         print("Fragment Step acting on sample")
         sample = molecule_packet.molecules
         if self.method == "uniform":
-            fragment_locations =  uniform_compute_fragment_locations(sample, self.lambda_, self.runtime)
+            fragment_locations =  compute_fragment_locations_uniform(sample, self.lambda_, self.runtime)
         elif self.method == "beta":
             fragment_locations = compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime)
+        else:
+            raise NotImplementedError(f"Unknown fragmentation method {self.method}")
 
         result = [sample[k].make_fragment(start+1,end) for (start, end, k) in fragment_locations]
 
@@ -144,7 +147,7 @@ def sample_without_replacement(n, k):
     # Sort it since list(set) will give a sort-of arbitrary but not random order
     return sorted(sample)
 
-def uniform_compute_fragment_locations(molecules, lambda_, runtime):
+def compute_fragment_locations_uniform(molecules, lambda_, runtime):
     """uniform fragmentation with a rate lambda_ parameter
     All bonds between adjacent bases are equally likely to break
 

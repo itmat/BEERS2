@@ -25,6 +25,7 @@ class Dispatcher:
                  seed,
                  stage_name,
                  configuration,
+                 configuration_file_path,
                  input_directory_path,
                  output_directory_path,
                  directory_structure):
@@ -40,6 +41,7 @@ class Dispatcher:
         sequence_pipeline.  The stage_name is used also to build the name of the executable process that resides in
         the bin directory.
         :param configuration: the configuration json data from the configuration file.
+        :param configuration_file_path: the path to the configuration json data from the configuration file.
         :param input_directory_path: The directory containing the molecule/cluster packets to feed into the pipeline.
         :param output_directory_path: The directory containing the output data from the pipeline
         :param directory_structure: Because of the number of files that can possibly be generated, files are
@@ -53,6 +55,7 @@ class Dispatcher:
         self.seed = seed
         self.stage_name = stage_name
         self.configuration = configuration
+        self.configuration_file_path = configuration_file_path
         self.input_directory_path = input_directory_path
         self.output_directory_path = output_directory_path
         self.log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -65,9 +68,8 @@ class Dispatcher:
         :param packet_file_paths: The absolute file paths to the input packets
         :param packet_ids: List of IDs to assign the molecule packets (if None, use IDs from the packets themselves)
         """
-        if not packet_ids:
-            packet_ids = [None for path in packet_file_paths]
-
+        if packet_ids == None:
+            packet_ids = [None for f in packet_file_paths]
         if self.dispatcher_mode == 'multicore':
             self.dispatch_multicore(packet_file_paths, packet_ids)
         elif self.dispatcher_mode == 'lsf':
@@ -75,7 +77,7 @@ class Dispatcher:
         else:
             self.dispatch_serial(packet_file_paths, packet_ids)
 
-    def dispatch_serial(self, packet_file_paths, packet_ids):
+    def dispatch_serial(self, packet_file_paths, packet_ids=None):
         """
         This method dispatches synchronously so that the processing is done serially.
         :param packet_file_paths:
@@ -84,14 +86,16 @@ class Dispatcher:
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"{Dispatcher._ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
         for packet_id, packet_file_path in zip(packet_ids, packet_file_paths):
+            packet_id = f"--packet_id {packet_id} " if packet_id != None else ''
             command = f"{stage_process} " \
                       f"-s {self.seed} " \
-                      f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
+                      f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
+                      f"-i {self.input_directory_path} -o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure} " \
-                      f"--packet_id {packet_id} "
+                      f"{packet_id}"
             subprocess.call(command, shell=True)
 
-    def dispatch_multicore(self, packet_file_paths, packet_ids):
+    def dispatch_multicore(self, packet_file_paths, packet_ids=None):
         """
         This method dispatches to multiple cores.  The process pool points to the main static method of either the
         LibraryPrepPipeline or the SequencePipeline depending upon the stage name provided at the time of
@@ -99,7 +103,7 @@ class Dispatcher:
         :param packet_file_paths:  The absolute file paths to the input packets
         """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        data = [(self.seed, stage_configuration, self.input_directory_path, self.output_directory_path,
+        data = [(self.seed, stage_configuration, self.configuration_file_path, self.input_directory_path, self.output_directory_path,
                  self.directory_structure, packet_file_path, packet_id)
                 for packet_id, packet_file_path in zip(packet_ids, packet_file_paths)]
         pool = Pool(processes=2)# TODO: configure the number of processes
@@ -108,7 +112,7 @@ class Dispatcher:
         else:
             pool.starmap(SequencePipeline.main, data)
 
-    def dispatch_lsf(self, packet_file_paths):
+    def dispatch_lsf(self, packet_file_paths, packet_ids=None):
         """
         This method dispatches to various nodes, one job for each packet as indicated by the packet file path list.  The
         job name is a combination of the run id, the stage name and the packet id, which should hopefully insure
@@ -118,14 +122,16 @@ class Dispatcher:
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"{Dispatcher._ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
         for packet_id, packet_file_path in zip(packet_ids, packet_file_paths):
+            packet_id = f"--packet_id {packet_id} " if packet_id != None else ''
             stdout_file_path, stderr_file_path, packet_id = self.get_stdout_and_stderr_subdirectories(packet_file_path)
             command = f"bsub -o {stdout_file_path} -e {stderr_file_path} " \
                       f"-J run{self.run_id}_{self.stage_name}_pkt{packet_id} " \
                       f"{stage_process} " \
                       f"-s {self.seed} " \
-                      f"-c '{stage_configuration}' -i {self.input_directory_path} -o {self.output_directory_path} " \
+                      f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
+                      f"-i {self.input_directory_path} -o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure} " \
-                      f"--packet_id {packet_id}"
+                      f"{packet_id}"
             subprocess.call(command, shell=True)
 
     @staticmethod

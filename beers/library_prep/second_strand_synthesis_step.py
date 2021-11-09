@@ -7,8 +7,10 @@ class SecondStrandSynthesisStep:
 
     name = "Second Strand Synthesis Step"
 
-    def __init__(self, log_file, parameters):
+    def __init__(self, log_file, parameters, global_config):
         self.history_filename = log_file
+        self.parameters = parameters
+        self.global_config = global_config
         print("Second Strand cDNA Synthesis Step instantiated.")
 
     def execute(self, molecule_packet):

@@ -10,15 +10,16 @@ class AdapterLigationStep:
 
     name = "Adapter Ligation Step"
 
-    def __init__(self, step_log_file_path, parameters):
+    def __init__(self, step_log_file_path, parameters, global_config):
         self.log_filename = step_log_file_path
         self.parameters = parameters
+        self.global_config = global_config
         print(f"{self.name} instantiated")
 
     def execute(self, molecule_packet):
         print(f"{self.name} starting")
         sample = molecule_packet.sample
-        adapter_5_prime, adapter_3_prime = self.parameters['sample_to_adapters'][sample.sample_id]
+        adapter_5_prime, adapter_3_prime = self.global_config['samples'][sample.sample_id]['adapters']
         with open(self.log_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:

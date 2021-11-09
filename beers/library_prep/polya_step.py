@@ -13,12 +13,13 @@ class PolyAStep:
 
     name = "PolyA Selection Step"
 
-    def __init__(self, step_log_file_path, parameters):
+    def __init__(self, step_log_file_path, parameters, global_config):
         """
         Initializes the step with a file path to the step log and a dictionary of parameters.  Idenalized defaults
         substitute for missing parameters.
         :param step_log_file_path: location of step logfile
         :param parameters: dictionary of parameters, all of which are optional.
+        :param global_config: dictionary of step-independent configuration settings
         """
         self.log_filename = step_log_file_path
         self.min_polya_tail_length = parameters.get("min_polya_tail_length", 40)
@@ -28,6 +29,7 @@ class PolyAStep:
         self.min_breakage_prob = parameters.get("min_breakage_prob", 0.0)
         self.max_breakage_prob = parameters.get("max_breakage_prob", 1.0)
         self.breakpoint_prob = parameters.get("breakpoint_prob", 0.0)
+        self.global_config = global_config
         print("Poly A selection step instantiated")
 
     def execute(self, molecule_packet):

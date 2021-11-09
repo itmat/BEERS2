@@ -39,6 +39,7 @@ class Controller:
         self.run_id = None
         self.dispatcher = None
         self.configuration = None
+        self.configuration_file_path = None
         self.resources = None
         self.controller_configuration = None
         self.flowcell = None
@@ -127,8 +128,8 @@ class Controller:
         directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory_path)
         self.setup_flowcell()
         for molecule_packet_filename in molecule_packet_file_paths:
-            molecule_packet = MoleculePacket.get_serialized_molecule_packet(input_directory_path,
-                                                                            molecule_packet_filename)
+            print(f"Loading {molecule_packet_filename} to flowcell")
+            molecule_packet = MoleculePacket.deserialize(molecule_packet_filename)
             cluster_packet = self.flowcell.load_flowcell(molecule_packet)
             cluster_packet_filename = f"cluster_packet_start_pkt{cluster_packet.cluster_packet_id}.gzip"
             subdirectory_list = \
@@ -148,15 +149,19 @@ class Controller:
                               intermediate_directory_path,
                               os.path.join(self.output_directory_path, stage_name),
                               directory_structure)
-        self.dispatcher.dispatch(cluster_packet_file_paths, molecule_packet_ids)
+        self.dispatcher.dispatch(cluster_packet_file_paths)
         while not auditor.is_processing_complete():
             time.sleep(1)
         for lane in self.flowcell.lanes_to_use:
+
+            fastq_file = os.path.join(
+                self.output_directory_path,
+                self.controller_name,
+                CONSTANTS.DATA_DIRECTORY_NAME
+            )
             fast_q = FastQ(lane,
                            os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-                           os.path.join(self.output_directory_path,
-                                        self.controller_name,
-                                        CONSTANTS.DATA_DIRECTORY_NAME))
+                           fastq_file)
             fast_q.generate_report()
 
     def run_prep_and_sequence_pipeline(self, args):
@@ -211,6 +216,7 @@ class Controller:
                                      self.seed,
                                      stage_name,
                                      self.configuration,
+                                     self.configuration_file_path,
                                      input_directory_path,
                                      output_directory_path,
                                      nested_depth)
@@ -237,6 +243,7 @@ class Controller:
             except json.decoder.JSONDecodeError:
                 print(f"ERROR: JSON Error reading in {configuration_file_path}:")
                 raise
+        self.configuration_file_path = configuration_file_path
         self.controller_configuration = self.configuration[self.controller_name]
         self.resources = self.configuration[self.resources_name]
         self.resources['resources_folder'] = os.path.join(CONSTANTS.ROOT_DIR, "resources")
