@@ -56,6 +56,7 @@ class FastQ:
                                                   f"lane{self.lane}_{direction}.fasta")
             if abort:
                 break
+            print(f"Writing out fastq file to {fastq_output_file_path}")
             with open(fastq_output_file_path, "w") as fastq_output_file:
                 for cluster in sorted_clusters:
                     fastq_output_file.write(cluster.header + "\n")
