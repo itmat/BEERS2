@@ -71,5 +71,5 @@ class LaneCoordinates:
         :return: The populated LaneCoordinates object
         """
         data = data[1:] if (data.startswith("#")) else data
-        tile, x, y = data.rstrip().split("\t")
+        tile, x, y = data.rstrip('\n').split("\t")
         return LaneCoordinates(tile, x, y)
