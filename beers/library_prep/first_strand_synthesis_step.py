@@ -46,6 +46,7 @@ class FirstStrandSynthesisStep:
                         source_start = molecule.source_start,
                         source_cigar = molecule.source_cigar,
                         source_strand = '-' if molecule.source_strand == '+' else '-',
+                        source_chrom = molecule.source_chrom,
                 )
                 cdna_sample.append(cdna_molecule)
                 log_file.write(cdna_molecule.log_entry())
