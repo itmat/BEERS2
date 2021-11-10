@@ -10,11 +10,13 @@ import copy
 from datetime import datetime
 from beers_utils.constants import CONSTANTS,SUPPORTED_SCHEDULER_MODES
 from beers_utils.general_utils import GeneralUtils
+from beers_utils.read_fasta import read_fasta
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.flowcell import Flowcell
 from beers_utils.molecule_packet import MoleculePacket
 from beers.dispatcher import Dispatcher
 from beers.fast_q import FastQ
+from beers.sam import SAM
 from beers.auditor import Auditor
 from beers.validator import Validator
 import glob
@@ -154,15 +156,24 @@ class Controller:
             time.sleep(1)
         for lane in self.flowcell.lanes_to_use:
 
-            fastq_file = os.path.join(
-                self.output_directory_path,
-                self.controller_name,
-                CONSTANTS.DATA_DIRECTORY_NAME
-            )
-            fast_q = FastQ(lane,
-                           os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-                           fastq_file)
-            fast_q.generate_report()
+            #fastq_file = os.path.join(
+            #    self.output_directory_path,
+            #    self.controller_name,
+            #    CONSTANTS.DATA_DIRECTORY_NAME
+            #)
+            #fast_q = FastQ(lane,
+            #               os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+            #               fastq_file)
+            #fast_q.generate_report()
+
+            reference_genome = read_fasta(self.configuration['resources']['reference_genome_fasta'])
+
+            sam_file = os.path.join(self.output_directory_path, self.controller_name, CONSTANTS.DATA_DIRECTORY_NAME)
+            sam = SAM(
+                lane,
+                os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                sam_file)
+            sam.generate_report(reference_genome, BAM=False)
 
     def run_prep_and_sequence_pipeline(self, args):
         pass
