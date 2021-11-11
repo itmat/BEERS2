@@ -14,11 +14,6 @@ class FirstStrandSynthesisStep:
         print("First Strand cDNA Synthesis Step instantiated.")
 
     def execute(self, molecule_packet):
-        """
-
-
-
-        """
         print("First strand cDNA synthesis step starting...")
         cdna_sample = []
         with open(self.history_filename, "w+") as log_file:
@@ -26,12 +21,7 @@ class FirstStrandSynthesisStep:
             for molecule in molecule_packet.molecules:
                 cdna_seq = Utils.create_complement_strand(molecule.sequence)
 
-                #for primer in molecule.bound_molecules:
-                #    start = len(molecule.sequence) - (primer.start + len(primer))
-                #    end = start + len(primer)
-                #    cdna_seq = cdna_seq[:start] + primer.sequence + cdna_seq[end:]
-                #    #cdna_seq[start:end]  = primer.sequence
-                #first_primer = molecule.bound_molecules[0]
+                #TODO: simulate priming
 
                 # TODO: right start? For now, everything is primeed, so it should be
                 cdna_start = 1
