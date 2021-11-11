@@ -2,6 +2,7 @@ import os
 import glob
 import pysam
 from beers.cluster_packet import ClusterPacket
+from beers_utils.general_utils import GeneralUtils
 from beers_utils.constants import CONSTANTS
 
 
@@ -72,14 +73,16 @@ class SAM:
             with pysam.AlignmentFile(sam_output_file_path, ('wb' if BAM else 'w'), header=sam_header) as sam:
                 for cluster in sorted_clusters:
                     paired = len(cluster.called_sequences) == 2
-                    for direction, (seq, qual) in enumerate(zip(cluster.called_sequences, cluster.quality_scores)):
+                    for direction, (seq, qual, start, cigar) in enumerate(zip(cluster.called_sequences, cluster.quality_scores, cluster.read_starts, cluster.read_cigars)):
                         a = pysam.AlignedSegment()
-                        a.query_name = cluster.cluster_id
-                        a.query_sequence = seq
-                        a.flag = (0x01*paired) + 0x02 + (0x40*(direction == 0)) # TODO: are these the right flags?
+                        a.query_name = cluster.encode_sequence_identifier() + ":" + cluster.molecule.molecule_id
+                        # TODO: are these the right flags?
+                        rev_strand = ((cluster.molecule.source_strand == '-' and direction == 0) or (cluster.molecule.source_strand == '+' and direction == 1))
+                        a.flag = (0x01*paired) + 0x02 + (0x40 if (direction == 0) else 0x80) + (0x10 if rev_strand else 0x20)
+                        a.query_sequence = seq if not rev_strand else GeneralUtils.create_complement_strand(seq)
                         a.reference_id = chrom_list.index(cluster.molecule.source_chrom)
-                        a.reference_start = cluster.molecule.source_start
+                        a.reference_start = start - 1 # pysam uses 0-based index, we use 1-based
                         a.mapping_quality = 255
-                        a.cigarstring = cluster.molecule.source_cigar
+                        a.cigarstring = cigar
                         a.query_qualities = pysam.qualitystring_to_array(qual)
                         sam.write(a)

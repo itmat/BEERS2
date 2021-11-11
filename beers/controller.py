@@ -154,26 +154,35 @@ class Controller:
         self.dispatcher.dispatch(cluster_packet_file_paths)
         while not auditor.is_processing_complete():
             time.sleep(1)
-        for lane in self.flowcell.lanes_to_use:
 
-            #fastq_file = os.path.join(
-            #    self.output_directory_path,
-            #    self.controller_name,
-            #    CONSTANTS.DATA_DIRECTORY_NAME
-            #)
-            #fast_q = FastQ(lane,
-            #               os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-            #               fastq_file)
-            #fast_q.generate_report()
+        fastq_output = self.configuration[stage_name]["output"]["output_fastq"]
+        sam_output = self.configuration[stage_name]["output"]["output_sam"] or not fastq_output
 
-            reference_genome = read_fasta(self.configuration['resources']['reference_genome_fasta'])
+        if fastq_output:
+            print("Generating FastQs")
+            for lane in self.flowcell.lanes_to_use:
+                fastq_file = os.path.join(
+                    self.output_directory_path,
+                    self.controller_name,
+                    CONSTANTS.DATA_DIRECTORY_NAME
+                )
+                fast_q = FastQ(lane,
+                               os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                               fastq_file)
+                fast_q.generate_report()
 
-            sam_file = os.path.join(self.output_directory_path, self.controller_name, CONSTANTS.DATA_DIRECTORY_NAME)
-            sam = SAM(
-                lane,
-                os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-                sam_file)
-            sam.generate_report(reference_genome, BAM=False)
+        if sam_output:
+            print("Generating SAMs")
+            #TODO: allow BAM creation?
+            for lane in self.flowcell.lanes_to_use:
+                reference_genome = read_fasta(self.configuration['resources']['reference_genome_fasta'])
+
+                sam_file = os.path.join(self.output_directory_path, self.controller_name, CONSTANTS.DATA_DIRECTORY_NAME)
+                sam = SAM(
+                    lane,
+                    os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                    sam_file)
+                sam.generate_report(reference_genome, BAM=False)
 
     def run_prep_and_sequence_pipeline(self, args):
         pass

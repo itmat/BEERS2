@@ -26,26 +26,29 @@ class FirstStrandSynthesisStep:
             for molecule in molecule_packet.molecules:
                 cdna_seq = Utils.create_complement_strand(molecule.sequence)
 
-                for primer in molecule.bound_molecules:
-                    start = len(molecule.sequence) - (primer.start + len(primer))
-                    end = start + len(primer)
-                    cdna_seq = cdna_seq[:start] + primer.sequence + cdna_seq[end:]
-                    #cdna_seq[start:end]  = primer.sequence
+                #for primer in molecule.bound_molecules:
+                #    start = len(molecule.sequence) - (primer.start + len(primer))
+                #    end = start + len(primer)
+                #    cdna_seq = cdna_seq[:start] + primer.sequence + cdna_seq[end:]
+                #    #cdna_seq[start:end]  = primer.sequence
+                #first_primer = molecule.bound_molecules[0]
 
-                first_primer = molecule.bound_molecules[0]
                 # TODO: right start? For now, everything is primeed, so it should be
                 cdna_start = 1
                 cdna_cigar = f"{len(cdna_seq)}M"
-                cdna_source_start, cdna_source_cigar = beers_utils.cigar.chain(
-                    cdna_start, cdna_cigar, molecule.source_start, molecule.source_cigar
+                cdna_source_start, cdna_source_cigar, cdna_source_strand = beers_utils.cigar.chain(
+                        cdna_start, cdna_cigar, "-",
+                        molecule.source_start, molecule.source_cigar, molecule.source_strand
                 )
-                cdna_molecule = Molecule(molecule.molecule_id + '.cdna' ,cdna_seq[cdna_start:],
+                cdna_molecule = Molecule(
+                        molecule.molecule_id + '.cdna' ,
+                        cdna_seq[cdna_start - 1:],
                         start = cdna_start,
                         cigar = cdna_cigar,
                         transcript_id = molecule.transcript_id,
-                        source_start = molecule.source_start,
-                        source_cigar = molecule.source_cigar,
-                        source_strand = '-' if molecule.source_strand == '+' else '-',
+                        source_start = cdna_source_start,
+                        source_cigar = cdna_source_cigar,
+                        source_strand = cdna_source_strand,
                         source_chrom = molecule.source_chrom,
                 )
                 cdna_sample.append(cdna_molecule)

@@ -7,6 +7,7 @@ from beers_utils.general_utils import GeneralUtils
 from beers.flowcell_lane import LaneCoordinates
 from beers_utils.molecule import Molecule
 from beers_utils.constants import CONSTANTS
+import beers_utils.cigar
 
 
 # BaseCounts - tuple of counts for each nucleotide G,A,T,C a numpy
@@ -28,8 +29,9 @@ class Cluster:
     MIN_ASCII = 33
     MAX_QUALITY = 41
 
-    def __init__(self, run_id, cluster_id, molecule, lane, coordinates, molecule_count=1, diameter=0,
-                 called_sequences=None, called_barcode=None, quality_scores=None, base_counts=None,
+    def __init__(self, run_id, cluster_id, molecule, lane, coordinates, *, molecule_count=1, diameter=0,
+                 called_sequences=None, called_barcode=None, quality_scores=None,
+                 read_starts = None, read_cigars = None, base_counts=None,
                  forward_is_5_prime=True):
         """
         The constructor contains many attributes, the values of which, may be unknown at the time of instantiation.
@@ -49,6 +51,8 @@ class Cluster:
         reverse refer to are determined by the 'forward_is_5_prime' attribute.
         :param called_barcode: A string representing the read 5' barcode + 3' barcode - used in the flowcell header
         :param quality_scores: An array of quality score sequences corresponding to the called sequences array.
+        :param read_starts: An array of alignment start position, one for each read, aligning them to the reference genome
+        :param read_cigars: An array of alignment cigar strings, one for each read, aligning them to the reference genome
         :param base_counts: An array of counts for each of the 4 nt bases for each position in the original molecule.
         The initial base counts array exactly matches the original molecule sequence
         :param forward_is_5_prime: The 5' direction is forward if true.  Otherwise, the 3' direction is forward.
@@ -64,6 +68,8 @@ class Cluster:
         self.quality_scores = quality_scores or []
         self.called_sequences = called_sequences or []
         self.called_barcode = called_barcode
+        self.read_starts = read_starts or []
+        self.read_cigars = read_cigars or []
         if base_counts:
             self.base_counts = base_counts
         else:
@@ -153,7 +159,17 @@ class Cluster:
                                         if prob != 0 else Cluster.MAX_QUALITY
                         called_bases.write(max_base_count[0])
                         quality_scores.write(str(chr(quality_value + Cluster.MIN_ASCII)))
-                return called_bases.getvalue(), quality_scores.getvalue()
+                read_start, read_cigar, new_strand = beers_utils.cigar.chain(
+                    range_start + 1, # range_start is 0-based, alignments are always 1 based
+                    f"{range_end - range_start}M",
+                    "+",#TODO: do both 5' and 3' reads use + strand?
+                    self.molecule.source_start,
+                    self.molecule.source_cigar,
+                    self.molecule.source_strand,
+                )
+                bases = called_bases.getvalue()
+                qual = quality_scores.getvalue()
+                return bases, qual, read_start, read_cigar
 
     def read_barcode(self, barcode_data):
         """
@@ -164,10 +180,10 @@ class Cluster:
         """
         range_start = barcode_data[0]
         range_end = barcode_data[0] + barcode_data[1]
-        barcode_5, _ = self.read_over_range(range_start, range_end)
+        barcode_5, _, _, _ = self.read_over_range(range_start, range_end)
         range_end = len(self.molecule.sequence) - barcode_data[2]
         range_start = range_end - barcode_data[3]
-        barcode_3,  _ = self.read_over_range(range_start, range_end)
+        barcode_3,  _, _, _ = self.read_over_range(range_start, range_end)
         self.called_barcode = f"{barcode_5}+{GeneralUtils.create_complement_strand(barcode_3)}"
 
     def read_in_5_prime_direction(self, read_length, adapter_sequence):
@@ -180,9 +196,11 @@ class Cluster:
         """
         range_start = len(adapter_sequence)
         range_end = range_start + read_length
-        called_bases, quality_scores = self.read_over_range(range_start, range_end)
+        called_bases, quality_scores, read_start, read_cigar = self.read_over_range(range_start, range_end)
         self.quality_scores.append(quality_scores)
         self.called_sequences.append(called_bases)
+        self.read_starts.append(read_start)
+        self.read_cigars.append(read_cigar)
 
     def read_in_3_prime_direction(self, read_length, adapter_sequence):
         """
@@ -195,11 +213,13 @@ class Cluster:
         """
         range_end = len(self.molecule.sequence) - len(adapter_sequence)
         range_start = range_end - read_length
-        called_bases, quality_scores = self.read_over_range(range_start, range_end)
+        called_bases, quality_scores, read_start, read_cigar = self.read_over_range(range_start, range_end)
         quality_scores = quality_scores[::-1]
         called_bases = GeneralUtils.create_complement_strand(called_bases)
         self.quality_scores.append(quality_scores)
         self.called_sequences.append(called_bases)
+        self.read_starts.append(read_start)
+        self.read_cigars.append(read_cigar)
 
     def get_base_counts_by_position(self, index):
         """
@@ -244,7 +264,7 @@ class Cluster:
                  f"{self.forward_is_5_prime}\t{self.called_barcode}\n"
         output += f"#{self.coordinates.serialize()}\n#{self.molecule.serialize()}\n"
         for index in range(len(self.called_sequences)):
-            output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\n"
+            output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\t{self.read_starts[index]}\t{self.read_cigars[index]}\n"
         with closing(StringIO()) as counts:
             for index in range(len(self.molecule.sequence)):
                 counts.write("\t".join([str(base_count) for base_count in self.get_base_counts_by_position(index)]))
@@ -263,15 +283,19 @@ class Cluster:
         data = data.rstrip('\n')
         called_sequences = []
         quality_scores = []
+        read_starts = []
+        read_cigars = []
         g_counts = []
         a_counts = []
         t_counts = []
         c_counts = []
         for line_number, line in enumerate(data.split("\n")):
             if line.startswith("##"):
-                called_sequence, quality_score = line[2:].rstrip('\n').split("\t")
+                called_sequence, quality_score, read_start, read_cigar = line[2:].rstrip('\n').split("\t")
                 called_sequences.append(called_sequence)
                 quality_scores.append(quality_score)
+                read_starts.append(int(read_start))
+                read_cigars.append(read_cigar)
             elif line.startswith("#"):
                 if line_number == 0:
                     cluster_id, run_id, molecule_count, diameter, lane, forward_is_5_prime, called_barcode \
@@ -287,5 +311,19 @@ class Cluster:
                 t_counts.append(int(t_count))
                 c_counts.append(int(c_count))
         base_counts = BaseCounts(g_counts, a_counts, t_counts, c_counts)
-        return Cluster(int(run_id), cluster_id, molecule, int(lane), coordinates, int(molecule_count), int(diameter),
-                       called_sequences, called_barcode, quality_scores, base_counts, forward_is_5_prime)
+        return Cluster(
+                run_id = int(run_id),
+                cluster_id = cluster_id,
+                molecule = molecule,
+                lane = int(lane),
+                coordinates = coordinates,
+                molecule_count = int(molecule_count),
+                diameter = int(diameter),
+                called_sequences = called_sequences,
+                called_barcode = called_barcode,
+                quality_scores = quality_scores,
+                base_counts = base_counts,
+                read_starts = read_starts,
+                read_cigars = read_cigars,
+                forward_is_5_prime = forward_is_5_prime
+            )
