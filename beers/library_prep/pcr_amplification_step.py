@@ -109,6 +109,7 @@ class PCRAmplificationStep:
 
                     # Copy the original molecule (no biases as yet being introduced)
                     new_molecule = copy(molecule)
+                    # TODO: copies should be reverse-complemented, right?
                     self.assign_id(new_molecule, molecule.molecule_id)
                     new_molecules.append(new_molecule)
 
