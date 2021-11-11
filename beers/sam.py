@@ -75,7 +75,7 @@ class SAM:
                     paired = len(cluster.called_sequences) == 2
                     for direction, (seq, qual, start, cigar) in enumerate(zip(cluster.called_sequences, cluster.quality_scores, cluster.read_starts, cluster.read_cigars)):
                         a = pysam.AlignedSegment()
-                        a.query_name = cluster.encode_sequence_identifier() + ":" + cluster.molecule.molecule_id
+                        a.query_name = cluster.encode_sequence_identifier()
                         # TODO: are these the right flags?
                         rev_strand = ((cluster.molecule.source_strand == '-' and direction == 0) or (cluster.molecule.source_strand == '+' and direction == 1))
                         a.flag = (0x01*paired) + 0x02 + (0x40 if (direction == 0) else 0x80) + (0x10 if rev_strand else 0x20)

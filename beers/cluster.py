@@ -105,7 +105,7 @@ class Cluster:
         :return: The sequence identifier as defined for the FASTQ format used here.
         """
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
-        return f"@BEERS:{self.run_id}:1:{self.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}"
+        return f"@BEERS:{self.run_id}:1:{self.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}:{self.molecule.molecule_id}"
 
     def set_forward_direction(self, forward_is_5_prime):
         """
