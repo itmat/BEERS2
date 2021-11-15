@@ -53,7 +53,7 @@ class FastQ:
             sorted_clusters = sorted(lane_clusters, key=lambda lane_cluster: lane_cluster.coordinates)
 
             fastq_output_file_path = os.path.join(self.fastq_output_directory,
-                                                  f"lane{self.lane}_{direction}.fasta")
+                                                  f"lane{self.lane}_{direction}.fastq")
             if abort:
                 break
             print(f"Writing out fastq file to {fastq_output_file_path}")
