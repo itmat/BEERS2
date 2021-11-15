@@ -152,6 +152,7 @@ class Controller:
                               os.path.join(self.output_directory_path, stage_name),
                               directory_structure)
         self.dispatcher.dispatch(cluster_packet_file_paths)
+
         while not auditor.is_processing_complete():
             time.sleep(1)
 

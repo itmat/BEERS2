@@ -1,4 +1,4 @@
-from beers.flowcell_lane import FlowcellLane, LaneCoordinates
+from beers.flowcell_lane import FlowcellLane
 from beers.cluster_packet import ClusterPacket
 from beers.beers_exception import BeersException
 from beers.cluster import Cluster
@@ -46,10 +46,10 @@ class Flowcell:
         self.set_flowcell_coordinate_ranges()
         self.available_lanes = list(range(self.min_coords['lane'], self.max_coords['lane'] + 1))
         self.lanes_to_use = self.parameters["lanes_to_use"] or self.available_lanes
-        self.flowcell_lanes = []
+        self.flowcell_lanes = {}
         self.coordinate_generators = {}
         for lane in self.lanes_to_use:
-            self.flowcell_lanes.append(FlowcellLane(lane))
+            self.flowcell_lanes[lane] = FlowcellLane(lane)
             self.coordinate_generators[lane] = self.generate_coordinates(lane)
 
     def validate(self):
@@ -91,7 +91,7 @@ class Flowcell:
                 lane_index += 1
                 lane = self.lanes_to_use[lane_index]
             clusters.append(Cluster(self.run_id, cluster_id, molecule, lane, next(self.coordinate_generators[lane])))
-            if (counter + 1) % 100 == 0:
+            if (counter + 1) % 1000 == 0:
                 print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
             Cluster.next_cluster_id += 1
         return ClusterPacket(cluster_packet_id, molecule_packet.sample, clusters)
@@ -110,8 +110,8 @@ class Flowcell:
 
     def generate_coordinates(self, lane):
         """
-        A Python generator that randomly selects tile, x, and y coordinates and uses them to create a LaneCoordinates
-        object.  The new lane coordinates object is compared with all the consumed coordinates in the given lane.  If
+        A Python generator that randomly selects tile, x, and y coordinates and uses them to create a  coordinates
+        tuple (tile, x, y).  The new lane coordinates object is compared with all the consumed coordinates in the given lane.  If
         the object is in the consumed coordinates, it is discarded and the random selection repeated.  Once a selection
         is found to be unique, it is added to the consumed coordinates for the given lane and the object is returned.
         If no set of unique coordinates can be found in 100 attempts, an exception is thrown.
@@ -119,19 +119,18 @@ class Flowcell:
         :return: a unique combination of coordinates for the lane given.
         """
         ctr = 0
+        flowcell_lane = self.flowcell_lanes[lane]
+        consumed_coordinates = flowcell_lane.consumed_coordinates
         while True:
             ctr += 1
-            x = np.random.choice(range(self.min_coords['x'], self.max_coords['x'] + 1))
-            y = np.random.choice(range(self.min_coords['y'], self.max_coords['y'] + 1))
-            tile = np.random.choice(range(self.min_coords['tile'], self.max_coords['tile'] + 1))
-            coordinates = LaneCoordinates(tile, x, y)
-            consumed_coordinates = [flowcell_lane.consumed_coordinates
-                                    for flowcell_lane in self.flowcell_lanes
-                                    if flowcell_lane.lane == lane][0]
-            if coordinates not in consumed_coordinates:
+            x = np.random.randint(self.min_coords['x'], self.max_coords['x'] + 1)
+            y = np.random.randint(self.min_coords['y'], self.max_coords['y'] + 1)
+            tile = np.random.randint(self.min_coords['tile'], self.max_coords['tile'] + 1)
+            coord = (tile, x, y)
+            if coord not in consumed_coordinates:
                 ctr = 0
-                consumed_coordinates.append(coordinates)
-                yield coordinates
+                consumed_coordinates.add(coord)
+                yield coord
             if ctr >= 100:
                 raise BeersException("Unable to find unused flowcell coordinates after 100 attempts.")
 

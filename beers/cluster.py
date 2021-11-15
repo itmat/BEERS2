@@ -4,7 +4,6 @@ from io import StringIO
 import math
 from contextlib import closing
 from beers_utils.general_utils import GeneralUtils
-from beers.flowcell_lane import LaneCoordinates
 from beers_utils.molecule import Molecule
 from beers_utils.constants import CONSTANTS
 import beers_utils.cigar
@@ -82,7 +81,7 @@ class Cluster:
     def assign_coordinates(self, coordinates):
         """
         Assign a lane coordinates object to the cluster.
-        :param coordinates: An object of the LaneCoordinates class
+        :param coordinates:  a tuple (tile, x, y)
         """
         self.coordinates = coordinates
 
@@ -105,7 +104,8 @@ class Cluster:
         :return: The sequence identifier as defined for the FASTQ format used here.
         """
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
-        return f"@BEERS:{self.run_id}:1:{self.lane}:{self.coordinates.tile}:{self.coordinates.x}:{self.coordinates.y}:{self.molecule.molecule_id}"
+        tile, x, y = self.coordinates
+        return f"@BEERS:{self.run_id}:1:{self.lane}:{tile}:{x}:{y}:{self.molecule.molecule_id}"
 
     def set_forward_direction(self, forward_is_5_prime):
         """
@@ -264,9 +264,10 @@ class Cluster:
         position on the molecule.
         :return: The serialized string output.
         """
+        tile, x, y = self.coordinates
         output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\t{self.lane}\t" \
                  f"{self.forward_is_5_prime}\t{self.called_barcode}\n"
-        output += f"#{self.coordinates.serialize()}\n#{self.molecule.serialize()}\n"
+        output += f"#{tile}\t{x}\t{y}\n#{self.molecule.serialize()}\n"
         for index in range(len(self.called_sequences)):
             output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\t{self.read_starts[index]}\t{self.read_cigars[index]}\n"
         with closing(StringIO()) as counts:
@@ -305,7 +306,7 @@ class Cluster:
                     cluster_id, run_id, molecule_count, diameter, lane, forward_is_5_prime, called_barcode \
                         = line[1:].rstrip('\n').split("\t")
                 if line_number == 1:
-                    coordinates = LaneCoordinates.deserialize(line[1:].rstrip('\n'))
+                    coordinates = tuple(int(x) for x in (line[1:].rstrip('\n').split("\t")))
                 if line_number == 2:
                     molecule = Molecule.deserialize(line[1:].rstrip('\n'))
             else:
