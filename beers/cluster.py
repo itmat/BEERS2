@@ -114,33 +114,37 @@ class Cluster:
         """
         self.forward_is_5_prime = forward_is_5_prime
 
-    def read(self, read_length, paired_ends, barcode_data, adapter_sequences):
+    def read(self, read_length, paired_ends, i5_start, i5_length, i7_start, i7_length, read_start_5_prime, read_start_3_prime):
         """
         Called by the sequencing step in the sequence pipeline to read the cluster in one or both directions.  The
         barcodes on both ends are read as well here.
         :param read_length: The number of bases to be read from either end
         :param paired_ends: Whether only the forward direction is read or both forward and reverse directions are read.
-        :param barcode_data: The start position and length of each barcode so that they may be located.
-        :param adapter_sequences: The sequences of the adapters on each end.  Used to skip over the adapters when
+        :param i5_start: 1-based index of first base of i5 barcode from 5' end
+        :param i5_length: length of the i5 barcode
+        :param i7_start: 1-based index of first base of i7 barcode from 3' end
+        :param i7_length: length of the i5 barcode
+        :param read_start_5_prime: 1-based index of first base to read (from 5' end)
+        :param read_start_3_prime: 1-based index of first base to read (from 3' end)
         reading.
         """
-        self.read_barcode(barcode_data)
+        self.read_barcode(i5_start, i5_length, i7_start, i7_length)
         if self.forward_is_5_prime:
-            self.read_in_5_prime_direction(read_length, adapter_sequences[0])
+            self.read_in_5_prime_direction(read_length, read_start_5_prime)
             if paired_ends:
-                self.read_in_3_prime_direction(read_length, adapter_sequences[1])
+                self.read_in_3_prime_direction(read_length, read_start_3_prime)
         else:
-            self.read_in_3_prime_direction(read_length, adapter_sequences[1])
+            self.read_in_3_prime_direction(read_length, read_start_3_prime)
             if paired_ends:
-                self.read_in_5_prime_direction(read_length, adapter_sequences[0])
+                self.read_in_5_prime_direction(read_length, read_start_5_prime)
 
     def read_over_range(self, range_start, range_end):
         """
         Accumulates the called bases and the associated quality scores over the range given (going 5' to 3').  The
         called base at any position is the most numerous base at that position.  In the event of a tie, an 'N' is
         called instead.  The quality score is calculated as a Phred quality score and encoded using the Sanger format.
-        :param range_start:  The starting position (from the 5' end)
-        :param range_end: The ending position (exlusive, from the 5' end)
+        :param range_start:  The starting position (from the 5' end), 0-based
+        :param range_end: The ending position (exlusive, from the 5' end), 0-based
         """
         with closing(StringIO()) as called_bases:
             with closing(StringIO()) as quality_scores:
@@ -171,30 +175,30 @@ class Cluster:
                 qual = quality_scores.getvalue()
                 return bases, qual, read_start, read_cigar
 
-    def read_barcode(self, barcode_data):
+    def read_barcode(self, i5_start, i5_length, i7_start, i7_length):
         """
         Read the barcode information for each end of the cluster using the starting position and length of each barcode
         provided.  The barcode is saved as the 5' portion followed the reverse complemented 3' portion, delimited by
         a plus sign.
-        :param barcode_data: An array containing the starting positions and lengths of each barcode.
+        :param i5_start: 1-based index of first base of i5 barcode from 5' read
+        :param i5_length: length of the i5 barcode
+        :param i7_start: 1-based index of first base of i7 barcode from 3' read
+        :param i7_length: length of the i7 barcode
         """
-        range_start = barcode_data[0]
-        range_end = barcode_data[0] + barcode_data[1]
-        barcode_5, _, _, _ = self.read_over_range(range_start, range_end)
-        range_end = len(self.molecule.sequence) - barcode_data[2]
-        range_start = range_end - barcode_data[3]
-        barcode_3,  _, _, _ = self.read_over_range(range_start, range_end)
+        barcode_5, _, _, _ = self.read_over_range(i5_start - 1, i5_start + i5_length - 1)
+        i7_start = len(self.molecule.sequence) - (i7_start - 1) - i7_length
+        barcode_3,  _, _, _ = self.read_over_range(i7_start, i7_start + i7_length)
         self.called_barcode = f"{barcode_5}+{GeneralUtils.create_complement_strand(barcode_3)}"
 
-    def read_in_5_prime_direction(self, read_length, adapter_sequence):
+    def read_in_5_prime_direction(self, read_length, read_start):
         """
         Reads the 5' portion of the molecule (skipping over the adapter sequence) out to the given read length.  The
         resulting bases and quality scores are appended to the lists containing called sequences and quality scores,
         respectively.
         :param read_length:  number of bases in from the molecule 5' end to be read
-        :param adapter_sequence: the 5' adapter sequence to skip over.
+        :param read_start: how far to skip over the adapters to the read (from 5' end)
         """
-        range_start = len(adapter_sequence)
+        range_start = read_start - 1
         range_end = range_start + read_length
         called_bases, quality_scores, read_start, read_cigar = self.read_over_range(range_start, range_end)
         self.quality_scores.append(quality_scores)
@@ -202,17 +206,17 @@ class Cluster:
         self.read_starts.append(read_start)
         self.read_cigars.append(read_cigar)
 
-    def read_in_3_prime_direction(self, read_length, adapter_sequence):
+    def read_in_3_prime_direction(self, read_length, read_start):
         """
         Reads the 3' portion of the molecule (skipping over the adapter sequence) out to the given read length.  The
         resulting bases and quality scores are appended to the lists containing called sequences and quality scores,
         respectively.  Note that the called bases are reverse complemented and the quality scores reversed prior to
         being appended to the aforementioned lists.
         :param read_length:  number of bases in from the molecule 3' end to be read
-        :param adapter_sequence: the 3' adapter sequence to skip over.
+        :param read_start: how far to skip over the adapters to the read (from 3' end)
         """
-        range_end = len(self.molecule.sequence) - len(adapter_sequence)
-        range_start = range_end - read_length
+        range_start = max(len(self.molecule.sequence) - read_length - (read_start - 1), 0)
+        range_end = range_start + read_length
         called_bases, quality_scores, read_start, read_cigar = self.read_over_range(range_start, range_end)
         quality_scores = quality_scores[::-1]
         called_bases = GeneralUtils.create_complement_strand(called_bases)

@@ -59,7 +59,7 @@ class SequencePipeline:
         self.results_file_path = os.path.join(data_subdirectory_path, results_filename)
 
     @staticmethod
-    def validate(configuration):
+    def validate(configuration, global_configuration):
         """
         Static method to run each step validate process to identify errant parameters.  If any errors are found,
         a validation exception is raised.
@@ -71,7 +71,7 @@ class SequencePipeline:
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=SequencePipeline.package)
             step_class = getattr(module, step_name)
-            steps.append(step_class(None, parameters, None))
+            steps.append(step_class(None, parameters, global_configuration))
         # Validate configuration of each step
         if not all([step.validate() for step in steps]):
             raise BeersSequenceValidationException("Validation error in step: see stderr for details.")

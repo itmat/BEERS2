@@ -19,14 +19,22 @@ class AdapterLigationStep:
     def execute(self, molecule_packet):
         print(f"{self.name} starting")
         sample = molecule_packet.sample
-        adapter_5_prime, adapter_3_prime = self.global_config['samples'][sample.sample_id]['adapters']
+        # Adapters combine a fixed sequence (specified in 'resources' config)
+        # with barcodes that are sample-specific
+        i5_barcode = self.global_config['samples'][sample.sample_id]['barcodes']['i5']
+        i7_barcode = self.global_config['samples'][sample.sample_id]['barcodes']['i7']
+        adapter_5_prime = self.global_config['resources']['pre_i5_adapter'] + i5_barcode + self.global_config['resources']['post_i5_adapter']
+        # NOTE: on the 3' end, an "A" gets ligated onto the sequence first. This is done as a discrete step
+        # in the actual TruSeq protocol, but we do it as part of this step here.
+        adapter_3_prime = "A" + self.global_config['resources']['pre_i7_adapter'] + i7_barcode + self.global_config['resources']['post_i7_adapter']
+
+        # Ligate the adapters onto each molecule
         with open(self.log_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
                 sequence = molecule.sequence
-                cigar = molecule.cigar or f"{len(sequence)}M"
                 molecule.sequence = adapter_5_prime + sequence + adapter_3_prime
-                molecule.cigar = f"{len(adapter_5_prime)}S{cigar}{len(adapter_3_prime)}S"
+                molecule.cigar = f"{len(adapter_5_prime)}S{len(sequence)}M{len(adapter_3_prime)}S"
                 new_source_start, new_source_cigar, new_source_strand = beers_utils.cigar.chain(
                         molecule.start, molecule.cigar, "+",
                         molecule.source_start, molecule.source_cigar, molecule.source_strand
@@ -39,7 +47,16 @@ class AdapterLigationStep:
 
     def validate(self):
         print(f"{self.name} validating parameters")
-        return True
+        valid = True
+        for sample in self.global_config['samples'].values():
+            if not 'i5' in sample['barcodes'] or not 'i7' in sample['barcodes']:
+                valid = False
+                print(f"In sample {sample.sample_id} expected to find i5 and i7 adpters in config.")
+        adapters = ['pre_i5_adapter', 'pre_i7_adapter', 'post_i5_adapter', 'post_i7_adapter']
+        if not all(adapter in self.global_config['resources'] for adapter in adapters):
+            valid = False
+            print(f"In resources config, need to  specify all of {adapters}")
+        return valid
 
 if __name__ == "__main__":
     np.random.seed(100)

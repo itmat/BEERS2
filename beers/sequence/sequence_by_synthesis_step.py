@@ -9,18 +9,33 @@ class SequenceBySynthesisStep:
         self.read_length = parameters['read_length']
         self.forward_is_5_prime = parameters.get('forward_is_5_prime', True)
         self.paired_ends = parameters.get('paired_ends', False)
-        self.barcode_data = (parameters['barcode_5_prime_start'],
-                             parameters['barcode_5_prime_length'],
-                             parameters['barcode_3_prime_start'],
-                             parameters['barcode_3_prime_length'])
-        self.global_config = global_config
+
+        # Determine where the barcodes lie
+        self.i5_start = len(global_config['resources']['pre_i5_adapter']) + 1 # one past the first part of the adapter
+        self.i7_start = len(global_config['resources']['post_i7_adapter']) + 1 # one past the first part of the adapter, reading from 3' end
+        i5_adapter_lengths = [len(sample['barcodes']['i5']) for sample in  global_config['samples'].values()]
+        assert len(set(i5_adapter_lengths)) == 1
+        self.i5_length = i5_adapter_lengths[0]
+        i7_adapter_lengths = [len(sample['barcodes']['i7']) for sample in  global_config['samples'].values()]
+        assert len(set(i7_adapter_lengths)) == 1
+        self.i7_length = i7_adapter_lengths[0]
+
+        # Determine where the sequencing starts
+        self.forward_read_start = self.i5_start + self.i5_length + len(global_config['resources']['post_i5_adapter'])
+        # NOTE: extra 'A' is ligated to the 3' end of the reads prior to adapter ligation (done in the ligation step in BEERS)
+        #       hence we have an additional +1 on this read start
+        self.reverse_read_start = self.i7_start + self.i7_length + len(global_config['resources']['pre_i7_adapter']) + 1
+
         print(f"{SequenceBySynthesisStep.name} instantiated")
 
     def execute(self, cluster_packet):
         for cluster in cluster_packet.clusters:
             cluster.set_forward_direction(self.forward_is_5_prime)
-            adapters = self.global_config['samples'][cluster_packet.sample.sample_id]['adapters']
-            cluster.read(self.read_length, self.paired_ends, self.barcode_data, adapters)
+            cluster.read(
+                    self.read_length, self.paired_ends,
+                    self.i5_start, self.i5_length, self.i7_start, self.i7_length,
+                    self.forward_read_start, self.reverse_read_start
+            )
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet
 
