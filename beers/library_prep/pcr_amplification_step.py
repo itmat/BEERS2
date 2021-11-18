@@ -7,6 +7,7 @@ import numpy as np
 
 from beers.utilities.library_prep_utils import Utils
 from beers_utils.molecule import Molecule
+from beers.utilities.gc_content import gc_content
 
 
 def hypergeometric(ngood, nbad, nsamp):
@@ -40,6 +41,7 @@ class PCRAmplificationStep:
         self.log_filename = step_log_file_path
         self.number_cycles = parameters.get("number_cycles")
         self.retention_percentage = parameters.get('retention_percentage')
+        self.parameters = parameters
         self.global_config = global_config
 
         # The sample id counter maintains a counter for each of the molecules input into this step so that
@@ -71,7 +73,7 @@ class PCRAmplificationStep:
             # For each cycle, we generate copies. However, since PCR grows
             # the number of molecule exponentially and the next step after PCR
             # is always a downsampling to much lower numbers (hence why PCR must
-            # be performed), we compute ahead of time how many descendants of 
+            # be performed), we compute ahead of time how many descendants of
             # each molecule will be retained at the end. Then we only retain and
             # clone molecules as necessary, dropping off any that will end up
             # not being retained. Thereby, much computation time is saved, but
@@ -79,9 +81,17 @@ class PCRAmplificationStep:
             # copies-of-copies is retained.
 
             # Compute the number of retained descendants each molecule will have
+            # These are computed under the assumption of no GC-content bias
+            # GC-bias will further reduce the actual numbers later on
             retention_rate = self.retention_percentage / 100
-            #TODO: CG bias goes here, use different p for each molecule
             descendants = np.random.binomial(n=2**self.number_cycles, p = retention_rate, size=len(molecules))
+
+            # Rate of success (per molecule) of each PCR cycle
+            gc = np.array([gc_content(molecule) for molecule in molecules])
+            gc_const = self.parameters['gc_bias_constant']
+            gc_linear = self.parameters['gc_bias_linear']
+            gc_quadratic = self.parameters['gc_bias_quadratic']
+            success_rate = np.clip(gc_const - gc_linear*(gc - 0.5) + gc_quadratic*(gc - 0.5)**2, 0, 1)
 
             # Iterate over the number of cycles requested.
             for cycle in range(self.number_cycles):
@@ -99,15 +109,25 @@ class PCRAmplificationStep:
                         descendants)
                 copy_descendants = descendants - original_descendants
 
+                # Account for failure in PCR
+                pcr_succeeded = np.random.random(success_rate.shape) < success_rate
+
                 # Retain molecules if the original has descendants (not from the copy made this round)
-                new_molecules = [molecule for desc, molecule in zip(original_descendants, molecules) if desc > 0]
+                new_molecules = [molecule
+                                    for desc, molecule
+                                    in zip(original_descendants, molecules)
+                                    if desc > 0]
 
                 # Create copy molecules if they will have at least one descendant
-                for desc, molecule in zip(copy_descendants, molecules):
+                for desc, molecule, pcr_success in zip(copy_descendants, molecules, pcr_succeeded):
                     if desc == 0:
                         continue
 
-                    # Copy the original molecule (no biases as yet being introduced)
+                    if not pcr_success:
+                        # This molecule failed to PCR duplicate this round
+                        continue
+
+                    # Copy the original molecule (no errors as yet being introduced)
                     new_molecule = copy(molecule)
                     # TODO: copies should be reverse-complemented, right?
                     self.assign_id(new_molecule, molecule.molecule_id)
@@ -117,7 +137,16 @@ class PCRAmplificationStep:
                 # so we assemble them here: original molecules go first and copies second
                 descendants = np.concatenate((
                     original_descendants[original_descendants > 0],
-                    copy_descendants[copy_descendants > 0],
+                    copy_descendants[(copy_descendants > 0) & pcr_succeeded],
+                ))
+
+                # success_rates of the copied molecules are assumed to be
+                # the same as the original. This is a simplification since
+                # errors in PCR copies could influence GC bias, but should
+                # be a very close approximation.
+                success_rate = np.concatenate((
+                    success_rate[original_descendants > 0],
+                    success_rate[(copy_descendants > 0) & pcr_succeeded],
                 ))
 
                 molecules = new_molecules
