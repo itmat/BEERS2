@@ -186,7 +186,14 @@ class Controller:
                 sam.generate_report(reference_genome, BAM=False)
 
     def run_prep_and_sequence_pipeline(self, args):
-        pass
+        """
+        Run first Library Prep pipeline and then the Sequence Pipeline using the output
+        from the library prep as input for sequence.
+        :param args: The command line arguments
+        """
+        self.run_library_prep_pipeline(args)
+        self.configuration['sequence_pipeline']['output']['directory_path'] = self.output_directory_path
+        self.run_sequence_pipeline(args)
 
     def perform_setup(self, args, stage_names):
         """
