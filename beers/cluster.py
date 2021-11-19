@@ -92,9 +92,9 @@ class Cluster:
         constants module).
         """
         if self.forward_is_5_prime and direction == CONSTANTS.DIRECTION_CONVENTION[0]:
-            self.header = f"{self.encode_sequence_identifier()}\t1:N:0:{self.called_barcode}"
+            self.header = f"@{self.encode_sequence_identifier()}\t1:N:0:{self.called_barcode}"
         else:
-            self.header = f"{self.encode_sequence_identifier()}\t2:N:0:{self.called_barcode}"
+            self.header = f"@{self.encode_sequence_identifier()}\t2:N:0:{self.called_barcode}"
 
     def encode_sequence_identifier(self):
         """
@@ -105,7 +105,7 @@ class Cluster:
         """
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
         tile, x, y = self.coordinates
-        return f"@BEERS:{self.run_id}:1:{self.lane}:{tile}:{x}:{y}:{self.molecule.molecule_id}"
+        return f"BEERS:{self.run_id}:1:{self.lane}:{tile}:{x}:{y}:{self.molecule.molecule_id}"
 
     def set_forward_direction(self, forward_is_5_prime):
         """
