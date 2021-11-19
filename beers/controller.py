@@ -84,7 +84,7 @@ class Controller:
                               directory_structure)
         self.dispatcher.dispatch(molecule_packet_file_paths, packet_ids)
 
-    def run_sequence_pipeline(self, args):
+    def run_sequence_pipeline(self, args, setup=True):
         """
         This is how run_beers.py calls the sequence pipeline by itself.  This pipeline is complete and functional.
         Controller attributes are set up.  All molecule packet file are located - note that these molecule packet files
@@ -117,7 +117,8 @@ class Controller:
         :param args: The command line arguments
         """
         stage_name = "sequence_pipeline"
-        self.perform_setup(args, [self.controller_name, stage_name])
+        if setup:
+            self.perform_setup(args, [self.controller_name, stage_name])
         input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
         intermediate_directory_path = os.path.join(self.output_directory_path, self.controller_name)
         data_directory_path = os.path.join(intermediate_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
@@ -192,8 +193,9 @@ class Controller:
         :param args: The command line arguments
         """
         self.run_library_prep_pipeline(args)
-        self.configuration['sequence_pipeline']['output']['directory_path'] = self.output_directory_path
-        self.run_sequence_pipeline(args)
+        # Chain library prep output into sequence input
+        self.configuration['sequence_pipeline']['input']['directory_path'] = os.path.join(self.output_directory_path, "library_prep_pipeline", "data")
+        self.run_sequence_pipeline(args, setup=False)
 
     def perform_setup(self, args, stage_names):
         """
