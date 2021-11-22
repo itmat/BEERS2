@@ -9,9 +9,7 @@ from beers_utils.constants import CONSTANTS
 import beers_utils.cigar
 
 
-# BaseCounts - tuple of counts for each nucleotide G,A,T,C a numpy
-#              array of count values, one per base of the sequence
-BaseCounts = namedtuple('BaseCounts', ["G", "A", "T", "C"])
+BASE_ORDER = ["A", "C", "G", "T"]
 
 
 class Cluster:
@@ -69,13 +67,12 @@ class Cluster:
         self.called_barcode = called_barcode
         self.read_starts = read_starts or []
         self.read_cigars = read_cigars or []
-        if base_counts:
+        if base_counts is not None:
             self.base_counts = base_counts
         else:
             # From sequence, we start with 1 count for each base in the sequence
             encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
-            counts = {nt: (encoded == ord(nt)).astype('int32') for nt in "ACGT"}
-            self.base_counts = BaseCounts(counts['G'], counts['A'], counts['T'], counts['C'])
+            self.base_counts = np.array([encoded == ord(nt) for nt in BASE_ORDER]).astype(int)
         self.forward_is_5_prime = forward_is_5_prime
 
     def assign_coordinates(self, coordinates):
@@ -149,7 +146,7 @@ class Cluster:
         with closing(StringIO()) as called_bases:
             with closing(StringIO()) as quality_scores:
                 for position in range(range_start, range_end):
-                    base_counts = list(zip('GATC', self.get_base_counts_by_position(position)))
+                    base_counts = list(zip(BASE_ORDER, self.get_base_counts_by_position(position)))
                     max_base_count = max(base_counts, key=lambda base_count: base_count[1])
                     number_max_values = len([base_count[0] for base_count in base_counts
                                             if base_count[1] == max_base_count[1]])
@@ -229,12 +226,9 @@ class Cluster:
         """
         Conveninece method to gather base counts by index (position)
         :param index: index (position) of interest
-        :return: tuple of base counts in GATC order.
+        :return: tuple of base counts in ACGT order.
         """
-        return (self.base_counts.G[index],
-                self.base_counts.A[index],
-                self.base_counts.T[index],
-                self.base_counts.C[index])
+        return tuple(self.base_counts[:,index])
 
     def __str__(self):
         """
@@ -248,7 +242,7 @@ class Cluster:
             header += f"called sequence: {self.called_sequences[index]}\n"
             header += f"quality score: {self.quality_scores[index]}\n"
         with closing(StringIO()) as output:
-            output.write("pos\tG\tA\tT\tC\torig\n")
+            output.write("pos\tA\tC\tG\tT\torig\n")
             for index in range(len(self.molecule.sequence)):
                 output.write(f"{index}\t")
                 [output.write(f"{base_count}\t") for base_count in self.get_base_counts_by_position(index)]
@@ -310,12 +304,12 @@ class Cluster:
                 if line_number == 2:
                     molecule = Molecule.deserialize(line[1:].rstrip('\n'))
             else:
-                g_count, a_count, t_count, c_count = line.rstrip('\n').split("\t")
-                g_counts.append(int(g_count))
+                a_count, c_count, g_count, t_count = line.rstrip('\n').split("\t")
                 a_counts.append(int(a_count))
-                t_counts.append(int(t_count))
                 c_counts.append(int(c_count))
-        base_counts = BaseCounts(g_counts, a_counts, t_counts, c_counts)
+                g_counts.append(int(g_count))
+                t_counts.append(int(t_count))
+        base_counts = np.array((a_counts, c_counts, g_counts, t_counts))
         return Cluster(
                 run_id = int(run_id),
                 cluster_id = cluster_id,
