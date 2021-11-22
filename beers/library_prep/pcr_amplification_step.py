@@ -41,6 +41,9 @@ class PCRAmplificationStep:
         self.log_filename = step_log_file_path
         self.number_cycles = parameters.get("number_cycles")
         self.retention_percentage = parameters.get('retention_percentage')
+        self.substitution_rate = parameters.get('substitution_rate')
+        self.insertion_rate = parameters.get('insertion_rate')
+        self.deletion_rate = parameters.get('deletion_rate')
         self.parameters = parameters
         self.global_config = global_config
 
@@ -127,8 +130,16 @@ class PCRAmplificationStep:
                         # This molecule failed to PCR duplicate this round
                         continue
 
-                    # Copy the original molecule (no errors as yet being introduced)
+                    # Copy the original molecule
                     new_molecule = copy(molecule)
+
+                    # Add any errors in copying
+                    new_molecule.generate_errors(
+                            self.substitution_rate,
+                            self.insertion_rate,
+                            self.deletion_rate
+                    )
+
                     # TODO: copies should be reverse-complemented, right?
                     self.assign_id(new_molecule, molecule.molecule_id)
                     new_molecules.append(new_molecule)
