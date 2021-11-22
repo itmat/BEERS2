@@ -3,7 +3,7 @@ import numpy as np
 from beers_utils.molecule_packet import MoleculePacket
 from beers_utils import cigar
 
-def gc_content(molecule, aligned_only):
+def gc_content(molecule, aligned_only=False):
     seq = molecule.sequence
     if aligned_only:
         # Extract just the parts of seq that aligned to reference
