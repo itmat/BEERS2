@@ -13,6 +13,7 @@ args = parser.parse_args()
 
 import json
 import pathlib
+import collections
 import matplotlib
 import pylab
 import numpy
@@ -88,6 +89,26 @@ def plot_gcs(gcs_dict):
     ax.legend()
     return fig
 
+def count_pcr_duplicates(molecules):
+    ''' compute a dictionary {k: num} where num is the count of
+    molecules with exactly k pcr duplicates
+
+    PCR duplicates are determined exactly from molecule history,
+    not from alignment.
+    '''
+    def pre_pcr_id(id):
+        # given molecule id, extract the part from before the PCR step
+        # PCR comes last, so just take all before the last '.'
+        return '.'.join(id.split('.')[:-1])
+    base_ids = [pre_pcr_id(mol.molecule_id) for mol in molecules]
+    # Number of duplicates per molecule
+    id_counts = collections.Counter(base_ids)
+
+    # Number of molecules with k duplicates
+    duplicates = collections.Counter(id_counts.values())
+    return duplicates
+
+
 outdir = pathlib.Path(args.outdir)
 outdir.mkdir(exist_ok=True)
 
@@ -116,11 +137,19 @@ lib_prep_molecule_packets = lib_prep_out.rglob("**/library_prep_pipeline_result_
 lib_prep_pileups = make_pileups(reference_genome)
 lib_prep_gcs = []
 lib_prep_aligned_gcs = []
+duplicate_counts = {}
 for packet in lib_prep_molecule_packets:
     packet = MoleculePacket.deserialize(packet)
     pileup(packet.molecules, lib_prep_pileups)
     lib_prep_gcs.append(packet_gc_content(packet))
     lib_prep_aligned_gcs.append(packet_gc_content(packet, aligned_only=True))
+
+    packet_dup_counts = count_pcr_duplicates(packet.molecules)
+    duplicate_counts = {k: duplicate_counts.get(k,0) + packet_dup_counts.get(k, 0)
+                            for k in set(duplicate_counts.keys()).union(packet_dup_counts.keys())}
+print("PCR duplicate counts")
+print(duplicate_counts)
+
 
 seq_out = output_dir/"controller/data/"
 sam_files = seq_out.rglob("*.sam")
@@ -134,8 +163,8 @@ for sam_file in sam_files:
         for read in sam:
             strand = '-' if ((read.is_reverse and read.is_read1) or (not read.is_reverse and read.is_read2)) else '+'
             molecules.append(Molecule(
+                molecule_id = read.query_name,
                 start = 1,
-                molecule_id = 0,
                 sequence = read.query_sequence,
                 source_chrom = read.reference_name,
                 source_start = read.reference_start + 1,
