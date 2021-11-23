@@ -1,5 +1,7 @@
 from collections import namedtuple
 import numpy as np
+import scipy.special
+import scipy.stats
 from io import StringIO
 import math
 from contextlib import closing
@@ -23,8 +25,8 @@ class Cluster:
 
     next_cluster_id = 1  # Static variable for creating increasing cluster id's
 
-    MIN_ASCII = 33
-    MAX_QUALITY = 41
+    PHRED_MIN_ASCII = 33
+    PHRED_MAX_QUALITY = 41
 
     def __init__(self, run_id, cluster_id, molecule, lane, coordinates, *, molecule_count=1, diameter=0,
                  called_sequences=None, called_barcode=None, quality_scores=None,
@@ -135,31 +137,39 @@ class Cluster:
             if paired_ends:
                 self.read_in_5_prime_direction(read_length, read_start_5_prime)
 
-    def read_over_range(self, range_start, range_end):
+    def read_over_range(self, range_start, range_end, skip_rate = 0 , drop_rate = 0):
         """
         Accumulates the called bases and the associated quality scores over the range given (going 5' to 3').  The
         called base at any position is the most numerous base at that position.  In the event of a tie, an 'N' is
         called instead.  The quality score is calculated as a Phred quality score and encoded using the Sanger format.
         :param range_start:  The starting position (from the 5' end), 0-based
         :param range_end: The ending position (exlusive, from the 5' end), 0-based
+        :param skip_rate: rate per base at which two bases are added instead of one in the sequence-by-synthesis
+        :param drop_rate: rate per base at which no base is added instead of one in the sequence-by-synthesis
         """
+        base_array = np.array([ord(x) for x in BASE_ORDER], dtype="uint8")
         with closing(StringIO()) as called_bases:
             with closing(StringIO()) as quality_scores:
-                for position in range(range_start, range_end):
-                    base_counts = list(zip(BASE_ORDER, self.get_base_counts_by_position(position)))
-                    max_base_count = max(base_counts, key=lambda base_count: base_count[1])
-                    number_max_values = len([base_count[0] for base_count in base_counts
-                                            if base_count[1] == max_base_count[1]])
-                    if number_max_values > 1:
-                        called_bases.write('N')
-                        quality_scores.write(str(chr(Cluster.MIN_ASCII)))
-                    else:
-                        other_bases_total_count = sum(count for base, count in base_counts if base != max_base_count[0])
-                        prob = other_bases_total_count / self.molecule_count
-                        quality_value = min(Cluster.MAX_QUALITY, math.floor(-10 * math.log10(prob))) \
-                                        if prob != 0 else Cluster.MAX_QUALITY
-                        called_bases.write(max_base_count[0])
-                        quality_scores.write(str(chr(quality_value + Cluster.MIN_ASCII)))
+                flourescence = self.base_counts[:, range_start:range_end]
+
+                # Find the brightest base at each position
+                brightest_base = np.argmax(flourescence, axis=0) # bases as nums 0,1,2,3
+                read_seq = base_array[brightest_base].tobytes().decode() # as string "ACGT..."
+
+                # Approximate quality scores from the ratio of maximum base count
+                # to the second most common base
+                ordered_flourescence = np.sort(flourescence, axis=0)
+                highest_flourescence = ordered_flourescence[-1,:]
+                second_highest_flourescence = ordered_flourescence[-2,:]
+                #TODO: these probabilites are super high
+                prob = second_highest_flourescence / (second_highest_flourescence + highest_flourescence)
+                #combos_highest = scipy.special.comb(highest_flourescence + second_highest_flourescence, highest_flourescence)
+                #combos_second = scipy.special.comb(highest_flourescence + second_highest_flourescence, second_highest_flourescence)
+                #prob2 = scipy.stats.binom(self.molecule_count, p=0.5).sf(highest_flourescence)
+                prob = np.maximum(prob, np.power(10, -Cluster.PHRED_MAX_QUALITY / 10)) # Force minimum phred score
+                score = np.floor(-10 * np.log10(prob))
+                qual = (Cluster.PHRED_MIN_ASCII + score).astype("uint8").tobytes().decode()
+
                 read_start, read_cigar, new_strand = beers_utils.cigar.chain(
                     range_start + 1, # range_start is 0-based, alignments are always 1 based
                     f"{range_end - range_start}M",
@@ -168,9 +178,7 @@ class Cluster:
                     self.molecule.source_cigar,
                     self.molecule.source_strand,
                 )
-                bases = called_bases.getvalue()
-                qual = quality_scores.getvalue()
-                return bases, qual, read_start, read_cigar
+                return read_seq, qual, read_start, read_cigar
 
     def read_barcode(self, i5_start, i5_length, i7_start, i7_length):
         """
