@@ -44,7 +44,8 @@ class Cluster:
     def __init__(self, run_id, cluster_id, molecule, lane, coordinates, *, molecule_count=1, diameter=0,
                  called_sequences=None, called_barcode=None, quality_scores=None,
                  read_starts = None, read_cigars = None, base_counts=None,
-                 forward_is_5_prime=True):
+                 forward_is_5_prime=True,
+                 skip_rate = 0, drop_rate = 0):
         """
         The constructor contains many attributes, the values of which, may be unknown at the time of instantiation.
         But the object is serializable via custom methods and a serialized version will often contain values for
@@ -68,6 +69,8 @@ class Cluster:
         :param base_counts: An array of counts for each of the 4 nt bases for each position in the original molecule.
         The initial base counts array exactly matches the original molecule sequence
         :param forward_is_5_prime: The 5' direction is forward if true.  Otherwise, the 3' direction is forward.
+        :param skip_rate: the rate of skip events per base per molecule during sequence-by-synthesis (i.e. prephasing)
+        :param drop_rate: the rate of drop events per base per molecule during sequence-by-synthesis (i.e. phasing)
         """
         self.lane = lane
         self.coordinates = coordinates
@@ -82,6 +85,8 @@ class Cluster:
         self.called_barcode = called_barcode
         self.read_starts = read_starts or []
         self.read_cigars = read_cigars or []
+        self.skip_rate = skip_rate
+        self.drop_rate = drop_rate
         if base_counts is not None:
             self.base_counts = base_counts
         else:
@@ -150,15 +155,13 @@ class Cluster:
             if paired_ends:
                 self.read_in_5_prime_direction(read_length, read_start_5_prime)
 
-    def read_over_range(self, range_start, range_end, skip_rate = 0 , drop_rate = 0):
+    def read_over_range(self, range_start, range_end):
         """
         Accumulates the called bases and the associated quality scores over the range given (going 5' to 3').  The
         called base at any position is the most numerous base at that position.  In the event of a tie, an 'N' is
         called instead.  The quality score is calculated as a Phred quality score and encoded using the Sanger format.
         :param range_start:  The starting position (from the 5' end), 0-based
         :param range_end: The ending position (exlusive, from the 5' end), 0-based
-        :param skip_rate: rate per base at which two bases are added instead of one in the sequence-by-synthesis
-        :param drop_rate: rate per base at which no base is added instead of one in the sequence-by-synthesis
         """
         base_array = np.array([ord(x) for x in BASE_ORDER], dtype="uint8")
         with closing(StringIO()) as called_bases:
@@ -177,9 +180,6 @@ class Cluster:
                 #TODO: this should all be done at the level of a lane or tile or something
                 #      various parameters need to be estimated across all clusters
 
-                skip_rate = 0.003
-                drop_rate = 0.003
-
                 # Add skips (aka prephasing) where bases are added too quickly in some strands
                 # This causes bases to be read too early
                 # We assume that each molecule skips at most MAX_SKIPS times
@@ -187,25 +187,24 @@ class Cluster:
                 # individually by just using average molecule counts
 
                 # Each base is equally likely to give a skip
-                skips = np.random.random(size = (self.molecule_count, range_end - range_start)) < skip_rate
-                num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), self.MAX_SKIPS)
-                # Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
-                num_mols_skipped = (num_skips_so_far[:,:,None] == np.arange(0, self.MAX_SKIPS+1)[None,None,:]).sum(axis=0)
-                frac_skipped = num_mols_skipped / self.molecule_count
-
-                # Each base is equally likely to give a drop
-                drops = np.random.random(size = (self.molecule_count, range_end - range_start)) < drop_rate
-                num_drops_so_far = np.minimum(np.cumsum(drops, axis=1), self.MAX_SKIPS)
-                # Count number of molecules that have had exactly k drops at the nth base, for k= 0,1,...MAX_DROPS
-                num_mols_dropped = (num_drops_so_far[:,:,None] == np.arange(0, self.MAX_DROPS+1)[None,None,:]).sum(axis=0)
-                frac_dropped = num_mols_dropped / self.molecule_count
+                def get_frac_skipped(rate, max_skips):
+                    skips = np.random.random(size = (self.molecule_count, range_end - range_start)) < rate
+                    num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), max_skips)
+                    # Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
+                    num_mols_skipped = (num_skips_so_far[:,:,None] == np.arange(0, max_skips+1)[None,None,:]).sum(axis=0)
+                    frac_skipped = num_mols_skipped / self.molecule_count
+                    return frac_skipped
+                frac_skipped = get_frac_skipped(self.skip_rate, self.MAX_SKIPS)
+                frac_dropped = get_frac_skipped(self.drop_rate, self.MAX_DROPS)
 
                 # 'smear' base counts according to the number of skips
-                smeared_base_counts = sum( padded_base_counts[:, self.MAX_DROPS + range_start + skip : self.MAX_DROPS + range_end + skip] * frac_skipped[:,skip]
-                                                for skip in range(1, self.MAX_SKIPS+1))
+                smeared_base_counts = np.sum( [padded_base_counts[:, self.MAX_DROPS + range_start + skip : self.MAX_DROPS + range_end + skip] * frac_skipped[:,skip]
+                                                for skip in range(1, self.MAX_SKIPS+1)],
+                                              axis=0)
                 # ...and by the number of drops
-                smeared_base_counts = sum( padded_base_counts[:, self.MAX_DROPS + range_start - drop : self.MAX_DROPS + range_end - drop] * frac_dropped[:,drop]
-                                                for drop in range(1, self.MAX_DROPS+1))
+                smeared_base_counts = np.sum( [padded_base_counts[:, self.MAX_DROPS + range_start - drop : self.MAX_DROPS + range_end - drop] * frac_dropped[:,drop]
+                                                for drop in range(1, self.MAX_DROPS+1)],
+                                              axis=0)
                 # and the ones that neither drop nor skip
                 smeared_base_counts = padded_base_counts[:, range_start:range_end] * (1 -  (1 - frac_skipped[:, 0]) - (1 - frac_dropped[:, 0]))
                 
@@ -234,7 +233,7 @@ class Cluster:
                 cross_talk_inv_est = np.linalg.inv(cross_talk_est)
                 #TODO: bustard also accounts for phasing/prephasing
                 # gives probability of a template terminating at position j after t cycles
-                phasing_matrix_inv = get_inv_phasing_matrix(read_len, skip_rate, drop_rate)
+                phasing_matrix_inv = get_inv_phasing_matrix(read_len, self.skip_rate, self.drop_rate)
                 base_counts_est = cross_talk_inv_est @ flourescence @ phasing_matrix_inv
                 base_orders = np.argsort(base_counts_est, axis=0)
                 called_base = base_orders[-1,:] # bases as nums 0,1,2,3 = ACGT

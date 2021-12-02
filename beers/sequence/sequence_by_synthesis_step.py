@@ -10,6 +10,10 @@ class SequenceBySynthesisStep:
         self.forward_is_5_prime = parameters.get('forward_is_5_prime', True)
         self.paired_ends = parameters.get('paired_ends', False)
 
+        # Sequencing error rate
+        self.skip_rate = parameters['skip_rate']
+        self.drop_rate = parameters['drop_rate']
+
         # Determine where the barcodes lie
         self.i5_start = len(global_config['resources']['pre_i5_adapter']) + 1 # one past the first part of the adapter
         self.i7_start = len(global_config['resources']['post_i7_adapter']) + 1 # one past the first part of the adapter, reading from 3' end
@@ -31,10 +35,12 @@ class SequenceBySynthesisStep:
     def execute(self, cluster_packet):
         for cluster in cluster_packet.clusters:
             cluster.set_forward_direction(self.forward_is_5_prime)
+            cluster.skip_rate = self.skip_rate
+            cluster.drop_rate = self.drop_rate
             cluster.read(
                     self.read_length, self.paired_ends,
                     self.i5_start, self.i5_length, self.i7_start, self.i7_length,
-                    self.forward_read_start, self.reverse_read_start
+                    self.forward_read_start, self.reverse_read_start,
             )
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet
