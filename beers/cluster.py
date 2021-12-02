@@ -1,4 +1,5 @@
 from collections import namedtuple
+import functools
 import numpy as np
 import scipy.special
 import scipy.stats
@@ -25,8 +26,20 @@ class Cluster:
 
     next_cluster_id = 1  # Static variable for creating increasing cluster id's
 
+    # Sequence-by-synthesis parameters
     PHRED_MIN_ASCII = 33
     PHRED_MAX_QUALITY = 41
+    MAX_SKIPS = 10
+    MAX_DROPS = 10
+    EPSILON = 100 # noise standard deviation
+    # Cross-talk between flourescence channels
+    # chosen arbitrarily TODO: find a realistic table
+    CROSS_TALK = np.array(
+        [[1.0, 0.3, 0.2, 0.0],
+         [0.1, 1.0, 0.2, 0.1],
+         [0.2, 0.1, 1.0, 0.3],
+         [0.3, 0.1, 0.1, 1.0]]
+        )
 
     def __init__(self, run_id, cluster_id, molecule, lane, coordinates, *, molecule_count=1, diameter=0,
                  called_sequences=None, called_barcode=None, quality_scores=None,
@@ -150,25 +163,104 @@ class Cluster:
         base_array = np.array([ord(x) for x in BASE_ORDER], dtype="uint8")
         with closing(StringIO()) as called_bases:
             with closing(StringIO()) as quality_scores:
-                flourescence = self.base_counts[:, range_start:range_end]
+
+                base_counts = self.base_counts[:, range_start:range_end]
+                padded_base_counts = np.concatenate(
+                        (   np.zeros((4,self.MAX_DROPS)),
+                            self.base_counts,
+                            np.zeros((4,self.MAX_SKIPS))
+                        ),
+                        axis=1)
+                read_len = range_end - range_start
+
+                #TODO: this all depends upon the direction of the read, forward or reverse?
+                #TODO: this should all be done at the level of a lane or tile or something
+                #      various parameters need to be estimated across all clusters
+
+                skip_rate = 0.003
+                drop_rate = 0.003
+
+                # Add skips (aka prephasing) where bases are added too quickly in some strands
+                # This causes bases to be read too early
+                # We assume that each molecule skips at most MAX_SKIPS times
+                # And we approximate skips and drops without simulating every molecule
+                # individually by just using average molecule counts
+
+                # Each base is equally likely to give a skip
+                skips = np.random.random(size = (self.molecule_count, range_end - range_start)) < skip_rate
+                num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), self.MAX_SKIPS)
+                # Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
+                num_mols_skipped = (num_skips_so_far[:,:,None] == np.arange(0, self.MAX_SKIPS+1)[None,None,:]).sum(axis=0)
+                frac_skipped = num_mols_skipped / self.molecule_count
+
+                # Each base is equally likely to give a drop
+                drops = np.random.random(size = (self.molecule_count, range_end - range_start)) < drop_rate
+                num_drops_so_far = np.minimum(np.cumsum(drops, axis=1), self.MAX_SKIPS)
+                # Count number of molecules that have had exactly k drops at the nth base, for k= 0,1,...MAX_DROPS
+                num_mols_dropped = (num_drops_so_far[:,:,None] == np.arange(0, self.MAX_DROPS+1)[None,None,:]).sum(axis=0)
+                frac_dropped = num_mols_dropped / self.molecule_count
+
+                # 'smear' base counts according to the number of skips
+                smeared_base_counts = sum( padded_base_counts[:, self.MAX_DROPS + range_start + skip : self.MAX_DROPS + range_end + skip] * frac_skipped[:,skip]
+                                                for skip in range(1, self.MAX_SKIPS+1))
+                # ...and by the number of drops
+                smeared_base_counts = sum( padded_base_counts[:, self.MAX_DROPS + range_start - drop : self.MAX_DROPS + range_end - drop] * frac_dropped[:,drop]
+                                                for drop in range(1, self.MAX_DROPS+1))
+                # and the ones that neither drop nor skip
+                smeared_base_counts = padded_base_counts[:, range_start:range_end] * (1 -  (1 - frac_skipped[:, 0]) - (1 - frac_dropped[:, 0]))
+                
+                # Flourescence comes from these after including cross talk between the different colors
+                flourescence = self.CROSS_TALK @ (smeared_base_counts + self.EPSILON * np.random.normal(size=smeared_base_counts.shape))
 
                 # Find the brightest base at each position
-                brightest_base = np.argmax(flourescence, axis=0) # bases as nums 0,1,2,3
-                read_seq = base_array[brightest_base].tobytes().decode() # as string "ACGT..."
+                #brightest_base = np.argmax(flourescence, axis=0) # bases as nums 0,1,2,3
+                #read_seq = base_array[brightest_base].tobytes().decode() # as string "ACGT..."
 
                 # Approximate quality scores from the ratio of maximum base count
                 # to the second most common base
-                ordered_flourescence = np.sort(flourescence, axis=0)
-                highest_flourescence = ordered_flourescence[-1,:]
-                second_highest_flourescence = ordered_flourescence[-2,:]
-                #TODO: these probabilites are super high
-                prob = second_highest_flourescence / (second_highest_flourescence + highest_flourescence)
-                #combos_highest = scipy.special.comb(highest_flourescence + second_highest_flourescence, highest_flourescence)
-                #combos_second = scipy.special.comb(highest_flourescence + second_highest_flourescence, second_highest_flourescence)
-                #prob2 = scipy.stats.binom(self.molecule_count, p=0.5).sf(highest_flourescence)
-                prob = np.maximum(prob, np.power(10, -Cluster.PHRED_MAX_QUALITY / 10)) # Force minimum phred score
-                score = np.floor(-10 * np.log10(prob))
-                qual = (Cluster.PHRED_MIN_ASCII + score).astype("uint8").tobytes().decode()
+                #ordered_flourescence = np.sort(flourescence, axis=0)
+                #highest_flourescence = ordered_flourescence[-1,:]
+                #second_highest_flourescence = ordered_flourescence[-2,:]
+                ##TODO: these probabilites are super high
+                #prob = second_highest_flourescence / (second_highest_flourescence + highest_flourescence)
+                ##combos_highest = scipy.special.comb(highest_flourescence + second_highest_flourescence, highest_flourescence)
+                ##combos_second = scipy.special.comb(highest_flourescence + second_highest_flourescence, second_highest_flourescence)
+                ##prob2 = scipy.stats.binom(self.molecule_count, p=0.5).sf(highest_flourescence)
+                #prob = np.maximum(prob, np.power(10, -Cluster.PHRED_MAX_QUALITY / 10)) # Force minimum phred score
+
+                ## Approximate the Bustard algorithm for calling bases and quality scores
+                # make an 'estimated' cross-talk matrix TODO: should be estimated from an entire tile
+                cross_talk_est = self.CROSS_TALK + np.random.normal(size=self.CROSS_TALK.shape)* 0.01
+                cross_talk_inv_est = np.linalg.inv(cross_talk_est)
+                #TODO: bustard also accounts for phasing/prephasing
+                # gives probability of a template terminating at position j after t cycles
+                phasing_matrix_inv = get_inv_phasing_matrix(read_len, skip_rate, drop_rate)
+                base_counts_est = cross_talk_inv_est @ flourescence @ phasing_matrix_inv
+                base_orders = np.argsort(base_counts_est, axis=0)
+                called_base = base_orders[-1,:] # bases as nums 0,1,2,3 = ACGT
+                second_best_base = base_orders[-2,:] # bases as nums 0,1,2,3 = ACGT
+                read_seq = base_array[called_base].tobytes().decode() # as string "ACGT..."
+                #TODO: epsilon should be estimated from data and is cycle-dependent
+                M = (cross_talk_inv_est * self.EPSILON) * (cross_talk_inv_est * self.EPSILON).T
+                highest_base_count = base_counts_est[called_base, np.arange(read_len)]
+                second_base_count = base_counts_est[second_best_base, np.arange(read_len)]
+                diff = highest_base_count - second_base_count
+                contrasts = np.zeros(shape=(read_len, 4, 1))
+                contrasts[np.arange(read_len), called_base] = 1
+                contrasts[np.arange(read_len), second_best_base] = -1
+                sigma = np.sqrt(contrasts.transpose(0,2,1) @ M @ contrasts)
+                prob = scipy.stats.norm(0, sigma.flatten()).sf(np.abs(diff)) * 2 # two-tailed
+
+                score = (-10 * np.log10(prob)).astype("uint8")
+                score = np.minimum(Cluster.PHRED_MAX_QUALITY, score)
+                qual = (Cluster.PHRED_MIN_ASCII + score).tobytes().decode()
+                seq = np.array(BASE_ORDER)[called_base].tobytes().decode()
+
+                #print("Flourescence")
+                #print(flourescence[called_base, np.arange(flourescence.shape[1])])
+                #print(flourescence[second_best_base, np.arange(flourescence.shape[1])])
+                #print(prob[:10])
+                #print(qual[:10])
 
                 read_start, read_cigar, new_strand = beers_utils.cigar.chain(
                     range_start + 1, # range_start is 0-based, alignments are always 1 based
@@ -334,3 +426,59 @@ class Cluster:
                 read_cigars = read_cigars,
                 forward_is_5_prime = forward_is_5_prime
             )
+
+def hypergeometric(counts, n_samples):
+    '''
+    Vectorized version of np.random.hypergeometric
+
+    Draw n_sample balls from an urn with counts.shape[0] colors of balls
+
+    :param counts: n-dim array with first dimension giving the counts of 'balls' available of each of counts.shape[0] colors
+    :params n_samples: n-1-dim array with number of samples to draw from the urn
+    '''
+
+    def hypergeometric_(good_counts, bad_counts, n_samples):
+        # same as np.random.hypergeometric but allows n_samples = 0
+        out = np.zeros_like(good_counts)
+        nonzero = n_samples > 0
+        out[nonzero] = np.random.hypergeometric(good_counts[nonzero], bad_counts[nonzero], n_samples[nonzero])
+        return out
+
+    assert counts.shape[1:] == n_samples.shape
+
+    out = np.empty_like(counts)
+
+    total_counts = counts.sum(axis=0)
+    assert (n_samples <= total_counts).all()
+
+    # Iterate through the 'colors', drawing some balls of each color and passing
+    # the remaining draws to the remaining colors
+    n_samples = n_samples.copy()
+    for i in range(counts.shape[0]-1):
+        color_counts = counts[i]
+        draws_from_this_color = hypergeometric_(color_counts, total_counts - color_counts, n_samples)
+        out[i] = draws_from_this_color
+        n_samples -= draws_from_this_color
+        total_counts -= color_counts
+    out[-1] = n_samples # All remaining go to last color
+    return out
+
+@functools.lru_cache(maxsize=None)
+def get_inv_phasing_matrix(read_len, skip_rate, drop_rate):
+    ''' Computes the inverse of Q, the phasing matrix
+
+    The (j,t) entry of Q gives the probability of a template 
+    terminating at position j after t cycles
+
+    Cached for speed-ups. Since reads are all the same length, they all get the same
+    matrix and caching is very useful.
+    '''
+    phasing_matrix = np.array([[(1 -  skip_rate - drop_rate) if j == t else 
+                                    (skip_rate**(j - t)*(1-skip_rate) if j > t else
+                                     drop_rate**(t - j)*(1-drop_rate))
+                                for t in range(read_len)]
+                                for j in range(read_len)])
+    # Strangely, computing this inverse is very slow on cluster (~3 seconds)
+    # even for small size (100x100), though very fast on my laptop (~3ms)
+    phasing_mat_inv = np.linalg.inv(phasing_matrix)
+    return phasing_mat_inv
