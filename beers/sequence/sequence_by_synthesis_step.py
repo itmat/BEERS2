@@ -1,14 +1,45 @@
 import sys
+import functools
+
+import numpy as np
+import scipy.stats
+
+import beers_utils
+import beers
+
+# Sequence-by-synthesis parameters
+PHRED_MIN_ASCII = 33
+PHRED_MAX_QUALITY = 41
+BASE_ARRAY = np.array([ord(x) for x in beers.cluster.BASE_ORDER], dtype="uint8")
 
 class SequenceBySynthesisStep:
 
     name = "Sequence By Synthesis Step"
 
+    # Sequencing parameters
+    MAX_SKIPS = 10
+    MAX_DROPS = 10
+    EPSILON = 100 # noise standard deviation
+    # Cross-talk between flourescence channels
+    # chosen arbitrarily TODO: find a realistic table
+    CROSS_TALK = np.array(
+        [[1.0, 0.3, 0.2, 0.0],
+         [0.1, 1.0, 0.2, 0.1],
+         [0.2, 0.1, 1.0, 0.3],
+         [0.3, 0.1, 0.1, 1.0]]
+        )
+
     def __init__(self, step_log_file_path, parameters, global_config):
         self.log_filename = step_log_file_path
         self.read_length = parameters['read_length']
         self.forward_is_5_prime = parameters.get('forward_is_5_prime', True)
+        if self.forward_is_5_prime != True:
+            # TODO: support both fwd and rev reads being the first read
+            raise NotImplementedError("Sequencing is only supported with forward_is_5_prime = true")
         self.paired_ends = parameters.get('paired_ends', False)
+        if self.paired_ends == False:
+            #TODO: support paired ends
+            raise NotImplementedError("Sequencing is only supported for paired end data at the moment (paired_end = True)")
 
         # Sequencing error rate
         self.skip_rate = parameters['skip_rate']
@@ -17,31 +48,84 @@ class SequenceBySynthesisStep:
         # Determine where the barcodes lie
         self.i5_start = len(global_config['resources']['pre_i5_adapter']) + 1 # one past the first part of the adapter
         self.i7_start = len(global_config['resources']['post_i7_adapter']) + 1 # one past the first part of the adapter, reading from 3' end
-        i5_adapter_lengths = [len(sample['barcodes']['i5']) for sample in  global_config['samples'].values()]
-        assert len(set(i5_adapter_lengths)) == 1
-        self.i5_length = i5_adapter_lengths[0]
-        i7_adapter_lengths = [len(sample['barcodes']['i7']) for sample in  global_config['samples'].values()]
-        assert len(set(i7_adapter_lengths)) == 1
-        self.i7_length = i7_adapter_lengths[0]
+        self.post_i5_length = len(global_config['resources']['post_i5_adapter'])
+        self.post_i7_length = len(global_config['resources']['pre_i7_adapter']) # Part read after the i7 is the 'pre' adapter, since reading from 3' end
+        i5_barcode_lengths = [len(sample['barcodes']['i5']) for sample in  global_config['samples'].values()]
+        assert len(set(i5_barcode_lengths)) == 1
+        self.i5_length = i5_barcode_lengths[0]
+        i7_barcode_lengths = [len(sample['barcodes']['i7']) for sample in  global_config['samples'].values()]
+        assert len(set(i7_barcode_lengths)) == 1
+        self.i7_length = i7_barcode_lengths[0]
 
         # Determine where the sequencing starts
-        self.forward_read_start = self.i5_start + self.i5_length + len(global_config['resources']['post_i5_adapter'])
+        # Read from the start of the i5 barcode, through the rest of the adatpter and into the read
+        # TODO: is this actually how the sequencing is done?
+        self.forward_read_start = self.i5_start
+        self.forward_read_end = self.forward_read_start + self.i5_length + self.post_i5_length + self.read_length
         # NOTE: extra 'A' is ligated to the 3' end of the reads prior to adapter ligation (done in the ligation step in BEERS)
         #       hence we have an additional +1 on this read start
-        self.reverse_read_start = self.i7_start + self.i7_length + len(global_config['resources']['pre_i7_adapter']) + 1
+        self.reverse_read_start = self.i7_start + 1
+        self.reverse_read_end = self.reverse_read_start + self.i7_length + self.post_i7_length + self.read_length
 
         print(f"{SequenceBySynthesisStep.name} instantiated")
 
     def execute(self, cluster_packet):
+
+        # make an 'estimated' cross-talk matrix TODO: should be estimated from an entire tile
+        cross_talk_est = self.CROSS_TALK + np.random.normal(size=self.CROSS_TALK.shape)* 0.01
+        cross_talk_inv_est = np.linalg.inv(cross_talk_est)
+        # Assume epsilon (flourescence imaging noise) is perfectly known)
+        #TODO: epsilon should be estimated from data and can be cycle number dependent
+        epsilon_est = self.EPSILON
+
         for cluster in cluster_packet.clusters:
-            cluster.set_forward_direction(self.forward_is_5_prime)
-            cluster.skip_rate = self.skip_rate
-            cluster.drop_rate = self.drop_rate
-            cluster.read(
-                    self.read_length, self.paired_ends,
-                    self.i5_start, self.i5_length, self.i7_start, self.i7_length,
-                    self.forward_read_start, self.reverse_read_start,
+            # TODO: use self.forward_is_5_prime to know which direction is 'forward'?
+            # Perform sequence-by-synthesis and get 'flourescence images'
+            forward_flourescence, fwd_start, fwd_cigar, fwd_strand = self.read_flourescence(
+                    cluster,
+                    self.forward_read_start,
+                    self.forward_read_end,
+                    direction = "+",
             )
+            forward_bases, forward_quality = self.call_bases(forward_flourescence, epsilon_est, cross_talk_inv_est)
+
+            reverse_flourescence, rev_start, rev_cigar, rev_strand = self.read_flourescence(
+                    cluster,
+                    self.reverse_read_start,
+                    self.reverse_read_end,
+                    direction = "-",
+            )
+            reverse_bases, reverse_quality = self.call_bases(reverse_flourescence, epsilon_est, cross_talk_inv_est)
+
+            #Extract barcodes and read sequences
+            forward_barcode = forward_bases[:self.i7_length]
+            forward_read = forward_bases[self.i5_length + self.post_i5_length:]
+            forward_quality = forward_quality[self.i5_length + self.post_i5_length:]
+            reverse_barcode = reverse_bases[:self.i7_length]
+            reverse_read = reverse_bases[self.i7_length + self.post_i7_length:]
+            reverse_quality = reverse_quality[self.i7_length + self.post_i7_length:]
+
+            cluster.called_sequences = [forward_read, reverse_read]
+            cluster.called_barcode = f"{forward_barcode}+{reverse_barcode}"
+            cluster.quality_scores = [forward_quality, reverse_quality]
+
+            # Get alignment of read sequences, not including barcodes
+            fwd_start, fwd_cigar, fwd_strand = beers_utils.cigar.chain(
+                self.i5_length + self.post_i5_length + 1, # 1-based starts
+                f"{self.read_length}M",
+                "+",
+                fwd_start, fwd_cigar, fwd_strand
+            )
+            rev_start, rev_cigar, rev_strand = beers_utils.cigar.chain(
+                self.i7_length + self.post_i7_length + 1, # 1-based starts
+                f"{self.read_length}M",
+                "+",
+                rev_start, rev_cigar, rev_strand
+            )
+            cluster.read_starts = [fwd_start, rev_start]
+            cluster.read_cigars = [fwd_start, rev_start]
+            cluster.read_strands = [fwd_strand, rev_strand]
+
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet
 
@@ -51,3 +135,148 @@ class SequenceBySynthesisStep:
             print(f"The read length, {self.read_length}, is required and must be a non-negative integer,", file=sys.stderr)
             return False
         return True
+
+    def read_flourescence(self, cluster, range_start, range_end, direction="+"):
+        """
+        Generates flourescence readings from sequence-by-synthesis over the range given
+        (specified from 5' to 3' if direction = '+' else from 3' to 5').
+        Use call_bases to then get bases and quality scores from the read
+
+        :param cluster: cluster to read by sequence-by-synthesis
+        :param range_start:  The starting position (from the 5' end), 0-based
+        :param range_end: The ending position (exlusive, from the 5' end), 0-based
+        :param direction: '+' if reading from the 5'-3' direction, '-' if reading from 3'-5' direction
+
+        returns flourescence, read_start, read_cigar, read_strand
+        """
+        read_len = range_end - range_start
+
+        base_counts = cluster.base_counts[:, range_start:range_end]
+        if direction == '-':
+            # Take reverse...
+            base_counts = base_counts[::-1]
+            # ... and complement
+            base_counts = base_counts[[3,2,1,0],:] # A<->T, C<->G
+
+        if len(base_counts) < read_len:
+            # Pad up to the read length - we'll just get garbage after
+            # the molecule ends, so we fill it with zeros
+            base_counts = np.concatenate((
+                base_counts,
+                np.zeros((4, read_len - len(base_counts)))
+            ), axis = 1)
+
+        # Pad with zeros for the possibility of skips/drops
+        # that get past the start/end of the read range
+        padded_base_counts = np.concatenate(
+                (   np.zeros((4,self.MAX_DROPS)),
+                    base_counts,
+                    np.zeros((4,self.MAX_SKIPS))
+                ),
+                axis=1)
+
+        #TODO: this should all be done at the level of a lane or tile or something
+        #      various parameters need to be estimated across all clusters
+
+        # Add skips (aka prephasing) where bases are added too quickly in some strands
+        # This causes bases to be read too early
+        # We assume that each molecule skips at most MAX_SKIPS times
+        # And we approximate skips and drops without simulating every molecule
+        # individually by just using average molecule counts
+
+        # Each base is equally likely to give a skip
+        def get_frac_skipped(rate, max_skips):
+            skips = np.random.random(size = (cluster.molecule_count, read_len)) < rate
+            num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), max_skips)
+            # Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
+            num_mols_skipped = (num_skips_so_far[:,:,None] == np.arange(0, max_skips+1)[None,None,:]).sum(axis=0)
+            frac_skipped = num_mols_skipped / cluster.molecule_count
+            return frac_skipped
+        frac_skipped = get_frac_skipped(self.skip_rate, self.MAX_SKIPS)
+        # Drops (aka (post)phasing), where bases are not added when they should have been,
+        # are done the same as skips
+        frac_dropped = get_frac_skipped(self.drop_rate, self.MAX_DROPS)
+
+        # 'smear' base counts according to the number of skips
+        smeared_base_counts = np.sum( [padded_base_counts[:, self.MAX_DROPS + range_start + skip : self.MAX_DROPS + range_end + skip] * frac_skipped[:,skip]
+                                        for skip in range(1, self.MAX_SKIPS+1)],
+                                      axis=0)
+        # ...and by the number of drops
+        smeared_base_counts = np.sum( [padded_base_counts[:, self.MAX_DROPS + range_start - drop : self.MAX_DROPS + range_end - drop] * frac_dropped[:,drop]
+                                        for drop in range(1, self.MAX_DROPS+1)],
+                                      axis=0)
+        # and the ones that neither drop nor skip
+        smeared_base_counts = padded_base_counts[:, range_start:range_end] * (1 -  (1 - frac_skipped[:, 0]) - (1 - frac_dropped[:, 0]))
+
+        # Flourescence comes from these after including cross talk between the different colors
+        flourescence = self.CROSS_TALK @ (smeared_base_counts + self.EPSILON * np.random.normal(size=smeared_base_counts.shape))
+
+        read_start, read_cigar, read_strand = beers_utils.cigar.chain(
+            range_start + 1, # range_start is 0-based, alignments are always 1 based
+            f"{range_end - range_start}M",
+            direction,#TODO: do both 5' and 3' reads use + strand?
+            cluster.molecule.source_start,
+            cluster.molecule.source_cigar,
+            cluster.molecule.source_strand,
+        )
+        return flourescence, read_start, read_cigar, read_strand
+
+    def call_bases(self, flourescence, epsilon_est, cross_talk_est_inv):
+        '''
+        From a flourescence reading, call sequences bases and quality score
+        From an approximation of the Bustard algorithm
+
+        :param flourescence: 2d array of shape (4, read_length) with flourescence values
+                             for each of the 4 frequencies for each base read
+        :param epsilon_est: estimate for EPSILON, the noise size in the flourescence
+                            imaging
+        :param cross_talk_est_inv: inverse of the estimate of the 4x4 cross talk matrix
+
+        returns called sequence and quality scores (as phred score string)
+        '''
+
+        ## We will approximate the Bustard algorithm for calling bases and quality scores
+        read_len = flourescence.shape[1]
+        #TODO: bustard also accounts for phasing/prephasing
+        # gives probability of a template terminating at position j after t cycles
+        phasing_matrix_inv = get_inv_phasing_matrix(read_len, self.skip_rate, self.drop_rate)
+        base_counts_est = cross_talk_est_inv @ flourescence @ phasing_matrix_inv
+        base_orders = np.argsort(base_counts_est, axis=0)
+        called_base = base_orders[-1,:] # bases as nums 0,1,2,3 = ACGT
+        second_best_base = base_orders[-2,:] # bases as nums 0,1,2,3 = ACGT
+        M = (cross_talk_est_inv * epsilon_est) * (cross_talk_est_inv * epsilon_est).T
+        highest_base_count = base_counts_est[called_base, np.arange(read_len)]
+        second_base_count = base_counts_est[second_best_base, np.arange(read_len)]
+        diff = highest_base_count - second_base_count
+        contrasts = np.zeros(shape=(read_len, 4, 1))
+        contrasts[np.arange(read_len), called_base] = 1
+        contrasts[np.arange(read_len), second_best_base] = -1
+        sigma = np.sqrt(contrasts.transpose(0,2,1) @ M @ contrasts)
+        prob = scipy.stats.norm(0, sigma.flatten()).sf(np.abs(diff)) * 2 # two-tailed
+
+        score = (-10 * np.log10(prob)).astype("uint8")
+        score = np.minimum(PHRED_MAX_QUALITY, score)
+        qual = (PHRED_MIN_ASCII + score).tobytes().decode()
+        seq = BASE_ARRAY[called_base].tobytes().decode() # as string "ACGT..." 
+
+        return seq, qual
+
+@functools.lru_cache(maxsize=None)
+def get_inv_phasing_matrix(read_len, skip_rate, drop_rate):
+    ''' Computes the inverse of Q, the phasing matrix
+
+    The (j,t) entry of Q gives the probability of a template
+    terminating at position j after t cycles
+
+    Cached for speed-ups. Since reads are all the same length, they all get the same
+    matrix and caching is very useful.
+    '''
+    phasing_matrix = np.array([[(1 -  skip_rate - drop_rate) if j == t else
+                                    (skip_rate**(j - t)*(1-skip_rate) if j > t else
+                                     drop_rate**(t - j)*(1-drop_rate))
+                                for t in range(read_len)]
+                                for j in range(read_len)])
+    # Strangely, computing this inverse is very slow on cluster (~3 seconds)
+    # even for small size (100x100), though very fast on my laptop (~3ms)
+    phasing_mat_inv = np.linalg.inv(phasing_matrix)
+    return phasing_mat_inv

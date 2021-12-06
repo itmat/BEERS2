@@ -1,7 +1,5 @@
-import math
-import numpy as np
 import sys
-import resource
+import numpy as np
 
 class BridgeAmplificationStep:
     """
@@ -53,7 +51,6 @@ class BridgeAmplificationStep:
 
                     # First remove substituted bases
                     copies -= substitutions
-                    num_subs = substitutions.sum(axis=0)
                     # then replace them with random draws from A, C, G, T
                     copies += multinomial(substitutions.sum(axis=0), [0.25, 0.25, 0.25, 0.25])
 
