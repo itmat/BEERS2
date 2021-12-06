@@ -5,6 +5,7 @@ import numpy as np
 import scipy.stats
 
 import beers_utils
+from beers_utils.general_utils import GeneralUtils
 import beers
 
 # Sequence-by-synthesis parameters
@@ -103,7 +104,7 @@ class SequenceBySynthesisStep:
             forward_read = forward_bases[self.i5_length + self.post_i5_length:]
             forward_quality = forward_quality[self.i5_length + self.post_i5_length:]
 
-            reverse_barcode = reverse_bases[:self.i7_length]
+            reverse_barcode = GeneralUtils.create_complement_strand(reverse_bases[:self.i7_length])
             reverse_read = reverse_bases[self.i7_length + self.post_i7_length:]
             reverse_quality = reverse_quality[self.i7_length + self.post_i7_length:]
 
