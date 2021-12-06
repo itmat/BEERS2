@@ -38,7 +38,7 @@ class SequenceBySynthesisStep:
             raise NotImplementedError("Sequencing is only supported with forward_is_5_prime = true")
         self.paired_ends = parameters.get('paired_ends', False)
         if self.paired_ends == False:
-            #TODO: support paired ends
+            #TODO: support single end reads
             raise NotImplementedError("Sequencing is only supported for paired end data at the moment (paired_end = True)")
 
         # Sequencing error rate
@@ -46,10 +46,12 @@ class SequenceBySynthesisStep:
         self.drop_rate = parameters['drop_rate']
 
         # Determine where the barcodes lie
-        self.i5_start = len(global_config['resources']['pre_i5_adapter']) + 1 # one past the first part of the adapter
-        self.i7_start = len(global_config['resources']['post_i7_adapter']) + 1 # one past the first part of the adapter, reading from 3' end
+        self.i5_start = len(global_config['resources']['pre_i5_adapter'])
+        self.i7_start = len(global_config['resources']['post_i7_adapter'])
         self.post_i5_length = len(global_config['resources']['post_i5_adapter'])
-        self.post_i7_length = len(global_config['resources']['pre_i7_adapter']) # Part read after the i7 is the 'pre' adapter, since reading from 3' end
+        # Part read after the i7 is the 'pre' adapter, since reading from 3' end
+        # NOTE: + 1 for the additional 'A' that is ligated to 3' end before adapter ligation
+        self.post_i7_length = len(global_config['resources']['pre_i7_adapter']) + 1
         i5_barcode_lengths = [len(sample['barcodes']['i5']) for sample in  global_config['samples'].values()]
         assert len(set(i5_barcode_lengths)) == 1
         self.i5_length = i5_barcode_lengths[0]
@@ -62,14 +64,13 @@ class SequenceBySynthesisStep:
         # TODO: is this actually how the sequencing is done?
         self.forward_read_start = self.i5_start
         self.forward_read_end = self.forward_read_start + self.i5_length + self.post_i5_length + self.read_length
-        # NOTE: extra 'A' is ligated to the 3' end of the reads prior to adapter ligation (done in the ligation step in BEERS)
-        #       hence we have an additional +1 on this read start
-        self.reverse_read_start = self.i7_start + 1
+        self.reverse_read_start = self.i7_start
         self.reverse_read_end = self.reverse_read_start + self.i7_length + self.post_i7_length + self.read_length
 
         print(f"{SequenceBySynthesisStep.name} instantiated")
 
     def execute(self, cluster_packet):
+        print(f"Starting {self.name}")
 
         # make an 'estimated' cross-talk matrix TODO: should be estimated from an entire tile
         cross_talk_est = self.CROSS_TALK + np.random.normal(size=self.CROSS_TALK.shape)* 0.01
@@ -98,9 +99,10 @@ class SequenceBySynthesisStep:
             reverse_bases, reverse_quality = self.call_bases(reverse_flourescence, epsilon_est, cross_talk_inv_est)
 
             #Extract barcodes and read sequences
-            forward_barcode = forward_bases[:self.i7_length]
+            forward_barcode = forward_bases[:self.i5_length]
             forward_read = forward_bases[self.i5_length + self.post_i5_length:]
             forward_quality = forward_quality[self.i5_length + self.post_i5_length:]
+
             reverse_barcode = reverse_bases[:self.i7_length]
             reverse_read = reverse_bases[self.i7_length + self.post_i7_length:]
             reverse_quality = reverse_quality[self.i7_length + self.post_i7_length:]
@@ -117,13 +119,13 @@ class SequenceBySynthesisStep:
                 fwd_start, fwd_cigar, fwd_strand
             )
             rev_start, rev_cigar, rev_strand = beers_utils.cigar.chain(
-                self.i7_length + self.post_i7_length + 1, # 1-based starts
+                self.i7_length + self.post_i7_length, # 1-based starts
                 f"{self.read_length}M",
                 "+",
                 rev_start, rev_cigar, rev_strand
             )
             cluster.read_starts = [fwd_start, rev_start]
-            cluster.read_cigars = [fwd_start, rev_start]
+            cluster.read_cigars = [fwd_cigar, rev_cigar]
             cluster.read_strands = [fwd_strand, rev_strand]
 
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
@@ -151,27 +153,26 @@ class SequenceBySynthesisStep:
         """
         read_len = range_end - range_start
 
-        base_counts = cluster.base_counts[:, range_start:range_end]
+        base_counts = cluster.base_counts
         if direction == '-':
             # Take reverse...
-            base_counts = base_counts[::-1]
+            base_counts = base_counts[:, ::-1]
             # ... and complement
             base_counts = base_counts[[3,2,1,0],:] # A<->T, C<->G
 
-        if len(base_counts) < read_len:
-            # Pad up to the read length - we'll just get garbage after
-            # the molecule ends, so we fill it with zeros
-            base_counts = np.concatenate((
-                base_counts,
-                np.zeros((4, read_len - len(base_counts)))
-            ), axis = 1)
+        # Grab the bases we care about
+        # we go past the end of the read due to the possibility of skips (prephasing)
+        base_counts = base_counts[:, range_start:range_end + self.MAX_SKIPS]
+
 
         # Pad with zeros for the possibility of skips/drops
-        # that get past the start/end of the read range
+        # that get past the start/end of the molecule
+        end_pad_len = read_len + self.MAX_SKIPS - len(base_counts)
+        prepad_len = self.MAX_DROPS
         padded_base_counts = np.concatenate(
-                (   np.zeros((4,self.MAX_DROPS)),
+                (   np.zeros((4,prepad_len)),
                     base_counts,
-                    np.zeros((4,self.MAX_SKIPS))
+                    np.zeros((4,end_pad_len))
                 ),
                 axis=1)
 
@@ -198,22 +199,29 @@ class SequenceBySynthesisStep:
         frac_dropped = get_frac_skipped(self.drop_rate, self.MAX_DROPS)
 
         # 'smear' base counts according to the number of skips
-        smeared_base_counts = np.sum( [padded_base_counts[:, self.MAX_DROPS + range_start + skip : self.MAX_DROPS + range_end + skip] * frac_skipped[:,skip]
+        smeared_base_counts = np.sum( [padded_base_counts[:, prepad_len + skip : prepad_len + read_len + skip] * frac_skipped[:,skip]
                                         for skip in range(1, self.MAX_SKIPS+1)],
                                       axis=0)
         # ...and by the number of drops
-        smeared_base_counts = np.sum( [padded_base_counts[:, self.MAX_DROPS + range_start - drop : self.MAX_DROPS + range_end - drop] * frac_dropped[:,drop]
-                                        for drop in range(1, self.MAX_DROPS+1)],
+        smeared_base_counts = np.sum( [padded_base_counts[:, prepad_len - drop : prepad_len + read_len - drop] * frac_dropped[:,drop]
+                                        for drop in range(1, prepad_len+1)],
                                       axis=0)
         # and the ones that neither drop nor skip
-        smeared_base_counts = padded_base_counts[:, range_start:range_end] * (1 -  (1 - frac_skipped[:, 0]) - (1 - frac_dropped[:, 0]))
+        frac_maintained = 1 - (1 - frac_skipped[:, 0]) - (1 - frac_dropped[:,0]) # Neither dropped nor skipped
+        smeared_base_counts = padded_base_counts[:, prepad_len:prepad_len + read_len] * frac_maintained
 
         # Flourescence comes from these after including cross talk between the different colors
         flourescence = self.CROSS_TALK @ (smeared_base_counts + self.EPSILON * np.random.normal(size=smeared_base_counts.shape))
 
+        if direction == "+":
+            # 1-based alignement
+            align_start = range_start + 1
+        else:
+            align_start = len(cluster.molecule.sequence) - range_end
+
         read_start, read_cigar, read_strand = beers_utils.cigar.chain(
-            range_start + 1, # range_start is 0-based, alignments are always 1 based
-            f"{range_end - range_start}M",
+            align_start,
+            f"{read_len}M",
             direction,#TODO: do both 5' and 3' reads use + strand?
             cluster.molecule.source_start,
             cluster.molecule.source_cigar,
