@@ -5,8 +5,11 @@ import numpy as np
 import scipy.stats
 
 import beers_utils
+import beers_utils.molecule
 from beers_utils.general_utils import GeneralUtils
 import beers
+import beers.cluster
+import beers.cluster_packet
 
 # Sequence-by-synthesis parameters
 PHRED_MIN_ASCII = 33
@@ -187,17 +190,10 @@ class SequenceBySynthesisStep:
         # individually by just using average molecule counts
 
         # Each base is equally likely to give a skip
-        def get_frac_skipped(rate, max_skips):
-            skips = np.random.random(size = (cluster.molecule_count, read_len)) < rate
-            num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), max_skips)
-            # Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
-            num_mols_skipped = (num_skips_so_far[:,:,None] == np.arange(0, max_skips+1)[None,None,:]).sum(axis=0)
-            frac_skipped = num_mols_skipped / cluster.molecule_count
-            return frac_skipped
-        frac_skipped = get_frac_skipped(self.skip_rate, self.MAX_SKIPS)
+        frac_skipped = get_frac_skipped(self.skip_rate, self.MAX_SKIPS, cluster.molecule_count, read_len)
         # Drops (aka (post)phasing), where bases are not added when they should have been,
         # are done the same as skips
-        frac_dropped = get_frac_skipped(self.drop_rate, self.MAX_DROPS)
+        frac_dropped = get_frac_skipped(self.drop_rate, self.MAX_DROPS, cluster.molecule_count, read_len)
 
         # 'smear' base counts according to the number of skips
         smeared_base_counts = np.sum( [padded_base_counts[:, prepad_len + skip : prepad_len + read_len + skip] * frac_skipped[:,skip]
@@ -289,3 +285,73 @@ def get_inv_phasing_matrix(read_len, skip_rate, drop_rate):
     # even for small size (100x100), though very fast on my laptop (~3ms)
     phasing_mat_inv = np.linalg.inv(phasing_matrix)
     return phasing_mat_inv
+
+def get_frac_skipped(rate, max_skips, molecule_count, read_len):
+    ''' Return an array of length (max_skips, read_len) that indicate how many
+    of the `molecule_count` molecules have incurred exactly `i` skips by the `j`th
+    base in (i,j) element'''
+    skips = np.random.random(size = (molecule_count, read_len)) < rate
+    num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), max_skips)
+    # Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
+    num_mols_skipped = np.count_nonzero((num_skips_so_far[:,:,None] == np.arange(0, max_skips+1)[None,None,:]), axis=0)
+    frac_skipped = num_mols_skipped / molecule_count
+    return frac_skipped
+
+if __name__ == "__main__":
+    # Test run of SBS
+    clusters = []
+    for i in range(100):
+        seq = "ACGT"*100
+        encoded = np.frombuffer(seq.encode("ascii"), dtype='uint8')
+        base_counts = np.array([encoded == ord(nt) for nt in beers.cluster.BASE_ORDER]).astype(int) * 1024
+        molecule = beers_utils.molecule.Molecule(
+                molecule_id = i,
+                sequence = seq,
+                start = 1,
+                source_start = 10,
+                source_cigar = "400M",
+                source_strand = "+",
+                source_chrom = "chr2",
+            )
+        cluster = beers.cluster.Cluster(
+            run_id = 5,
+            cluster_id = i,
+            lane = 1,
+            coordinates = (i,i),
+            molecule = molecule,
+            molecule_count = 1024,
+            base_counts = base_counts)
+        clusters.append(cluster)
+    cluster_packet = beers.cluster_packet.ClusterPacket(5, None, clusters)
+    seq_by_synth = SequenceBySynthesisStep("",
+        {
+            "forward_is_5_prime": True,
+            "read_length": 100,
+            "paired_ends": True,
+            "skip_rate": 0.002,
+            "drop_rate": 0.002
+        },
+        {"resources": {
+                "pre_i5_adapter": "AATGATACGGCGACCACCGAGATCTACAC",
+                "post_i5_adapter":  "ACACTCTTTCCCTACACGACGCTCTTCCGATCT",
+                "pre_i7_adapter": "GATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
+                "post_i7_adapter":  "ATCTCGTATGCCGTCTTCTGCTTG"
+            },
+        "samples": {
+                "sample1": {
+                    "barcodes": {
+                        "i5": "AGCGCTAG",
+                        "i7": "AACCGCGG"
+                    }
+                },
+                "sample2": {
+                    "barcodes": {
+                        "i5": "GATATCGA",
+                        "i7": "TTATAACC"
+                    }
+                }
+            }
+        }
+    )
+
+    seq_by_synth.execute(cluster_packet)
