@@ -219,7 +219,7 @@ class SequenceBySynthesisStep:
         read_start, read_cigar, read_strand = beers_utils.cigar.chain(
             align_start,
             f"{read_len}M",
-            direction,#TODO: do both 5' and 3' reads use + strand?
+            direction,
             cluster.molecule.source_start,
             cluster.molecule.source_cigar,
             cluster.molecule.source_strand,
@@ -241,8 +241,9 @@ class SequenceBySynthesisStep:
         '''
 
         ## We will approximate the Bustard algorithm for calling bases and quality scores
+        # see https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC2765266/ for a description
+        # of Bustard and some of the notation here.
         read_len = flourescence.shape[1]
-        #TODO: bustard also accounts for phasing/prephasing
         # gives probability of a template terminating at position j after t cycles
         phasing_matrix_inv = get_inv_phasing_matrix(read_len, self.skip_rate, self.drop_rate)
         base_counts_est = cross_talk_est_inv @ flourescence @ phasing_matrix_inv

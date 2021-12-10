@@ -19,7 +19,6 @@ class Cluster:
     molecule's sequence, the sequence(s) called as a result of reading those base counts in either or both directions,
     and the sample barcodes (both 5' and 3' ends).  A collection of these objects forms a cluster_packet.
     """
-    # TODO Some coding will change it/when indels are introduced.  They won't easily drop in here.
 
     next_cluster_id = 1  # Static variable for creating increasing cluster id's
 
