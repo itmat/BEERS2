@@ -2,6 +2,7 @@ import subprocess
 import os
 import re
 import json
+import numpy as np
 from beers_utils.general_utils import GeneralUtils
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sequence.sequence_pipeline import SequencePipeline
@@ -22,11 +23,9 @@ class Dispatcher:
     def __init__(self,
                  run_id,
                  dispatcher_mode,
-                 seed,
                  stage_name,
                  configuration,
                  configuration_file_path,
-                 input_directory_path,
                  output_directory_path,
                  directory_structure):
         """
@@ -35,65 +34,88 @@ class Dispatcher:
         parameters.
         :param run_id: The run id the user has designated for this simulation
         :param dispatcher_mode: Three modes are currently supported:  serial, multicore, and lsf
-        :param seed: To achieve reproducibility, a seed either provided by the user or the controller is passed along
-        to each process.
         :param stage_name: The pipeline stage for which a process is called (currently library_prep_pipeline or
         sequence_pipeline.  The stage_name is used also to build the name of the executable process that resides in
         the bin directory.
         :param configuration: the configuration json data from the configuration file.
         :param configuration_file_path: the path to the configuration json data from the configuration file.
-        :param input_directory_path: The directory containing the molecule/cluster packets to feed into the pipeline.
         :param output_directory_path: The directory containing the output data from the pipeline
         :param directory_structure: Because of the number of files that can possibly be generated, files are
         partitioned across sub-directories and in the case of enough files, possibly across sub-sub directories.  This
         string representation identifies the number of sub-directory levels and the number of directories on each level.
         This information must be forwarded to each called process.
         """
-        # TODO input directory path may now be redundant since the full packet path is sent to the dispatch method
         self.run_id = run_id
         self.dispatcher_mode = dispatcher_mode
-        self.seed = seed
         self.stage_name = stage_name
         self.configuration = configuration
         self.configuration_file_path = configuration_file_path
-        self.input_directory_path = input_directory_path
         self.output_directory_path = output_directory_path
         self.log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
         self.directory_structure = directory_structure
 
-    def dispatch(self, packet_file_paths, packet_ids = None):
+    def dispatch(self, packet_file_paths, packet_ids = None, from_distribution_data = None):
         """
         This is the entry method for dispatching jobs (calls to library prep or sequence pipelines).  A different
         dispatch method is called depending on the dispatcher mode:  serial, lsf, or multicore.
         :param packet_file_paths: The absolute file paths to the input packets
         :param packet_ids: List of IDs to assign the molecule packets (if None, use IDs from the packets themselves)
+        :param from_distribution_data: If None, do not generate any packets from distributions. If provided, must be 
+            a dictionary mapping sample ids to dictionaries containing:
+            num_molecules_per_packet, num_packets, sample_data_directory
+            where sample_data_directory points to the output directory from CAMPAREE to generate from
         """
         if packet_ids == None:
             packet_ids = [None for f in packet_file_paths]
         if self.dispatcher_mode == 'multicore':
-            self.dispatch_multicore(packet_file_paths, packet_ids)
+            self.dispatch_multicore(packet_file_paths, packet_ids, from_distribution_data)
         elif self.dispatcher_mode == 'lsf':
-            self.dispatch_lsf(packet_file_paths, packet_ids)
+            self.dispatch_lsf(packet_file_paths, packet_ids, from_distribution_data)
         else:
-            self.dispatch_serial(packet_file_paths, packet_ids)
+            self.dispatch_serial(packet_file_paths, packet_ids, from_distribution_data)
 
-    def dispatch_serial(self, packet_file_paths, packet_ids=None):
+    def dispatch_serial(self, packet_file_paths, packet_ids=None, from_distribution_data = None):
         """
         This method dispatches synchronously so that the processing is done serially.
-        :param packet_file_paths:
-        :return: The absolute file paths to the input packets
+        :param packet_file_paths: The absolute file paths to the input packets
+        :param packet_ids: List of IDs to assign the molecule packets (if None, use IDs from the packets themselves)
+        :param from_distribution_data: Dictionary mapping sample Ids to dictionaries containing:
+            num_molecules_per_packet, num_packets, sample_data_directory
+            where sample_data_directory points to the output directory from CAMPAREE to generate from
         """
         stage_configuration = json.dumps(self.configuration[self.stage_name])
         stage_process = f"{Dispatcher._ROOT_DIR}/bin/for_internal_use/run_{self.stage_name}.py"
         for packet_id, packet_file_path in zip(packet_ids, packet_file_paths):
+            # First process any given molecule packets
+            seed = np.random.randint(1_000_000)
             packet_id = f"--packet_id {packet_id} " if packet_id != None else ''
             command = f"{stage_process} " \
-                      f"-s {self.seed} " \
+                      f"-s {seed} " \
                       f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
-                      f"-i {self.input_directory_path} -o {self.output_directory_path} " \
+                      f"-o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure} " \
                       f"{packet_id}"
             subprocess.call(command, shell=True)
+        if from_distribution_data is not None:
+            # Then any remaining ids go to packets straight from the distribution
+            packet_id = max(packet_ids) + 1 if packet_ids else 0
+            for sample_id, sample_data in from_distribution_data.items():
+                num_mols = sample_data['num_molecules_per_packet']
+                num_packets = sample_data['num_packets']
+                sample_data_dir = sample_data['sample_data_directory']
+                for i in range(num_packets):
+                    seed = np.random.randint(1_000_000)
+                    command = f"{stage_process} " \
+                              f"-s {seed} " \
+                              f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
+                              f"-o {self.output_directory_path} " \
+                              f"-d {self.directory_structure} " \
+                              f"--packet_id {packet_id} " \
+                              f"-D {sample_data_dir} " \
+                              f"-N {num_mols} " \
+                              f"-S {sample_id} "
+                    subprocess.call(command, shell=True)
+                    packet_id += 1
 
     def dispatch_multicore(self, packet_file_paths, packet_ids=None):
         """
@@ -102,8 +124,9 @@ class Dispatcher:
         instantiation.
         :param packet_file_paths:  The absolute file paths to the input packets
         """
+        raise NotImplementedError("Multicore dispatching not currently supported. Use serial or lsf instead")
         stage_configuration = json.dumps(self.configuration[self.stage_name])
-        data = [(self.seed, stage_configuration, self.configuration_file_path, self.input_directory_path, self.output_directory_path,
+        data = [(self.seed, stage_configuration, self.configuration_file_path, self.output_directory_path,
                  self.directory_structure, packet_file_path, packet_id)
                 for packet_id, packet_file_path in zip(packet_ids, packet_file_paths)]
         pool = Pool(processes=2)# TODO: configure the number of processes
@@ -129,7 +152,7 @@ class Dispatcher:
                       f"{stage_process} " \
                       f"-s {self.seed} " \
                       f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
-                      f"-i {self.input_directory_path} -o {self.output_directory_path} " \
+                      f"-o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure} " \
                       f"{packet_id}"
             subprocess.call(command, shell=True)

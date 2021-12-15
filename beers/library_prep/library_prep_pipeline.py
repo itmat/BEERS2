@@ -1,5 +1,7 @@
 import importlib
+import pathlib
 import time
+import re
 import os
 import resource
 import json
@@ -7,10 +9,14 @@ import math
 
 import numpy as np
 
+from beers_utils.sample import Sample
 from beers_utils.constants import CONSTANTS
 from beers_utils.molecule import Molecule
 from beers_utils.molecule_packet import MoleculePacket
 from beers_utils.general_utils import GeneralUtils
+
+from camparee.molecule_maker import MoleculeMakerStep
+from camparee.camparee_constants import CAMPAREE_CONSTANTS
 
 
 class LibraryPrepPipeline:
@@ -37,14 +43,15 @@ class LibraryPrepPipeline:
         :param molecule_packet: the molecule packet to run through this pipeline stage
         """
         self.molecule_packet = molecule_packet
-        log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
+        self.log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
         data_directory_path = os.path.join(output_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
+        print(f"Getting subdir list for {repr(self.molecule_packet.molecule_packet_id)} {repr(directory_structure)}")
         subdirectory_list = \
             GeneralUtils.get_output_subdirectories(self.molecule_packet.molecule_packet_id, directory_structure)
         data_subdirectory_path = os.path.join(data_directory_path, *subdirectory_list)
         self.original_ids = set(str(m.molecule_id) for m in self.molecule_packet.molecules)
         self.print_summary(self.molecule_packet.molecules)
-        self.log_file_path = os.path.join(log_directory_path,
+        self.log_file_path = os.path.join(self.log_directory_path,
                                           LibraryPrepPipeline.pipeline_log_subdirectory_name,
                                           *subdirectory_list,
                                           f"{LibraryPrepPipeline.stage_name}_"
@@ -54,7 +61,7 @@ class LibraryPrepPipeline:
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             step_log_filename = f"{step_name}_molecule_pkt{self.molecule_packet.molecule_packet_id}.log"
-            step_log_file_path = os.path.join(log_directory_path, step_name, *subdirectory_list, step_log_filename)
+            step_log_file_path = os.path.join(self.log_directory_path, step_name, *subdirectory_list, step_log_filename)
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=LibraryPrepPipeline.package)
             step_class = getattr(module, step_name)
@@ -150,8 +157,11 @@ class LibraryPrepPipeline:
         print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(seed, configuration, configuration_file_path, input_directory_path, output_directory_path,
-             directory_structure, molecule_packet_filename, packet_id):
+    def main(seed, configuration, configuration_file_path, output_directory_path,
+             directory_structure, molecule_packet_filename, packet_id,
+             distribution_directory = None, molecules_per_packet_from_distribution = 10000,
+             sample_id = None,
+             ):
         """
         This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
         directory containing the relevant parts of the user's configuration file, unmarshalls a molecule packet from
@@ -160,18 +170,48 @@ class LibraryPrepPipeline:
         :param seed: value to use as the seed for the random number generator
         :param configuration: the json string containing the configration data specific to the library prep pipeline
         :param configuration_file_path: path to the full config file
-        :param input_directory_path: path to directory containing the molecule packet file
         :param output_directory_path: top level output directory path for this pipeline stage
         :param directory_structure: instructions for creating the scaffolding needed to house the pipeline data and logs
         :param molecule_packet_filename: the file from which to unmarshall the molecule packet
         :param packet_id: id number to assign the packet
+        :param distribution_directory: directory of CAMPAREE output distribution datas from which to generate molecules
+            (default None, must supply molecule_packet_filename instead)
+        :param molecules_per_packet_from_distribution: packet size to generate if using distributions
+        :param sample_id: id number of the sample
         """
         np.random.seed(int(seed))
         configuration = json.loads(configuration)
         with open(configuration_file_path) as config_file:
             global_configuration = json.load(config_file)
         packet_id = None if packet_id == 'None' else int(packet_id)
-        molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id)
+        if molecule_packet_filename:
+            molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id)
+        elif distribution_directory:
+            mm_log_path = output_directory_path # TODO should this go somewhere else?
+            distribution_dir = pathlib.Path(distribution_directory)
+            sample = Sample(
+                sample_id = sample_id,
+                sample_name = sample_id,
+                adapter_sequences = [],
+                fastq_file_paths = [],
+                pooled = False,
+            )
+            molecule_maker = MoleculeMakerStep(
+                    log_directory_path = mm_log_path,
+                    #TODO: include degredation, etc. parameters
+            )
+            molecule_packets = list(molecule_maker.execute(
+                    sample = sample, 
+                    sample_data_directory = distribution_dir,
+                    output_type =  "yield",
+                    output_molecule_count = molecules_per_packet_from_distribution, # we only generate one packet
+                    seed = seed,
+                    molecules_per_packet = molecules_per_packet_from_distribution,
+            ))
+            molecule_packet = molecule_packets[0]
+            molecule_packet.molecule_packet_id = packet_id
+        else:
+            raise BeersLibraryPrepValidationException("Neither molecule packet filename nor distribution directory provided")
         library_prep_pipeline = LibraryPrepPipeline(configuration, global_configuration, output_directory_path, directory_structure,
                                                     molecule_packet)
         library_prep_pipeline.execute()

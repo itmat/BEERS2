@@ -21,8 +21,8 @@ class AdapterLigationStep:
         sample = molecule_packet.sample
         # Adapters combine a fixed sequence (specified in 'resources' config)
         # with barcodes that are sample-specific
-        i5_barcode = self.global_config['samples'][sample.sample_id]['barcodes']['i5']
-        i7_barcode = self.global_config['samples'][sample.sample_id]['barcodes']['i7']
+        i5_barcode = self.global_config['samples'][str(sample.sample_id)]['barcodes']['i5']
+        i7_barcode = self.global_config['samples'][str(sample.sample_id)]['barcodes']['i7']
         adapter_5_prime = self.global_config['resources']['pre_i5_adapter'] + i5_barcode + self.global_config['resources']['post_i5_adapter']
         # NOTE: on the 3' end, an "A" gets ligated onto the sequence first. This is done as a discrete step
         # in the actual TruSeq protocol, but we do it as part of this step here.

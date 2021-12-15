@@ -1,5 +1,6 @@
 import json
 import time
+import pathlib
 import numpy as np
 import termcolor
 import os
@@ -66,28 +67,48 @@ class Controller:
         already been simulated here.
         :param args: command line arguements
         """
+        start = time.time()
         stage_name = "library_prep_pipeline"
         self.perform_setup(args, [self.controller_name, stage_name])
-        input_directory_path = self.configuration[stage_name]["input"]["directory_path"]
+        # Molecule packets from an input folder
+        input_directory_path = self.configuration[stage_name]["input"].get("directory_path",None)
         # TODO: allow the specific molecule files to be set explicitly in configuration
-        molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}*.txt', recursive=True)
-        file_count = len(molecule_packet_file_paths)
-        packet_ids = list(range(file_count))
+        if input_directory_path:
+            molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}molecule*.txt', recursive=True)
+            file_count = len(molecule_packet_file_paths)
+            packet_ids = list(range(file_count))
+        else:
+            molecule_packet_file_paths = []
+            file_count = 0
+            packet_ids = []
+
+        # Molecule packets from distributions
+        from_distribution_data = self.configuration[stage_name]["input"].get("from_distribution_data", None)
+        for from_dist in from_distribution_data.values():
+            file_count += from_dist['num_packets']
+
         data_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
         log_directory = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
         directory_structure = GeneralUtils.create_subdirectories(file_count, data_directory)
         self.create_step_log_directories(file_count, stage_name, log_directory)
-        self.setup_dispatcher(args.dispatcher_mode,
-                              stage_name,
-                              input_directory_path,
-                              os.path.join(self.output_directory_path, stage_name),
-                              directory_structure)
-        self.dispatcher.dispatch(molecule_packet_file_paths, packet_ids)
+
+        self.setup_dispatcher(
+                args.dispatcher_mode,
+                stage_name,
+                os.path.join(self.output_directory_path, stage_name),
+                directory_structure
+        )
+        self.dispatcher.dispatch(
+                molecule_packet_file_paths,
+                packet_ids,
+                from_distribution_data,
+        )
+        print(f"Finished executing library prep after {time.time() - start:0.2f}s")
 
     def run_sequence_pipeline(self, args, setup=True):
         """
-        This is how run_beers.py calls the sequence pipeline by itself.  This pipeline is complete and functional.
-        Controller attributes are set up.  All molecule packet file are located - note that these molecule packet files
+        This is how run_beers.py calls the sequence pipeline by itself.  Controller attributes are set up.
+        All molecule packet file are located - note that these molecule packet files
         are really the outputs of the various library prep processes and as such one can point the input directory for
         the sequence pipeline to the location of the files created by an earlier call to the library pipeline via the
         configuration file.  In that way, the library prep pipeline and the sequence pipeline can be run one after the
@@ -149,7 +170,6 @@ class Controller:
         auditor = Auditor(packet_file_count, os.path.join(self.output_directory_path, stage_name))
         self.setup_dispatcher(args.dispatcher_mode,
                               stage_name,
-                              intermediate_directory_path,
                               os.path.join(self.output_directory_path, stage_name),
                               directory_structure)
         self.dispatcher.dispatch(cluster_packet_file_paths)
@@ -222,14 +242,13 @@ class Controller:
         self.create_output_folder_structure(stage_names, overwrite=args.force_overwrite)
         self.create_controller_log()
 
-    def setup_dispatcher(self, dispatcher_mode, stage_name, input_directory_path, output_directory_path, nested_depth):
+    def setup_dispatcher(self, dispatcher_mode, stage_name, output_directory_path, nested_depth):
         """
         The dispatcher is now instantiated and prepared.  If no dispatcher mode (lsf, serial, multicore) is set, it is
         read from the configuration file.  If the mode is not present there, an exception is raised.  The dispatcher
         is then instantiated and and attached to the controller as an attribute.
         :param dispatcher_mode: The type of dispatch to perform (serial, lsf, multicore)
         :param stage_name: The name of the pipeline stage (library_prep_pipeline or sequence_pipeline)
-        :param input_directory_path: The top level directory where the input packets are found
         :param output_directory_path: The top level ouptut directory path
         :param nested_depth: nesting data the pipelines need to write data and log files to their proper locations.
         """
@@ -243,11 +262,9 @@ class Controller:
                                                 'Please select one of {",".join(SUPPORTED_DISPATCHER_MODES)}.\n')
         self.dispatcher = Dispatcher(self.run_id,
                                      dispatcher_mode,
-                                     self.seed,
                                      stage_name,
                                      self.configuration,
                                      self.configuration_file_path,
-                                     input_directory_path,
                                      output_directory_path,
                                      nested_depth)
 

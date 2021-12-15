@@ -84,7 +84,7 @@ class ClusterPacket:
         return ClusterPacket(cluster_packet_id, sample, clusters)
 
     @staticmethod
-    def get_serialized_cluster_packet(intermediate_directory_path, cluster_packet_filename):
+    def get_serialized_cluster_packet(cluster_packet_path):
         """
         Cluster packets are originally created by the controller, which then serializes them, stores them in the file
         system and spawns a separate process to pick up that file and deserialize the contents.  The sequence pipeline
@@ -93,12 +93,10 @@ class ClusterPacket:
         intermediates.  The user specified input points to the molecule packets to first load into the flowcell.  The
         outcome of flowcell loading are the cluster packets used here and found in this intermediates directory.  The
         cluster intermediates are found under the controller/data directory tree.
-        :param intermediate_directory_path:
-        :param cluster_packet_filename:
+        :param cluster_packet_path:
         :return: The deserialized cluster packet.
         """
-        cluster_packet_file_path = os.path.join(intermediate_directory_path, cluster_packet_filename)
-        cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
+        cluster_packet = ClusterPacket.deserialize(cluster_packet_path)
         print(
             f"Intermediate loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
         return cluster_packet

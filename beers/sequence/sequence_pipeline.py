@@ -1,4 +1,5 @@
 import importlib
+import pathlib
 import os
 import time
 import numpy as np
@@ -106,8 +107,8 @@ class SequencePipeline:
         print(f"Output final sample to {self.results_file_path}")
 
     @staticmethod
-    def main(seed, configuration, configuration_file_path, input_directory_path, output_directory_path,
-             directory_structure, cluster_packet_filename):
+    def main(seed, configuration, configuration_file_path, output_directory_path,
+             directory_structure, cluster_packet_path):
         """
         This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
         directory containing the relevant parts of the user's configuration file, unmarshalls a cluster packet from
@@ -118,24 +119,24 @@ class SequencePipeline:
         :param seed: value to use as the seed for the random number generator
         :param configuration: the json string containing the configration data specific to the library prep pipeline
         :param configuration_file_path: path to the full configuration data
-        :param input_directory_path: path to directory containing the cluster packet file
         :param output_directory_path: top level output directory path for this pipeline stage
         :param directory_structure: instructions for creating the scaffolding needed to house the pipeline data and logs
-        :param cluster_packet_filename: the file from which to unmarshall the cluster packet
+        :param cluster_packet_path: the file from which to unmarshall the cluster packet
         """
         # Normally the cluster_packet_id should be derived from the serialized cluster_packet in the file.  But if
         # the file cannot be found, we still need an id to report back to the auditor if at all possible.  So we
         # extract it from the file name just in case.
         cluster_packet = None
+        cluster_packet_filename = str(pathlib.Path(cluster_packet_path).name)
         cluster_packet_id_pattern = re.compile(r'^.*cluster_packet.*_pkt(\d+)\..*$')
-        cluster_packet_id_match = re.match(cluster_packet_id_pattern, cluster_packet_filename)
+        cluster_packet_id_match = re.match(cluster_packet_id_pattern, cluster_packet_path)
         cluster_packet_id = None if not cluster_packet_id_match else cluster_packet_id_match.group(1)
         try:
             np.random.seed(int(seed))
             configuration = json.loads(configuration)
             with open(configuration_file_path) as config_file:
                 global_config = json.load(config_file)
-            cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_directory_path, cluster_packet_filename)
+            cluster_packet = ClusterPacket.get_serialized_cluster_packet(cluster_packet_path)
             sequence_pipeline = SequencePipeline(
                     configuration,
                     global_config,
