@@ -1,5 +1,7 @@
 import os
 import glob
+import contextlib
+import collections
 import pysam
 from beers.cluster_packet import ClusterPacket
 from beers_utils.general_utils import GeneralUtils
@@ -13,7 +15,7 @@ class SAM:
     processed.
     """
 
-    def __init__(self, lane, cluster_packet_directory, sam_output_directory):
+    def __init__(self, lane, cluster_packet_directory, sam_output_directory, sample_barcodes):
         """
         The SAM object requires the flowcell lane, the top level directory housing the cluster packets that have
         emerged from the sequence pipeline (they will be in the data directory under the sequence pipeline stage name),
@@ -25,10 +27,12 @@ class SAM:
         the controller until the auditor determines that all cluster packets have been processed.
         :param sam_output_directory: The location where the SAM reports are filed.  Note that no organization into
         subdirectories is needed here since compartively few reports are generated.
+        :param sample_barcodes: dict mapping sample ids to barcodes as tuple (i5, i7). Demultiplexing is done off these
         """
         self.lane = lane
         self.cluster_packet_directory = cluster_packet_directory
         self.sam_output_directory = sam_output_directory
+        self.sample_barcodes = sample_barcodes
 
     def generate_report(self, reference_seqs, BAM=False):
         """
@@ -56,12 +60,14 @@ class SAM:
                 [cluster.generate_fasta_header(direction) for cluster in lane_clusters]
             sorted_clusters = sorted(lane_clusters, key=lambda lane_cluster: lane_cluster.coordinates)
 
-            sam_output_file_path = os.path.join(self.sam_output_directory,
-                                                  f"lane{self.lane}.{'bam' if BAM else 'sam'}")
+            sam_output_file_paths = {barcode: os.path.join(self.sam_output_directory,
+                                                  f"S{sample}_L{self.lane}.{'bam' if BAM else 'sam'}")
+                                            for sample, barcode in self.sample_barcodes.items()}
+            bad_barcode_file_path = os.path.join(self.sam_output_directory, f"unidentified_L{self.lane}.{'bam' if BAM else 'sam'}")
+
             if abort:
                 break
 
-            print(f"Writing out SAM file to {sam_output_file_path}")
             sam_header = {
                 "HD": { "VN": "1.0"},
                 "SQ": [ {'SN': chrom_name.split()[0], 'LN': len(seq)}
@@ -70,9 +76,16 @@ class SAM:
 
             chrom_list = [sq['SN'] for sq in sam_header['SQ']]
 
-            with pysam.AlignmentFile(sam_output_file_path, ('wb' if BAM else 'w'), header=sam_header) as sam:
+            with contextlib.ExitStack() as stack:
+                print(f"Writing out demultiplexed alignment files to: {list(sam_output_file_paths.values())}")
+                # sam/bam file with reads that were not demultiplexed
+                bad_barcode_file = stack.enter_context(pysam.AlignmentFile(bad_barcode_file_path, ('wb' if BAM else 'w'), header=sam_header))
+                files = collections.defaultdict(lambda : bad_barcode_file)
+                files.update({barcode: stack.enter_context(pysam.AlignmentFile(file_path, ('wb' if BAM else 'w'), header=sam_header))
+                            for barcode, file_path in sam_output_file_paths.items()})
                 for cluster in sorted_clusters:
                     paired = len(cluster.called_sequences) == 2
+                    sam = files[cluster.called_barcode]
                     for direction, (seq, qual, start, cigar) in enumerate(zip(cluster.called_sequences, cluster.quality_scores, cluster.read_starts, cluster.read_cigars)):
                         a = pysam.AlignedSegment()
                         a.query_name = cluster.encode_sequence_identifier()

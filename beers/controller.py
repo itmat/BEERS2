@@ -209,7 +209,8 @@ class Controller:
                 sam = SAM(
                     lane,
                     os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-                    sam_file)
+                    sam_file,
+                    sample_barcodes = sample_barcode_map)
                 sam.generate_report(reference_genome, BAM=False)
 
     def run_prep_and_sequence_pipeline(self, args):
