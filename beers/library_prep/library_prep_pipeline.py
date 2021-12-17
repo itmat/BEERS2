@@ -45,7 +45,6 @@ class LibraryPrepPipeline:
         self.molecule_packet = molecule_packet
         self.log_directory_path = os.path.join(output_directory_path, CONSTANTS.LOG_DIRECTORY_NAME)
         data_directory_path = os.path.join(output_directory_path, CONSTANTS.DATA_DIRECTORY_NAME)
-        print(f"Getting subdir list for {repr(self.molecule_packet.molecule_packet_id)} {repr(directory_structure)}")
         subdirectory_list = \
             GeneralUtils.get_output_subdirectories(self.molecule_packet.molecule_packet_id, directory_structure)
         data_subdirectory_path = os.path.join(data_directory_path, *subdirectory_list)
@@ -201,9 +200,9 @@ class LibraryPrepPipeline:
                     #TODO: include degredation, etc. parameters
             )
             molecule_packets = list(molecule_maker.execute(
-                    sample = sample, 
+                    sample = sample,
                     sample_data_directory = distribution_dir,
-                    output_type =  "yield",
+                    output_type =  "generator",
                     output_molecule_count = molecules_per_packet_from_distribution, # we only generate one packet
                     seed = seed,
                     molecules_per_packet = molecules_per_packet_from_distribution,

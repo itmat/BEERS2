@@ -114,6 +114,7 @@ class Dispatcher:
                               f"-D {sample_data_dir} " \
                               f"-N {num_mols} " \
                               f"-S {sample_id} "
+                    print(command)
                     subprocess.call(command, shell=True)
                     packet_id += 1
 
