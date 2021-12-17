@@ -182,6 +182,7 @@ class LibraryPrepPipeline:
         configuration = json.loads(configuration)
         with open(configuration_file_path) as config_file:
             global_configuration = json.load(config_file)
+        molecule_maker_parameters = global_configuration['molecule_maker_parameters']
         packet_id = None if packet_id == 'None' else int(packet_id)
         if molecule_packet_filename:
             molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id)
@@ -197,7 +198,7 @@ class LibraryPrepPipeline:
             )
             molecule_maker = MoleculeMakerStep(
                     log_directory_path = mm_log_path,
-                    #TODO: include degredation, etc. parameters
+                    parameters = molecule_maker_parameters,
             )
             molecule_packets = list(molecule_maker.execute(
                     sample = sample,
