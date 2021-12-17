@@ -180,17 +180,23 @@ class Controller:
         fastq_output = self.configuration[stage_name]["output"]["output_fastq"]
         sam_output = self.configuration[stage_name]["output"]["output_sam"] or not fastq_output
 
+        sample_barcode_map = {sample: (cfg['barcodes']['i5'] + "+" + cfg['barcodes']['i7'])
+                                    for sample, cfg in self.configuration['samples'].items()}
+
         if fastq_output:
             print("Generating FastQs")
             for lane in self.flowcell.lanes_to_use:
                 fastq_file = os.path.join(
                     self.output_directory_path,
                     self.controller_name,
-                    CONSTANTS.DATA_DIRECTORY_NAME
+                    CONSTANTS.DATA_DIRECTORY_NAME,
                 )
-                fast_q = FastQ(lane,
-                               os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-                               fastq_file)
+                fast_q = FastQ(
+                        lane,
+                        os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                        fastq_file,
+                        sample_barcodes = sample_barcode_map,
+                )
                 fast_q.generate_report()
 
         if sam_output:
