@@ -1,5 +1,5 @@
 from beers_utils.molecule import Molecule
-from beers.utilities.library_prep_utils import Utils
+from beers_utils.general_utils import GeneralUtils
 import beers_utils.cigar
 
 
@@ -19,7 +19,7 @@ class FirstStrandSynthesisStep:
         with open(self.history_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
-                cdna_seq = Utils.create_complement_strand(molecule.sequence)
+                cdna_seq = GeneralUtils.create_complement_strand(molecule.sequence)
 
                 #TODO: simulate priming
 

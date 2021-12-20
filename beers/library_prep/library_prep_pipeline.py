@@ -145,14 +145,12 @@ class LibraryPrepPipeline:
         percent_original_represented = len(self.original_ids.intersection(parent_ids))/len(self.original_ids)
         print(f"Percent of the original ids that are still represented: {percent_original_represented:0.2%}")
 
-        size_bin_cutoffs = [100, 500, 1000]
-        size_counts = [0]*(len(size_bin_cutoffs)+1)
-        for molecule in sample:
-            size_counts[np.searchsorted(size_bin_cutoffs, len(molecule))] += 1
+        size_bin_cutoffs = [0, 100, 500, 1000, 1_000_000_000]
+        size_counts, _ = np.histogram([len(mol) for mol in sample], bins=size_bin_cutoffs)
         print(f"Counts of molecules in size ranges:")
-        for i in range(len(size_bin_cutoffs)):
-            print(f" <={size_bin_cutoffs[i]}: {size_counts[i]}")
-        print(f">{size_bin_cutoffs[-1]}: {size_counts[-1]}")
+        for i in range(len(size_counts)-1):
+            print(f" <={size_bin_cutoffs[i+1]}: {size_counts[i]}")
+        print(f">{size_bin_cutoffs[-2]}: {size_counts[-1]}")
 
     @staticmethod
     def main(seed, configuration, configuration_file_path, output_directory_path,
@@ -177,6 +175,11 @@ class LibraryPrepPipeline:
         :param molecules_per_packet_from_distribution: packet size to generate if using distributions
         :param sample_id: id number of the sample
         """
+
+        import cProfile
+        profiler = cProfile.Profile()
+        profiler.enable()
+
         np.random.seed(int(seed))
         configuration = json.loads(configuration)
         with open(configuration_file_path) as config_file:
@@ -214,6 +217,12 @@ class LibraryPrepPipeline:
         library_prep_pipeline = LibraryPrepPipeline(configuration, global_configuration, output_directory_path, directory_structure,
                                                     molecule_packet)
         library_prep_pipeline.execute()
+
+        profiler.disable()
+        #profiler.dump_stats("temp.stats")
+        import pstats
+        stats = pstats.Stats(profiler)
+        stats.sort_stats("cumulative").print_stats(50)
 
 
 class BeersLibraryPrepValidationException(Exception):

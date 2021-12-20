@@ -52,7 +52,7 @@ class PolyAStep:
                 tail_length = tail_length if tail_length > self.min_polya_tail_length else 0
                 retention_odds = min(self.min_retention_prob + self.length_retention_prob * tail_length,
                                      self.max_retention_prob)
-                retained = np.random.choice([1, 0], 1, p=[retention_odds, 1 - retention_odds])[0]
+                retained = np.random.random() <= retention_odds
                 note = ''
                 if retained:
                     retained_molecules.append(molecule)
@@ -76,7 +76,7 @@ class PolyAStep:
 
         sequence_minus_tail_length = len(molecule.sequence) - tail_length
         breakage_likelihood = min([self.min_breakage_prob * sequence_minus_tail_length, self.max_breakage_prob])
-        breakage = np.random.choice([1, 0], 1, p=[breakage_likelihood, 1 - breakage_likelihood])
+        breakage = np.random.random() <= breakage_likelihood
         if breakage:
 
             # Geometric distribution of breakpoints - although geometric dist 1 indexed, we don't subtract
