@@ -137,6 +137,7 @@ class Controller:
         flowcell used.
         :param args: The command line arguments
         """
+
         stage_name = "sequence_pipeline"
         if setup:
             self.perform_setup(args, [self.controller_name, stage_name])
@@ -185,33 +186,32 @@ class Controller:
 
         if fastq_output:
             print("Generating FastQs")
-            for lane in self.flowcell.lanes_to_use:
-                fastq_file = os.path.join(
-                    self.output_directory_path,
-                    self.controller_name,
-                    CONSTANTS.DATA_DIRECTORY_NAME,
-                )
-                fast_q = FastQ(
-                        lane,
-                        os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-                        fastq_file,
-                        sample_barcodes = sample_barcode_map,
-                )
-                fast_q.generate_report()
+            fastq_file = os.path.join(
+                self.output_directory_path,
+                self.controller_name,
+                CONSTANTS.DATA_DIRECTORY_NAME,
+            )
+            fast_q = FastQ(
+                    self.flowcell,
+                    os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                    fastq_file,
+                    sample_barcodes = sample_barcode_map,
+            )
+            fast_q.generate_report()
 
         if sam_output:
             print("Generating SAMs")
             #TODO: allow BAM creation?
-            for lane in self.flowcell.lanes_to_use:
-                reference_genome = read_fasta(self.configuration['resources']['reference_genome_fasta'])
+            reference_genome = read_fasta(self.configuration['resources']['reference_genome_fasta'])
 
-                sam_file = os.path.join(self.output_directory_path, self.controller_name, CONSTANTS.DATA_DIRECTORY_NAME)
-                sam = SAM(
-                    lane,
-                    os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
-                    sam_file,
-                    sample_barcodes = sample_barcode_map)
-                sam.generate_report(reference_genome, BAM=False)
+            sam_file = os.path.join(self.output_directory_path, self.controller_name, CONSTANTS.DATA_DIRECTORY_NAME)
+            sam = SAM(
+                self.flowcell,
+                os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME),
+                sam_file,
+                sample_barcodes = sample_barcode_map)
+            sam.generate_report(reference_genome, BAM=False)
+
 
     def run_prep_and_sequence_pipeline(self, args):
         """

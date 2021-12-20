@@ -67,6 +67,7 @@ class Cluster:
             # From sequence, we start with 1 count for each base in the sequence
             encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
             self.base_counts = np.array([encoded == ord(nt) for nt in BASE_ORDER]).astype(int)
+            self.molecule_count = 1
 
     def assign_coordinates(self, coordinates):
         """
@@ -141,9 +142,14 @@ class Cluster:
         for index in range(len(self.called_sequences)):
             output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\t{self.read_starts[index]}\t{self.read_cigars[index]}\t{self.read_strands[index]}\n"
         with closing(StringIO()) as counts:
-            for index in range(len(self.molecule.sequence)):
-                counts.write("\t".join([str(base_count) for base_count in self.get_base_counts_by_position(index)]))
-                counts.write("\n")
+            if self.molecule_count == 1:
+                # Shortcut: we only have the one molecule which is already saved
+                # so we indicate that here and don't write out all the counts
+                counts.write("None\n")
+            else:
+                for index in range(len(self.molecule.sequence)):
+                    counts.write("\t".join([str(base_count) for base_count in self.get_base_counts_by_position(index)]))
+                    counts.write("\n")
             output += counts.getvalue()
         return output
 
@@ -161,6 +167,7 @@ class Cluster:
         read_starts = []
         read_cigars = []
         read_strands = []
+        base_counts_not_supplied = False
         g_counts = []
         a_counts = []
         t_counts = []
@@ -181,13 +188,20 @@ class Cluster:
                     coordinates = tuple(int(x) for x in (line[1:].rstrip('\n').split("\t")))
                 if line_number == 2:
                     molecule = Molecule.deserialize(line[1:].rstrip('\n'))
+            elif line == "None":
+                base_counts_not_supplied = True
             else:
                 a_count, c_count, g_count, t_count = line.rstrip('\n').split("\t")
                 a_counts.append(int(a_count))
                 c_counts.append(int(c_count))
                 g_counts.append(int(g_count))
                 t_counts.append(int(t_count))
-        base_counts = np.array((a_counts, c_counts, g_counts, t_counts))
+
+        if base_counts_not_supplied:
+            base_counts = None
+        else:
+            base_counts = np.array((a_counts, c_counts, g_counts, t_counts))
+
         return Cluster(
                 run_id = int(run_id),
                 cluster_id = cluster_id,
