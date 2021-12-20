@@ -34,6 +34,7 @@ class AdapterLigationStep:
             for molecule in molecule_packet.molecules:
                 sequence = molecule.sequence
                 molecule.sequence = adapter_5_prime + sequence + adapter_3_prime
+                molecule.start = 1
                 molecule.cigar = f"{len(adapter_5_prime)}S{len(sequence)}M{len(adapter_3_prime)}S"
                 new_source_start, new_source_cigar, new_source_strand = beers_utils.cigar.chain(
                         molecule.start, molecule.cigar, "+",

@@ -16,7 +16,6 @@ from beers_utils.molecule_packet import MoleculePacket
 from beers_utils.general_utils import GeneralUtils
 
 from camparee.molecule_maker import MoleculeMakerStep
-from camparee.camparee_constants import CAMPAREE_CONSTANTS
 
 
 class LibraryPrepPipeline:
