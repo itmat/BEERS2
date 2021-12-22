@@ -258,7 +258,7 @@ class SequenceBySynthesisStep:
         contrasts[np.arange(read_len), called_base] = 1
         contrasts[np.arange(read_len), second_best_base] = -1
         sigma = np.sqrt(contrasts.transpose(0,2,1) @ M @ contrasts)
-        prob = scipy.stats.norm(0, sigma.flatten()).sf(np.abs(diff)) * 2 # two-tailed
+        prob = scipy.stats.norm.sf(np.abs(diff) / sigma.flatten()) * 2 # two-tailed
 
         score = (-10 * np.log10(prob)).astype("uint8")
         score = np.minimum(PHRED_MAX_QUALITY, score)
