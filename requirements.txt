@@ -1,4 +1,4 @@
-numpy==1.15.1
+numpy==1.19.5
 scipy==1.1.0
 roman==3.0
 pysam==0.13
@@ -9,3 +9,4 @@ matplotlib==3.0.1
 termcolor==1.1.0
 prettytable==0.7.2
 Sphinx==1.8.4
+Cython==0.29.26

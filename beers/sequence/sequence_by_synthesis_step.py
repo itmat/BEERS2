@@ -4,6 +4,10 @@ import functools
 import numpy as np
 import scipy.stats
 
+import pyximport
+pyximport.install(language_level=3, reload_support=True)
+from beers.sequence.sequence_by_synthesis_helper import get_frac_skipped as get_frac_skipped_cython
+
 import beers_utils
 import beers_utils.molecule
 from beers_utils.general_utils import GeneralUtils
@@ -190,10 +194,10 @@ class SequenceBySynthesisStep:
         # individually by just using average molecule counts
 
         # Each base is equally likely to give a skip
-        frac_skipped = get_frac_skipped(self.skip_rate, self.MAX_SKIPS, cluster.molecule_count, read_len)
+        frac_skipped = get_frac_skipped_cython(self.skip_rate, self.MAX_SKIPS, cluster.molecule_count, read_len)
         # Drops (aka (post)phasing), where bases are not added when they should have been,
         # are done the same as skips
-        frac_dropped = get_frac_skipped(self.drop_rate, self.MAX_DROPS, cluster.molecule_count, read_len)
+        frac_dropped = get_frac_skipped_cython(self.drop_rate, self.MAX_DROPS, cluster.molecule_count, read_len)
 
         # 'smear' base counts according to the number of skips
         smeared_base_counts = np.sum( [padded_base_counts[:, prepad_len + skip : prepad_len + read_len + skip] * frac_skipped[:,skip]
@@ -287,15 +291,48 @@ def get_inv_phasing_matrix(read_len, skip_rate, drop_rate):
     phasing_mat_inv = np.linalg.inv(phasing_matrix)
     return phasing_mat_inv
 
-def get_frac_skipped(rate, max_skips, molecule_count, read_len):
-    ''' Return an array of length (max_skips, read_len) that indicate how many
+def get_frac_skipped_py(rate, max_skips, molecule_count, read_len):
+    ''' Return an array of length (read_len, max_skips+1) that indicate how many
     of the `molecule_count` molecules have incurred exactly `i` skips by the `j`th
-    base in (i,j) element'''
-    skips = np.random.random(size = (molecule_count, read_len)) < rate
-    num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), max_skips)
-    # Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
-    num_mols_skipped = np.count_nonzero((num_skips_so_far[:,:,None] == np.arange(0, max_skips+1)[None,None,:]), axis=0)
-    frac_skipped = num_mols_skipped / molecule_count
+    base in (i,j) element
+    '''
+    if rate == 0:
+        return np.zeros((read_len, max_skips+1))
+
+    #num_skipped = np.zeros( (read_len, max_skips), dtype=int)
+    #num_skipped[0,0] = molecule_count # Start with everything in no skips
+    #for i in range(0, read_len):
+    #    # Compute how many skips occur among the molecules
+    #    # divided up by how many skips have already occured
+    #    new_skips = np.random.binomial(n=num_skipped[i, :-1], p=rate)
+    #    num_skipped[i, 1:] += new_skips
+    #    num_skipped[i, :-1] -= new_skips
+    #    if i + 1 < read_len:
+    #        num_skipped[i+1,:] = num_skipped[i,:]
+    #frac_skipped = num_skipped / molecule_count
+
+
+    # skip_locs[i,j] is the base number at which the ith molecule makes its jth skip
+    # if past the end of read_len, then 'never' skips
+    skip_locs = np.cumsum(np.random.geometric(rate, size=(molecule_count, max_skips)), axis=1)
+    # num_skipped[k,j] is the number of molecules that have had exactly j skips by the kth base
+    num_skipped = np.count_nonzero(skip_locs[:,None,:] <= np.arange(1, read_len+1)[None,:,None], axis=0)
+    frac_skipped = num_skipped / molecule_count
+    # Add on the no-skipped ones
+    frac_skipped = np.hstack([
+        (np.ones(frac_skipped.shape[0]) * (1 - frac_skipped.sum(axis=1)))[:,None],
+        frac_skipped
+    ])
+    #print(frac_skipped.shape, frac_skipped.dtype)
+    #return frac_skipped
+
+
+    #skips = np.random.random(size = (molecule_count, read_len)) < rate
+    #num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), max_skips)
+    ## Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
+    #num_mols_skipped = np.count_nonzero((num_skips_so_far[:,:,None] == np.arange(0, max_skips+1)[None,None,:]), axis=0)
+    #frac_skipped = num_mols_skipped / molecule_count
+    #lkajf
     return frac_skipped
 
 if __name__ == "__main__":
