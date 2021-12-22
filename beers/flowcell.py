@@ -91,9 +91,8 @@ class Flowcell:
                 lane_index += 1
                 lane = self.lanes_to_use[lane_index]
             clusters.append(Cluster(self.run_id, cluster_id, molecule, lane, next(self.coordinate_generators[lane])))
-            if (counter + 1) % 1000 == 0:
-                print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
             Cluster.next_cluster_id += 1
+        print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
         return ClusterPacket(cluster_packet_id, molecule_packet.sample, clusters)
 
     def load_flowcell(self, molecule_packet):
