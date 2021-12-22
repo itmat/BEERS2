@@ -176,10 +176,6 @@ class LibraryPrepPipeline:
         :param sample_id: id number of the sample
         """
 
-        import cProfile
-        profiler = cProfile.Profile()
-        profiler.enable()
-
         np.random.seed(int(seed))
         configuration = json.loads(configuration)
         with open(configuration_file_path) as config_file:
@@ -217,13 +213,6 @@ class LibraryPrepPipeline:
         library_prep_pipeline = LibraryPrepPipeline(configuration, global_configuration, output_directory_path, directory_structure,
                                                     molecule_packet)
         library_prep_pipeline.execute()
-
-        profiler.disable()
-        #profiler.dump_stats("temp.stats")
-        import pstats
-        stats = pstats.Stats(profiler)
-        stats.sort_stats("cumulative").print_stats(50)
-
 
 class BeersLibraryPrepValidationException(Exception):
     pass
