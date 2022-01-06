@@ -54,6 +54,11 @@ class LibraryPrepPipeline:
                                           *subdirectory_list,
                                           f"{LibraryPrepPipeline.stage_name}_"
                                           f"molecule_pkt{self.molecule_packet.molecule_packet_id}.log")
+        self.quant_file_path = os.path.join(self.log_directory_path,
+                                          LibraryPrepPipeline.pipeline_log_subdirectory_name,
+                                          *subdirectory_list,
+                                          f"{LibraryPrepPipeline.stage_name}_"
+                                          f"molecule_pkt{self.molecule_packet.molecule_packet_id}.quant_file.txt")
         self.global_config = global_config
         self.steps = []
         for step in configuration['steps']:
@@ -97,6 +102,7 @@ class LibraryPrepPipeline:
             self.log_sample(log_file)
             pipeline_start = time.time()
             molecule_packet = self.molecule_packet
+            molecule_packet.write_quantification_file(self.quant_file_path)
             for step in self.steps:
                 step_name = step.__class__.name if hasattr(step.__class__, 'name') else step.__class__.__name__
                 step_start = time.time()
