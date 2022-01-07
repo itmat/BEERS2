@@ -58,7 +58,7 @@ class LibraryPrepPipeline:
                                           LibraryPrepPipeline.pipeline_log_subdirectory_name,
                                           *subdirectory_list,
                                           f"{LibraryPrepPipeline.stage_name}_"
-                                          f"molecule_pkt{self.molecule_packet.molecule_packet_id}.quant_file.txt")
+                                          f"molecule_pkt{self.molecule_packet.molecule_packet_id}.quant_file")
         self.global_config = global_config
         self.steps = []
         for step in configuration['steps']:
@@ -72,6 +72,9 @@ class LibraryPrepPipeline:
         results_filename = f"{LibraryPrepPipeline.stage_name}_" \
                            f"result_molecule_pkt{self.molecule_packet.molecule_packet_id}.txt"
         self.results_file_path = os.path.join(data_subdirectory_path, results_filename)
+        results_quant_filename = f"{LibraryPrepPipeline.stage_name}_" \
+                           f"result_molecule_pkt{self.molecule_packet.molecule_packet_id}.quant_file"
+        self.results_quant_file_path = os.path.join(data_subdirectory_path, results_quant_filename)
 
     @staticmethod
     def validate(configuration, global_config):
@@ -125,6 +128,8 @@ class LibraryPrepPipeline:
         # Write final sample to a gzip file for inspection
         molecule_packet.serialize(self.results_file_path)
         print(f"Output final sample to {self.results_file_path}")
+        molecule_packet.write_quantification_file(self.results_quant_file_path)
+        print(f"Output final sample quantification to {self.results_quant_file_path}")
 
     def log_sample(self, log_file):
         """
