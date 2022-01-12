@@ -26,9 +26,7 @@ class PolyAStep:
         self.min_retention_prob = parameters.get("min_retention_prob", 0.0)
         self.max_retention_prob = parameters.get("max_retention_prob", 1.0)
         self.length_retention_prob = parameters.get("length_retention_prob", 1.0)
-        self.min_breakage_prob = parameters.get("min_breakage_prob", 0.0)
-        self.max_breakage_prob = parameters.get("max_breakage_prob", 1.0)
-        self.breakpoint_prob = parameters.get("breakpoint_prob", 0.0)
+        self.breakpoint_prob_per_base = parameters.get("breakpoint_prob_per_base", 0.0)
         self.global_config = global_config
         print("Poly A selection step instantiated")
 
@@ -75,16 +73,16 @@ class PolyAStep:
         """
 
         sequence_minus_tail_length = len(molecule.sequence) - tail_length
-        breakage_likelihood = min([self.min_breakage_prob * sequence_minus_tail_length, self.max_breakage_prob])
-        breakage = np.random.random() <= breakage_likelihood
-        if breakage:
-
-            # Geometric distribution of breakpoints - although geometric dist 1 indexed, we don't subtract
-            # the 1 because we want to be sure of leaving at least one non-polyA nt.
-            breakpoint_from_3p = min(np.random.geometric(self.breakpoint_prob), sequence_minus_tail_length)
-            breakpoint_from_5p = sequence_minus_tail_length - 1 - breakpoint_from_3p
-            molecule.truncate(breakpoint_from_5p)
-            note += ' broken'
+        # Determine the base at which the molecule would break
+        if self.breakpoint_prob_per_base > 0:
+            break_point = np.random.geometric(self.breakpoint_prob_per_base)
+            if break_point < sequence_minus_tail_length:
+                # Break occured before the end of the molecule
+                # breakpoint is referenced from the end of the pre-polyA tail molecule
+                # so we truncate all that occur before it
+                breakpoint_from_5p = sequence_minus_tail_length - break_point + 1
+                molecule.truncate(breakpoint_from_5p) 
+                note += ' broken'
         return note
 
     def validate(self):
@@ -123,9 +121,7 @@ if __name__ == "__main__":
         "min_retention_prob": 0.0,
         "max_retention_prob": 1.0,
         "length_retention_prob": 0.2,
-        "min_breakage_prob": 0.0,
-        "max_breakage_prob": 0.0,
-        "breakpoint_prob": 0.0
+        "breakpoint_prob_per_base": 0.0
       }
     step = PolyAStep(step_log_file_path, input_parameters)
     start = timer()
