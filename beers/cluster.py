@@ -61,13 +61,16 @@ class Cluster:
         self.read_starts = read_starts or []
         self.read_cigars = read_cigars or []
         self.read_strands = read_strands or []
-        if base_counts is not None:
-            self.base_counts = base_counts
-        else:
-            # From sequence, we start with 1 count for each base in the sequence
-            encoded = np.frombuffer(molecule.sequence.encode("ascii"), dtype='uint8')
-            self.base_counts = np.array([encoded == ord(nt) for nt in BASE_ORDER]).astype(int)
-            self.molecule_count = 1
+        self.base_counts = base_counts
+
+    def initialize_base_counts(self):
+        """
+        Generates basecounts from the starting molecule
+        """
+        # From sequence, we start with 1 count for each base in the sequence
+        encoded = np.frombuffer(self.molecule.sequence.encode("ascii"), dtype='uint8')
+        self.base_counts = np.array([encoded == ord(nt) for nt in BASE_ORDER]).astype(int)
+        self.molecule_count = 1
 
     def assign_coordinates(self, coordinates):
         """
@@ -142,7 +145,7 @@ class Cluster:
         for index in range(len(self.called_sequences)):
             output += f"##{self.called_sequences[index]}\t{self.quality_scores[index]}\t{self.read_starts[index]}\t{self.read_cigars[index]}\t{self.read_strands[index]}\n"
         with closing(StringIO()) as counts:
-            if self.molecule_count == 1:
+            if self.molecule_count == 1 or self.base_counts is None:
                 # Shortcut: we only have the one molecule which is already saved
                 # so we indicate that here and don't write out all the counts
                 counts.write("None\n")
@@ -150,15 +153,16 @@ class Cluster:
                 for index in range(len(self.molecule.sequence)):
                     counts.write("\t".join([str(base_count) for base_count in self.get_base_counts_by_position(index)]))
                     counts.write("\n")
-            output += counts.getvalue()
+                output += counts.getvalue()
         return output
 
     @staticmethod
-    def deserialize(data):
+    def deserialize(data, skip_base_counts=False):
         """
         Method to re-render the result of the serialize method above back into a complete cluster object (without
         losing or scrambling state)
         :param data: The string data containing the serialized version of the object
+        :param skip_base_counts: If True, they don't load the base_count data (for memory efficiency)
         :return The Cluster object created from the data provided.
         """
         data = data.rstrip('\n')
@@ -188,7 +192,7 @@ class Cluster:
                     coordinates = tuple(int(x) for x in (line[1:].rstrip('\n').split("\t")))
                 if line_number == 2:
                     molecule = Molecule.deserialize(line[1:].rstrip('\n'))
-            elif line == "None":
+            elif line == "None" or skip_base_counts:
                 base_counts_not_supplied = True
             else:
                 a_count, c_count, g_count, t_count = line.rstrip('\n').split("\t")

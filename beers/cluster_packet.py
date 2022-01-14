@@ -57,11 +57,12 @@ class ClusterPacket:
                 obj_file.write("-\n".encode())
 
     @staticmethod
-    def deserialize(file_path):
+    def deserialize(file_path, skip_base_counts=False):
         """
         This method re-rendered that serialized, compressed data found in the gzipped file located via the given
         file path, into a fully restored object of the ClusterPacket class.
         :param file_path: The locatation of the gzipped file containing the serialized object.
+        :param skip_base_counts: if True, don't load base counts (for memory efficiency)
         """
         cluster_lines = []
         clusters = []
@@ -77,7 +78,7 @@ class ClusterPacket:
                 else:
                     if line.decode() == '-':
                         if cluster_lines:
-                            clusters.append(Cluster.deserialize("\n".join(cluster_lines)))
+                            clusters.append(Cluster.deserialize("\n".join(cluster_lines), skip_base_counts))
                         cluster_lines = []
                     else:
                         cluster_lines.append(line.decode())

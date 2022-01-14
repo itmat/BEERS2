@@ -1,4 +1,5 @@
 import json
+import resource
 import time
 import pathlib
 import numpy as np
@@ -138,6 +139,8 @@ class Controller:
         :param args: The command line arguments
         """
 
+        start = time.time()
+
         stage_name = "sequence_pipeline"
         if setup:
             self.perform_setup(args, [self.controller_name, stage_name])
@@ -163,6 +166,8 @@ class Controller:
             cluster_packet_file_path = os.path.join(data_subdirectory_path, cluster_packet_filename)
             cluster_packet.serialize(cluster_packet_file_path)
             cluster_packet_file_paths.append(cluster_packet_file_path)
+            print(f"Intermediate loaded - process RAM at {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1E6} GB")
+
         packet_file_count = len(cluster_packet_file_paths)
         data_directory_path = os.path.join(self.output_directory_path, stage_name, CONSTANTS.DATA_DIRECTORY_NAME)
         log_directory_path = os.path.join(self.output_directory_path, stage_name, CONSTANTS.LOG_DIRECTORY_NAME)
@@ -175,6 +180,8 @@ class Controller:
                               directory_structure)
         self.dispatcher.dispatch(cluster_packet_file_paths)
 
+        print(f"Finished executing sequencing pipeline after {time.time() - start:0.2f}s")
+
         while not auditor.is_processing_complete():
             time.sleep(1)
 
@@ -186,6 +193,7 @@ class Controller:
 
         if fastq_output:
             print("Generating FastQs")
+            start = time.time()
             fastq_file = os.path.join(
                 self.output_directory_path,
                 self.controller_name,
@@ -198,9 +206,11 @@ class Controller:
                     sample_barcodes = sample_barcode_map,
             )
             fast_q.generate_report()
+            print(f"Finished generating FastQs after {time.time() - start:0.2f}s")
 
         if sam_output:
             print("Generating SAMs")
+            start = time.time()
             #TODO: allow BAM creation?
             reference_genome = read_fasta(self.configuration['resources']['reference_genome_fasta'])
 
@@ -211,6 +221,7 @@ class Controller:
                 sam_file,
                 sample_barcodes = sample_barcode_map)
             sam.generate_report(reference_genome, BAM=False)
+            print(f"Finished generating SAMs after {time.time() - start:0.2f}s")
 
 
     def run_prep_and_sequence_pipeline(self, args):

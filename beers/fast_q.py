@@ -50,7 +50,7 @@ class FastQ:
         clusters = []
         max_direction_num = min(CONSTANTS.DIRECTION_CONVENTION)
         for cluster_packet_file_path in cluster_packet_file_paths:
-            cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path)
+            cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
             max_direction_num = max(max_direction_num, len(cluster_packet.clusters[0].called_sequences))
             clusters += cluster_packet.clusters
 

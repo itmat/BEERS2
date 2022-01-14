@@ -37,6 +37,10 @@ class BridgeAmplificationStep:
         :param cluster_packet:
         :return:
         """
+        for cluster in cluster_packet.clusters:
+            # Generate the initial base_count values
+            cluster.initialize_base_counts()
+
         for cycle in range(1,self.cycles + 1):
             for cluster in cluster_packet.clusters:
                 # Start with a perfect copy
