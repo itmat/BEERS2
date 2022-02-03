@@ -34,7 +34,7 @@ class SAM:
         self.sam_output_directory = sam_output_directory
         self.sample_barcodes = sample_barcodes
 
-    def generate_report(self, reference_seqs, BAM=False):
+    def generate_report(self, reference_seqs, BAM=False, sort_by_coordinates=False):
         """
         The principal method of this object generates one or two reports depending upon whether paired end reads are
         called for.  All the information needed to create the SAM files is found in the cluster packets themselves.
@@ -45,6 +45,9 @@ class SAM:
 
         :param reference_seqs: dictionary mapping reference names to reference sequences, used for SAM header
         :param BAM: if true, output in BAM format, else SAM (default)
+        :param sort_by_coordinates: Whether to sort output by coordinates, as would typically be done with a fastq
+                file from Illumina. Default: False. Setting this to True will consume considerably more memroy
+                as all reads are read in at once.
         """
         sam_header = {
             "HD": { "VN": "1.0"},
@@ -55,38 +58,48 @@ class SAM:
 
         cluster_packet_file_paths = glob.glob(f'{self.cluster_packet_directory}{os.sep}**{os.sep}*.gzip',
                                               recursive=True)
-        clusters = []
-        max_direction_num = min(CONSTANTS.DIRECTION_CONVENTION)
-        for cluster_packet_file_path in cluster_packet_file_paths:
-            cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
-            max_direction_num = max(max_direction_num, len(cluster_packet.clusters[0].called_sequences))
-            clusters += cluster_packet.clusters
+        def cluster_generator():
+            def inner_cluster_generator():
+                for cluster_packet_file_path in cluster_packet_file_paths:
+                    cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
+                    yield cluster_packet.clusters
 
-        for direction in CONSTANTS.DIRECTION_CONVENTION:
-            if direction > max_direction_num:
-                break # Processed all available read directions, nothing else to do
+            if sort_by_coordinates:
+                yield from sorted(inner_cluster_generator(), key=lambda cluster: cluster.coordinates)
+            else:
+                yield from inner_cluster_generator()
 
-            [cluster.generate_fasta_header(direction) for cluster in clusters]
-            for lane in self.flowcell.lanes_to_use:
-                lane_clusters = [cluster for cluster in clusters if cluster.lane == lane]
-                sorted_clusters = sorted(lane_clusters, key=lambda cluster: cluster.coordinates)
+        with contextlib.ExitStack() as stack:
+            # Open all the files
+            bad_barcode_file_path = {lane: os.path.join(self.sam_output_directory, f"unidentified_L{lane}.{'bam' if BAM else 'sam'}")
+                                                    for lane in self.flowcell.lanes_to_use}
+            sam_output_file_path = {lane: {barcode: os.path.join(self.sam_output_directory, f"S{sample}_L{lane}.{'bam' if BAM else 'sam'}")
+                                                    for sample, barcode in self.sample_barcodes.items()}
+                                            for lane in  self.flowcell.lanes_to_use}
+            print(f"Writing out demultiplexed sam files to:")
+            for lane in sam_output_file_path.values():
+                for sam in lane.values():
+                    print(sam)
 
-                sam_output_file_paths = {barcode: os.path.join(self.sam_output_directory,
-                                                      f"S{sample}_L{lane}.{'bam' if BAM else 'sam'}")
-                                                for sample, barcode in self.sample_barcodes.items()}
-                bad_barcode_file_path = os.path.join(self.sam_output_directory, f"unidentified_L{lane}.{'bam' if BAM else 'sam'}")
+            bad_barcode_files = {lane: stack.enter_context(pysam.AlignmentFile(bad_barcode_file_path[lane], ('wb' if BAM else 'w'), header=sam_header))
+                                                for lane in self.flowcell.lanes_to_use}
+            def sam_by_barcode(lane):
+                sam_files = {barcode: stack.enter_context(pysam.AlignmentFile(file_path, ('wb' if BAM else 'w'), header=sam_header))
+                                for barcode, file_path in sam_output_file_path[lane].items()}
+                return collections.defaultdict(
+                    lambda : bad_barcode_files[lane],
+                    **sam_files
+                )
+            sam_output_files = {lane: sam_by_barcode(lane) for lane in self.flowcell.lanes_to_use}
 
+            #[cluster.generate_fasta_header(direction) for cluster in clusters] TODO: need this?
+            for clusters in cluster_generator():
+                for lane in self.flowcell.lanes_to_use:
+                    lane_clusters = [cluster for cluster in clusters if cluster.lane == lane]
 
-                with contextlib.ExitStack() as stack:
-                    print(f"Writing out demultiplexed alignment files to: {list(sam_output_file_paths.values())}")
-                    # sam/bam file with reads that were not demultiplexed
-                    bad_barcode_file = stack.enter_context(pysam.AlignmentFile(bad_barcode_file_path, ('wb' if BAM else 'w'), header=sam_header))
-                    files = collections.defaultdict(lambda : bad_barcode_file)
-                    files.update({barcode: stack.enter_context(pysam.AlignmentFile(file_path, ('wb' if BAM else 'w'), header=sam_header))
-                                for barcode, file_path in sam_output_file_paths.items()})
-                    for cluster in sorted_clusters:
+                    for cluster in lane_clusters:
                         paired = len(cluster.called_sequences) == 2
-                        sam = files[cluster.called_barcode]
+                        sam = sam_output_files[lane][cluster.called_barcode]
                         for direction, (seq, qual, start, cigar) in enumerate(zip(cluster.called_sequences, cluster.quality_scores, cluster.read_starts, cluster.read_cigars)):
                             a = pysam.AlignedSegment()
                             a.query_name = cluster.encode_sequence_identifier()

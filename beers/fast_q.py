@@ -33,7 +33,7 @@ class FastQ:
         self.fastq_output_directory = fastq_output_directory
         self.sample_barcodes = sample_barcodes
 
-    def generate_report(self):
+    def generate_report(self, sort_by_coordinates=False):
         """
         The principal method of this object generates one or two reports depending upon whether paired end reads are
         called for.  All the information needed to create the FASTQ files is found in the cluster packets themselves.
@@ -44,40 +44,67 @@ class FastQ:
         the FASTQ file - header, called sequence, + quality score.
 
         Output files are named according to barcode_S#_L#_R#.fastq specifying sample, lane and read direction numbers.
+
+        :param sort_by_coordinates: Whether to sort output by coordinates, as would typically be done with a fastq
+                file from Illumina. Default: False. Setting this to True will consume considerably more memroy
+                as all reads are read in at once.
         """
         cluster_packet_file_paths = glob.glob(f'{self.cluster_packet_directory}{os.sep}**{os.sep}*.gzip',
                                               recursive=True)
-        clusters = []
-        max_direction_num = min(CONSTANTS.DIRECTION_CONVENTION)
-        for cluster_packet_file_path in cluster_packet_file_paths:
-            cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
-            max_direction_num = max(max_direction_num, len(cluster_packet.clusters[0].called_sequences))
-            clusters += cluster_packet.clusters
+        def cluster_generator():
+            def inner_cluster_generator():
+                for cluster_packet_file_path in cluster_packet_file_paths:
+                    cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
+                    yield cluster_packet.clusters
 
-        for direction in CONSTANTS.DIRECTION_CONVENTION:
-            if direction > max_direction_num:
-                break # Processed all available read directions, nothing else to do
+            if sort_by_coordinates:
+                yield from sorted(inner_cluster_generator(), key=lambda cluster: cluster.coordinates)
+            else:
+                yield from inner_cluster_generator()
 
-            [cluster.generate_fasta_header(direction) for cluster in clusters]
-            for lane in self.flowcell.lanes_to_use:
-                lane_clusters = [cluster for cluster in clusters if cluster.lane == lane]
-                sorted_clusters = sorted(lane_clusters, key=lambda cluster: cluster.coordinates)
+        with contextlib.ExitStack() as stack:
+            # Open all the files
+            bad_barcode_file_path = {direction: {lane: os.path.join(self.fastq_output_directory, f"unidentified_L{lane}_R{direction}.fastq")
+                                                    for lane in self.flowcell.lanes_to_use}
+                                                for direction in CONSTANTS.DIRECTION_CONVENTION}
+            fastq_output_file_path = {direction: {lane: {barcode: os.path.join(self.fastq_output_directory, f"S{sample}_L{lane}_R{direction}.fastq")
+                                                    for sample, barcode in self.sample_barcodes.items()}
+                                            for lane in  self.flowcell.lanes_to_use}
+                                    for direction in CONSTANTS.DIRECTION_CONVENTION}
+            print(f"Writing out demultiplexed fastq files to:")
+            for direction in fastq_output_file_path.values():
+                for lane in direction.values():
+                    for fastq in lane.values():
+                        print(fastq)
 
-                fastq_output_file_path = {barcode: os.path.join(self.fastq_output_directory, f"S{sample}_L{lane}_R{direction}.fastq")
-                                                for sample, barcode in self.sample_barcodes.items()}
-                bad_barcode_file_path = os.path.join(self.fastq_output_directory, f"unidentified_L{lane}_R{direction}.fastq")
-                with contextlib.ExitStack() as stack:
-                    print(f"Writing out demultiplexed fastq files to: {list(fastq_output_file_path.values())}")
-                    bad_barcode_file = stack.enter_context(open(bad_barcode_file_path, "w")) # Write to this file if no matching barcode
-                    files = collections.defaultdict(lambda : bad_barcode_file)
-                    files.update({barcode: stack.enter_context(open(fastq, "w")) for barcode, fastq in fastq_output_file_path.items()})
-                    for cluster in sorted_clusters:
-                        barcode = cluster.called_barcode
-                        fastq = files[barcode]
-                        fastq.write(cluster.header + "\n")
-                        fastq.write(cluster.called_sequences[direction - 1] + "\n")
-                        fastq.write("+\n")
-                        fastq.write(cluster.quality_scores[direction - 1] + "\n")
+            bad_barcode_files = {direction: {lane: stack.enter_context(open(bad_barcode_file_path[direction][lane], "w"))
+                                                for lane in self.flowcell.lanes_to_use}
+                                            for direction in CONSTANTS.DIRECTION_CONVENTION}
+            def fastq_by_barcode(direction, lane):
+                fastq_files = {barcode: stack.enter_context(open(file_path,'w'))
+                                    for barcode, file_path in fastq_output_file_path[direction][lane].items()}
+                return collections.defaultdict(
+                    lambda : bad_barcode_files[direction][lane],
+                    fastq_files
+                )
+            fastq_output_files = {direction: {lane:  fastq_by_barcode(direction, lane)
+                                                for lane in self.flowcell.lanes_to_use}
+                                            for direction in CONSTANTS.DIRECTION_CONVENTION}
+
+            # Iterate through all the cluster packets
+            for clusters in cluster_generator():
+                for direction in CONSTANTS.DIRECTION_CONVENTION:
+                    for lane in self.flowcell.lanes_to_use:
+                        lane_clusters = [cluster for cluster in clusters if cluster.lane == lane]
+
+                        for cluster in lane_clusters:
+                            cluster.generate_fasta_header(direction)
+                            barcode = cluster.called_barcode
+                            fastq = fastq_output_files[direction][lane][barcode]
+                            fastq.write(cluster.header + "\n")
+                            fastq.write(cluster.called_sequences[direction - 1] + "\n")
+                            fastq.write("+\n")
+                            fastq.write(cluster.quality_scores[direction - 1] + "\n")
 
 
 if __name__ == '__main__':
