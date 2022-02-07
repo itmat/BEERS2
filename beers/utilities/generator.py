@@ -1,5 +1,6 @@
 import numpy as np
 import argparse
+import functools
 import sys
 import pandas as pd
 from plotly import graph_objs as go
@@ -60,7 +61,6 @@ def show_histogram(filename):
     layout = go.Layout(title="Generated Sequence Lengths Histogram")
     fig = go.Figure(data=data, layout=layout)
     pyo.plot(fig, filename='../../data/generated_sequence.html')
-
 
 def main():
     """

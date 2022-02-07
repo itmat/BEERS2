@@ -4,6 +4,7 @@ import contextlib
 import collections
 
 from beers.cluster_packet import ClusterPacket
+from beers.utilities.demultiplex import demultiplexer
 from beers_utils.constants import CONSTANTS
 
 
@@ -90,6 +91,8 @@ class FastQ:
             fastq_output_files = {direction: {lane:  fastq_by_barcode(direction, lane)
                                                 for lane in self.flowcell.lanes_to_use}
                                             for direction in CONSTANTS.DIRECTION_CONVENTION}
+            demuxes = {direction: {lane: demultiplexer(fastqs) for lane, fastqs in fastq_output_files[direction].items()}
+                                for direction in CONSTANTS.DIRECTION_CONVENTION}
 
             # Iterate through all the cluster packets
             for clusters in cluster_generator():
@@ -100,7 +103,7 @@ class FastQ:
                         for cluster in lane_clusters:
                             cluster.generate_fasta_header(direction)
                             barcode = cluster.called_barcode
-                            fastq = fastq_output_files[direction][lane][barcode]
+                            fastq = demuxes[direction][lane](barcode)
                             fastq.write(cluster.header + "\n")
                             fastq.write(cluster.called_sequences[direction - 1] + "\n")
                             fastq.write("+\n")

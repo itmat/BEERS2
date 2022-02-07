@@ -6,7 +6,7 @@ import pysam
 from beers.cluster_packet import ClusterPacket
 from beers_utils.general_utils import GeneralUtils
 from beers_utils.constants import CONSTANTS
-
+from beers.utilities.demultiplex import demultiplexer
 
 class SAM:
     """
@@ -91,6 +91,7 @@ class SAM:
                     **sam_files
                 )
             sam_output_files = {lane: sam_by_barcode(lane) for lane in self.flowcell.lanes_to_use}
+            demuxes = {lane: demultiplexer(output_files) for lane, output_files in sam_output_files.items()}
 
             #[cluster.generate_fasta_header(direction) for cluster in clusters] TODO: need this?
             for clusters in cluster_generator():
@@ -99,7 +100,7 @@ class SAM:
 
                     for cluster in lane_clusters:
                         paired = len(cluster.called_sequences) == 2
-                        sam = sam_output_files[lane][cluster.called_barcode]
+                        sam = demuxes[lane](cluster.called_barcode)
                         for direction, (seq, qual, start, cigar) in enumerate(zip(cluster.called_sequences, cluster.quality_scores, cluster.read_starts, cluster.read_cigars)):
                             a = pysam.AlignedSegment()
                             a.query_name = cluster.encode_sequence_identifier()
