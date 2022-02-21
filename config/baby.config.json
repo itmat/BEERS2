@@ -1,12 +1,12 @@
 {
     "samples": {
-        "sample1": {
+        "1": {
             "barcodes": {
                 "i5": "AGCGCTAG",
                 "i7": "AACCGCGG"
             }
         },
-        "sample2": {
+        "2": {
             "barcodes": {
                 "i5": "GATATCGA",
                 "i7": "TTATAACC"
@@ -18,7 +18,7 @@
         "run_id": null,
         "seed": 100,
         "dispatcher_mode": "lsf",
-        "output_directory_path": "/home/thobr/BEERS2/output/run",
+        "output_directory_path": "{{output directory of your choice}}",
         "flowcell": {
             "flowcell_geometry": {
                 "min_x": 1012,
@@ -47,9 +47,7 @@
                     "min_retention_prob": 0.0,
                     "max_retention_prob": 1.0,
                     "length_retention_prob": 1.0,
-                    "min_breakage_prob": 0.0,
-                    "max_breakage_prob": 1.0,
-                    "breakpoint_prob": 0.0,
+                    "breakpoint_prob_per_base": 0.001,
                     "min_polya_nontail_length": 40,
                     "polyanontail_retention_prob": 1.0
                 }
@@ -99,7 +97,19 @@
             }
         ],
         "input": {
-            "directory_path": "test_data/"
+            "directory_path": "{{CAMPAREE Baby genome run directory}}/molecule_packets/",
+            "from_distribution_data": {
+                "1": {
+                    "sample_data_directory": "{{CAMPAREE baby genome output directory}}/CAMPAREE_data/sample1/",
+                    "num_molecules_per_packet": 1000,
+                    "num_packets":  2
+                },
+                "2": {
+                    "sample_data_directory": "{{CAMPAREE baby genome output directory}}/CAMPAREE_data/sample2/",
+                    "num_molecules_per_packet": 1000,
+                    "num_packets":  2
+                }
+            }
         }
     },
 
@@ -124,7 +134,7 @@
             }
         ],
         "input": {
-            "directory_path": "output/run_run9/library_prep_pipeline/data/"
+            "directory_path": "{{path to the run directory containing the library prep pipeline results - not needed if running prep_and_sequence_pipeline}}/library_prep_pipeline/data/"
         },
         "output":  {
             "output_fastq": true,
@@ -138,6 +148,11 @@
         "post_i5_adapter":  "ACACTCTTTCCCTACACGACGCTCTTCCGATCT",
         "pre_i7_adapter": "GATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
         "post_i7_adapter":  "ATCTCGTATGCCGTCTTCTGCTTG"
+    },
+
+    "molecule_maker_parameters": {
+        "min_polyA_tail_length": 50,
+        "max_polyA_tail_length": 250
     }
 
 }
