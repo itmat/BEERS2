@@ -78,6 +78,7 @@ class Controller:
             molecule_packet_file_paths = glob.glob(f'{input_directory_path}{os.sep}**{os.sep}molecule*.txt', recursive=True)
             file_count = len(molecule_packet_file_paths)
             packet_ids = list(range(file_count))
+            print(f"Identified {file_count} molecule files from input directory {input_directory_path}")
         else:
             molecule_packet_file_paths = []
             file_count = 0
