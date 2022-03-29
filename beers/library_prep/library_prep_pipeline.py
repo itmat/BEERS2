@@ -122,7 +122,7 @@ class LibraryPrepPipeline(AbstractBeersPipeline):
             GeneralUtils.get_output_subdirectories(input_molecule_packet.molecule_packet_id, directory_structure)
         data_subdirectory_path = os.path.join(self.data_directory_path, *subdirectory_list)
         original_ids = set(str(m.molecule_id) for m in input_molecule_packet.molecules)
-        self.print_summary(input_molecule_packet.molecules)
+        self.print_summary(original_ids, input_molecule_packet.molecules)
         log_file_path = os.path.join(self.log_directory_path,
                                      LibraryPrepPipeline.pipeline_log_subdirectory_name,
                                      *subdirectory_list,
@@ -157,7 +157,7 @@ class LibraryPrepPipeline(AbstractBeersPipeline):
             # self.log_sample(log_file)
             # Log the molecules the pipeline stage begins with
             log_file.write(Molecule.header)
-            for molecule in input_molecule_packet:
+            for molecule in input_molecule_packet.molecules:
                 log_file.write(molecule.log_entry())
             pipeline_start = time.time()
             molecule_packet = input_molecule_packet

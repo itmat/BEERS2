@@ -90,14 +90,17 @@ class Dispatcher:
         for packet_id, packet_file_path in zip(packet_ids, packet_file_paths):
             # First process any given molecule packets
             seed = np.random.randint(1_000_000)
-            packet_id = f"--packet_id {packet_id} " if packet_id != None else ''
+            packet_id_arg = f"--packet_id {packet_id} " if packet_id != None else ''
+            # If no packet IDs provided, extract from packet file path
+            if packet_id is None:
+                packet_id = Dispatcher.get_packet_id_from_file(packet_file_path)
             command = f"{stage_process} " \
                       f"-s {seed} " \
                       f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
                       f"-o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure} " \
-                      f"--packet_id {packet_id}"
-            self.submit_command(packet_id, command)
+                      f"{packet_id_arg}"
+            self.submit_job(packet_id, command)
         if from_distribution_data is not None:
             # Then any remaining ids go to packets straight from the distribution
             packet_id = max(packet_ids) + 1 if packet_ids else 0
@@ -107,6 +110,9 @@ class Dispatcher:
                 sample_data_dir = sample_data['sample_data_directory']
                 for i in range(num_packets):
                     seed = np.random.randint(1_000_000)
+                    # TODO: Is the packet_id argument hard-coded in here because this block
+                    # is only executed on the library prep pipeline, and not the sequencing
+                    # pipeline.
                     command = f"{stage_process} " \
                               f"-s {seed} " \
                               f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
@@ -116,7 +122,7 @@ class Dispatcher:
                               f"-D {sample_data_dir} " \
                               f"-N {num_mols} " \
                               f"-S {sample_id} "
-                    self.submit_command(packet_id, command, sample_id)
+                    self.submit_job(packet_id, command, sample_id)
                     # subprocess.call(command, shell=True)
                     packet_id += 1
 
