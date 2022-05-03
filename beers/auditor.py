@@ -18,7 +18,7 @@ class Auditor:
         self.packets_submitted.append(packet_id)
 
     def is_processing_complete(self):
-        for ctr in range(100):
+        for ctr in range(1000):
             try:
                 with open(self.audit_file_path, 'r') as audit_file:
                     fcntl.flock(audit_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -26,7 +26,7 @@ class Auditor:
                     fcntl.flock(audit_file, fcntl.LOCK_UN)
                     return True if count == self.total else False
             except IOError:
-                time.sleep(0.01)
+                time.sleep(0.05)
         else:
             raise BeersException(
                 f"Unable to access audit file, {self.audit_file_path}, for reading within a reasonable period.")
@@ -34,7 +34,7 @@ class Auditor:
     @staticmethod
     def note_packet_completed(packet_id, audit_directory):
         audit_file_path = os.path.join(audit_directory, CONSTANTS.AUDIT_FILENAME)
-        for ctr in range(100):
+        for ctr in range(1000):
             try:
                 with open(audit_file_path, 'a') as audit_file:
                     fcntl.flock(audit_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -42,7 +42,7 @@ class Auditor:
                     fcntl.flock(audit_file, fcntl.LOCK_UN)
                     break
             except IOError:
-                time.sleep(0.01)
+                time.sleep(0.05)
         else:
             raise BeersException(
                 f"Unable to access audit file, {audit_file_path}, for writing within a reasonable period.")
