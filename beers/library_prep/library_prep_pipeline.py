@@ -187,6 +187,7 @@ class LibraryPrepPipeline:
         :param sample_id: id number of the sample
         """
 
+        print(f"Initializing with seed {seed}")
         np.random.seed(int(seed))
         configuration = json.loads(configuration)
         with open(configuration_file_path) as config_file:

@@ -3,6 +3,7 @@ import collections
 import sys
 
 import numpy
+import scipy.stats
 
 from beers_utils.molecule import Molecule
 from beers_utils.molecule_packet import MoleculePacket
@@ -145,11 +146,11 @@ def sample_without_replacement(n, k):
         sample = sample.union( numpy.random.choice(n, size=(k-len(sample)), replace=True) )
 
     # Sort it since list(set) will give a sort-of arbitrary but not random order
-    return sorted(sample)
+    return numpy.array(sorted(sample), dtype=int)
 
 def compute_fragment_locations_uniform(molecules, lambda_, runtime):
     """uniform fragmentation with a rate lambda_ parameter
-    All bonds between adjacent bases are equally likely to break
+    All bonds between adjacent bases are equally likely to break (they're iid)
 
     Use the fact that the methods of fragment is equivalent (when lambda constant)
     to first sampling the number of break points from a binomial distribution and then
@@ -161,15 +162,21 @@ def compute_fragment_locations_uniform(molecules, lambda_, runtime):
     assert runtime > 0
     assert lambda_ > 0
 
+    # Breaking occurs with probability `lambda_` per unit time
+    # so the time to break a bond is exponentially distributed.
+    # We convert that to the chance that this time-to-break
+    # is at most equal to the runtime.
+    # With runtime = 1, this is very nearly just `lambda_`
+    probability_of_base_breaking = scipy.stats.expon(scale=1/lambda_).cdf(runtime)
+
     output = collections.deque()
     for k, molecule in enumerate(molecules):
         num_bonds = len(molecule) - 1
-        probability_of_base_breaking = lambda_ * runtime
 
         num_breakpoints = numpy.random.binomial(n=num_bonds, p=probability_of_base_breaking)
 
         breakpoints = sample_without_replacement(num_bonds, num_breakpoints)
-        bps = [0]+ breakpoints + [len(molecule)]
+        bps = numpy.concatenate([[0], breakpoints + 1, [len(molecule)]])
         output.extend( (bps[i], bps[i+1], k) for i in range(len(bps)-1) )
 
     return list(output)

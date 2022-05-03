@@ -94,7 +94,7 @@ class PCRAmplificationStep:
             gc_const = self.parameters['gc_bias_constant']
             gc_linear = self.parameters['gc_bias_linear']
             gc_quadratic = self.parameters['gc_bias_quadratic']
-            success_rate = np.clip(gc_const - gc_linear*(gc - 0.5) + gc_quadratic*(gc - 0.5)**2, 0, 1)
+            success_rate = np.clip(gc_const + gc_linear*(gc - 0.5) + gc_quadratic*(gc - 0.5)**2, 0, 1)
 
             # Iterate over the number of cycles requested.
             for cycle in range(self.number_cycles):
@@ -183,22 +183,16 @@ class PCRAmplificationStep:
         :param ancestor_id: parent id of the new molecule (which may or may not be from the input sample)
         """
 
-        for _ in range(2):
-
-            # If the current ancestor's id is in the sample id counter, we are at the id of the input molecule.
-            if ancestor_id in self.sample_id_ctr:
-
-                # The sample id counter has the number we can assign to the new id of this molecule, after
-                # which, we bump the sample id counter and return
-                new_molecule.molecule_id = str(ancestor_id) + "." + str(self.sample_id_ctr[ancestor_id])
-                self.sample_id_ctr[ancestor_id] += 1
-                break
-
+        # If the current ancestor's id is in the sample id counter, we are at the id of the input molecule.
+        if ancestor_id not in self.sample_id_ctr:
             # Otherwise, we need to back up the id string to the last occurence of the dot and check again.
             index = ancestor_id.rfind(".")
             assert index > 0, f"cannot locate the ancestor of {new_molecule.molecule_id}"
             ancestor_id = ancestor_id[:index]
-        assert True, f"cannot locate the ancestor of {new_molecule.molecule_id}"
+        # The sample id counter has the number we can assign to the new id of this molecule, after
+        # which, we bump the sample id counter and return
+        new_molecule.molecule_id = f"{ancestor_id}.{self.sample_id_ctr[ancestor_id]}"
+        self.sample_id_ctr[ancestor_id] += 1
 
     def validate(self):
         """
