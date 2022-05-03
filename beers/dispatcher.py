@@ -95,7 +95,7 @@ class Dispatcher:
                       f"-o {self.output_directory_path} " \
                       f"-p {packet_file_path} -d {self.directory_structure} " \
                       f"{packet_id}"
-            subprocess.call(command, shell=True)
+            subprocess.check_call(command, shell=True)
         if from_distribution_data is not None:
             # Then any remaining ids go to packets straight from the distribution
             packet_id = max(packet_ids) + 1 if packet_ids else 0
@@ -114,7 +114,7 @@ class Dispatcher:
                               f"-D {sample_data_dir} " \
                               f"-N {num_mols} " \
                               f"-S {sample_id} "
-                    subprocess.call(command, shell=True)
+                    subprocess.check_call(command, shell=True)
                     packet_id += 1
 
     def dispatch_multicore(self, packet_file_paths, packet_ids=None):
