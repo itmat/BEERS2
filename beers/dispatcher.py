@@ -88,6 +88,7 @@ class Dispatcher:
         for packet_id, packet_file_path in zip(packet_ids, packet_file_paths):
             # First process any given molecule packets
             seed = np.random.randint(1_000_000)
+            print(f"Using seed {seed}")
             packet_id = f"--packet_id {packet_id} " if packet_id != None else ''
             command = f"{stage_process} " \
                       f"-s {seed} " \
@@ -105,6 +106,7 @@ class Dispatcher:
                 sample_data_dir = sample_data['sample_data_directory']
                 for i in range(num_packets):
                     seed = np.random.randint(1_000_000)
+                    print(f"Using seed {seed}")
                     command = f"{stage_process} " \
                               f"-s {seed} " \
                               f"-c '{stage_configuration}' -C '{self.configuration_file_path}' "\
