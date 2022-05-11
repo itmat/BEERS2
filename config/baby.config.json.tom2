@@ -18,7 +18,7 @@
         "run_id": null,
         "seed": 100,
         "dispatcher_mode": "lsf",
-        "output_directory_path": "{{output directory of your choice}}",
+        "output_directory_path": "/home/thobr/BEERS2/output/run",
         "flowcell": {
             "flowcell_geometry": {
                 "min_x": 1012,
@@ -31,9 +31,7 @@
                 "max_lane": 8
             },
             "lanes_to_use": [
-                1,
-                2,
-                8
+                1
             ]
         }
     },
@@ -47,7 +45,7 @@
                     "min_retention_prob": 0.0,
                     "max_retention_prob": 1.0,
                     "length_retention_prob": 1.0,
-                    "breakpoint_prob_per_base": 0.001,
+                    "breakpoint_prob_per_base": 0.0001,
                     "min_polya_nontail_length": 40,
                     "polyanontail_retention_prob": 1.0
                 }
@@ -56,43 +54,26 @@
                 "step_name": "fragment_step.FragmentStep",
                 "parameters": {
                     "method": "uniform",
-                    "lambda": 0.005,
-                    "runtime": 1
+                    "lambda": 0.01,
+                    "runtime": 1,
+                    "beta_N": 1,
+                    "beta_A": 1,
+                    "beta_B": 1
                 }
             },
             {
                 "step_name": "first_strand_synthesis_step.FirstStrandSynthesisStep",
-                "parameters": {
-                    "position_probability_matrix": {
-                         "A": [0.50, 0.10, 0.40, 0.30, 0.25, 0.10],
-                         "C": [0.20, 0.50, 0.30, 0.25, 0.25, 0.15],
-                         "G": [0.15, 0.10, 0.15, 0.25, 0.25, 0.20],
-                         "T": [0.15, 0.30, 0.15, 0.20, 0.25, 0.50]
-                    },
-                    "primes_per_kb": 2,
-                    "perfect_priming": false
-                }
+                "parameters": {}
             },
             {
                 "step_name": "second_strand_synthesis_step.SecondStrandSynthesisStep",
-                "parameters": {
-                    "position_probability_matrix": {
-                         "A": [0.50, 0.10, 0.40, 0.30, 0.25, 0.10],
-                         "C": [0.20, 0.50, 0.30, 0.25, 0.25, 0.15],
-                         "G": [0.15, 0.10, 0.15, 0.25, 0.25, 0.20],
-                         "T": [0.15, 0.30, 0.15, 0.20, 0.25, 0.50]
-                    },
-                    "primes_per_kb": 2,
-                    "perfect_priming": false
-                }
+                "parameters": {}
             },
             {
                 "step_name": "sizing_step.SizingStep",
                 "parameters": {
                     "min_length": 100,
-                    "max_length": 400,
-                    "select_all_start_length": 200,
-                    "select_all_end_length": 300
+                    "max_length": 400
                 }
             },
             {
@@ -106,25 +87,27 @@
                     "retention_percentage": 0.08,
                     "gc_bias_constant": 1.0,
                     "gc_bias_linear": 0.0,
-                    "gc_bias_quadratic": -100,
+                    "gc_bias_quadratic": 0.0,
                     "substitution_rate": 0.001,
                     "insertion_rate": 0.0001,
                     "deletion_rate": 0.0001
                 }
             }
         ],
+        "unused_steps": [
+        ],
         "input": {
-            "directory_path": "{{CAMPAREE run directory}}/molecule_packets/",
+            "directory_path": "temp/",
             "from_distribution_data": {
                 "1": {
-                    "sample_data_directory": "{{CAMPAREE output directory}}/CAMPAREE_data/sample1/",
+                    "sample_data_directory": "test_data/CAMPAREE_data/sample1/",
                     "num_molecules_per_packet": 1000,
-                    "num_packets":  2
+                    "num_packets":  0
                 },
                 "2": {
-                    "sample_data_directory": "{{CAMPAREE output directory}}/CAMPAREE_data/sample2/",
+                    "sample_data_directory": "test_data/CAMPAREE_data/sample2/",
                     "num_molecules_per_packet": 1000,
-                    "num_packets":  2
+                    "num_packets":  0
                 }
             }
         }
@@ -151,7 +134,7 @@
             }
         ],
         "input": {
-            "directory_path": "{{path to the run directory containing the library prep pipeline results - not needed if running prep_and_sequence_pipeline}}/library_prep_pipeline/data/"
+            "directory_path": "output/run_run8/library_prep_pipeline/data/"
         },
         "output":  {
             "output_fastq": true,

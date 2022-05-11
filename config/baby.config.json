@@ -55,12 +55,9 @@
             {
                 "step_name": "fragment_step.FragmentStep",
                 "parameters": {
-                    "method": "beta",
-                    "lambda": 0.001,
-                    "runtime": 1,
-                    "beta_N": 2,
-                    "beta_A": 5,
-                    "beta_B": 5
+                    "method": "uniform",
+                    "lambda": 0.005,
+                    "runtime": 1
                 }
             },
             {
@@ -93,7 +90,9 @@
                 "step_name": "sizing_step.SizingStep",
                 "parameters": {
                     "min_length": 100,
-                    "max_length": 400
+                    "max_length": 400,
+                    "select_all_start_length": 200,
+                    "select_all_end_length": 300
                 }
             },
             {

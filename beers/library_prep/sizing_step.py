@@ -12,9 +12,25 @@ from beers_utils.molecule import Molecule
 
 class SizingStep:
     """
-    This step simulates filtering molecules by size.  The idealized filter has sharp cutoffs.  The non-idealized
-    filter passes molecules via a Gaussian distribution.  If the Gaussian distribution parameters are not provided,
-    the assumption is made that sharp cutoffs are provided.
+    This step simulates filtering molecules by size.
+
+    Molecules are selected with probability that ranges piecewise linearly from 0
+    at 'min_length' up to 1 between 'select_all_start_length' and 'select_all_end_length'
+    and then down to 0 again at 'max_length'.
+
+    Probability of retention by length
+                     __________________
+       1|        ___/                  \___
+    p   |   ____/                          \____
+       0|__/                                    \___
+        ---------------------------------------------
+           |          |               |          |
+           min_length |               |          max_length
+                      |   select_all  |
+                    start            end
+    If select_all_start_length or select_all_end_length are not provided
+    then they are set to min_lenght and max_length respectively and the probability
+    jumps from 0 to 1 immediately.
     """
 
     name = "Sizing Step"
@@ -23,24 +39,15 @@ class SizingStep:
         """
         Initializes the step with a file path to the step log and a dictionary of parameters.
         :param step_log_file_path: location of step logfile
-        :param parameters: dictionary of parameters, all of which are optional.  However either sharp cutoff parameters
-        or mean/std dev parameters are required.
+        :param parameters: dictionary of parameters, which must include at least min_length and max_length
         :param global_config: dictionary of step-independent configuration settings
         """
         self.idealized = False
         self.log_filename = step_log_file_path
-        self.mean_length = parameters.get("mean_length")
-        self.sd_length = parameters.get("sd_length")
-        if not self.mean_length or not self.sd_length:
-            self.idealized = True
-            self.min_length = parameters.get("min_length")
-            self.max_length = parameters.get("max_length")
-        else:
-            self.dist = norm(self.mean_length, self.sd_length)
-            mean_prob = self.dist.pdf(self.mean_length)
-            self.normalize_coefficient = 1 / mean_prob
-            self.lower_breakpoint = self.mean_length + 0.25 * self.sd_length
-            self.upper_breakpoint = self.mean_length + 6 * self.sd_length
+        self.min_length = parameters.get("min_length")
+        self.max_length = parameters.get("max_length")
+        self.select_all_start_length = parameters.get("select_all_start_length", self.min_length)
+        self.select_all_end_length = parameters.get("select_all_end_length", self.max_length)
         self.global_config = global_config
         print("Sizing step instantiated")
 
@@ -57,11 +64,16 @@ class SizingStep:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
                 seq_length = len(molecule.sequence)
-                if self.idealized:
-                    retained = self.min_length <= seq_length <= self.max_length
+                if (seq_length < self.min_length or seq_length > self.max_length):
+                    retained = False
+                elif (seq_length >= self.select_all_start_length) and (seq_length <= self.select_all_end_length):
+                    retained = True
                 else:
-                    retention_odds = self.dist_function(seq_length)
-                    retained = (np.random.random() < retention_odds)
+                    if seq_length < self.select_all_start_length:
+                        retention_prob = (seq_length - self.min_length) / (self.select_all_start_length - self.min_length)
+                    else:
+                        retention_prob = (self.max_length - seq_length) / (self.max_length - self.select_all_end_length)
+                    retained = (np.random.random() < retention_prob)
                 note = ''
                 if retained:
                     retained_molecules.append(molecule)
@@ -72,22 +84,6 @@ class SizingStep:
         print("Sizing step complete")
         molecule_packet.molecules = retained_molecules
         return molecule_packet
-
-    def dist_function(self, x):
-        y = self.normalize_coefficient * self.dist.pdf(x)
-        if self.lower_breakpoint < x <= self.upper_breakpoint:
-                y += max(0, ((x - self.lower_breakpoint) / self.lower_breakpoint) * (1.0 - x/self.upper_breakpoint))
-        return y
-
-    def display_dist_function(self):
-        """
-        Tool for displaying the distribution function
-        :return:
-        """
-        x_values = np.linspace(0, self.mean_length + 6*self.sd_length, self.mean_length + 6*self.sd_length)
-        y_values = [self.dist_function(x) for x in x_values]
-        #pl.plot(x_values, y_values)
-        #pl.show()
 
     def validate(self):
         """
@@ -102,6 +98,9 @@ class SizingStep:
             if self.min_length < 0 or self.min_length > self.max_length:
                 print("The minimum cutoff length {self.min_length} must be non-zero and less than the"
                       "maximum cutoff length, {self.max_length}.", file=sys.stderr)
+                return False
+            if not (self.min_length <= self.select_all_start_length <= self.select_all_end_length <= self.max_length):
+                print("SizingStep needs min_length <= select_all_start_length <= select_all_end_length <= max_length")
                 return False
         else:
             pass
@@ -135,7 +134,6 @@ if __name__ == "__main__":
         "max_length": 400
     }
     step = SizingStep(output_data_log_file, input_parameters)
-    #step.display_dist_function()
 
     # Executing the step and noting the time taken.
     start = timer()
