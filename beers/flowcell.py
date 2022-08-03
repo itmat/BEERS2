@@ -46,11 +46,19 @@ class Flowcell:
         self.set_flowcell_coordinate_ranges()
         self.available_lanes = list(range(self.min_coords['lane'], self.max_coords['lane'] + 1))
         self.lanes_to_use = self.parameters["lanes_to_use"] or self.available_lanes
+        if parameters['coordinate_strategy'] == 'random':
+            # Generate coordinates with replacement, i.e. may not be distinct
+            # this is the fastest/simplest method
+            generate_coordinates = self.generate_coordinates_random
+        elif parameters['coordinate_strategy'] == 'random_distinct':
+            # Generate coordinates without replacement, i.e. are all distinct
+            # Uses much more memory if sequencing millions of reads
+            generate_coordinates = self.generate_coordinates_distinct
         self.flowcell_lanes = {}
         self.coordinate_generators = {}
         for lane in self.lanes_to_use:
             self.flowcell_lanes[lane] = FlowcellLane(lane)
-            self.coordinate_generators[lane] = self.generate_coordinates(lane)
+            self.coordinate_generators[lane] = generate_coordinates(lane)
 
     def validate(self):
         """
@@ -65,6 +73,9 @@ class Flowcell:
             valid = False
             msg += f"The flowcell lanes to use {self.lanes_to_use} must be a subset of the available lanes" \
                    f" {self.available_lanes}.\n"
+        if self.parameters['coordinate_strategy'] not in ['random', 'random_distinct']:
+            valid = False
+            msg += f"Flowcell coordinate_strategy must be one of 'random' or 'random_distinct'"
         return valid, msg
 
     def convert_molecule_pkt_to_cluster_pkt(self, molecule_packet):
@@ -107,7 +118,7 @@ class Flowcell:
         cluster_packet = self.convert_molecule_pkt_to_cluster_pkt(molecule_packet)
         return cluster_packet
 
-    def generate_coordinates(self, lane):
+    def generate_coordinates_distinct(self, lane):
         """
         A Python generator that randomly selects tile, x, and y coordinates and uses them to create a  coordinates
         tuple (tile, x, y).  The new lane coordinates object is compared with all the consumed coordinates in the given lane.  If
@@ -132,6 +143,22 @@ class Flowcell:
                 yield coord
             if ctr >= 100:
                 raise BeersException("Unable to find unused flowcell coordinates after 100 attempts.")
+
+    def  generate_coordinates_random(self, lane):
+        """
+        A Python generator that randomly selects tile, x, and y coordinates and uses them to create a  coordinates
+        tuple (tile, x, y). May generate the same coordinate location multiple times, so not appropriate for simulations
+        that are intended for uses that depend upon coordinates. Lower memory usage than generate_coordinates_distinct.
+        :param lane: the lane for which a unique combination of tile, x, and y cooredinates is to be selected
+        :return: a unique combination of coordinates for the lane given.
+        """
+        flowcell_lane = self.flowcell_lanes[lane]
+        while True:
+            x = np.random.randint(self.min_coords['x'], self.max_coords['x'] + 1)
+            y = np.random.randint(self.min_coords['y'], self.max_coords['y'] + 1)
+            tile = np.random.randint(self.min_coords['tile'], self.max_coords['tile'] + 1)
+            coord = (tile, x, y)
+            yield coord
 
     @staticmethod
     def generate_coordinates_from_alignment_file(input_file_path):

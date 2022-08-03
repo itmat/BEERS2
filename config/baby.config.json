@@ -34,7 +34,8 @@
                 1,
                 2,
                 8
-            ]
+            ],
+            "coordinate_strategy": "random"
         }
     },
 
