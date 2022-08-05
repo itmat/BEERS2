@@ -10,14 +10,14 @@ from beers_utils.molecule import Molecule
 from beers.utilities.gc_content import gc_content
 
 
-def hypergeometric(ngood, nbad, nsamp):
+def hypergeometric(ngood, nbad, nsamp, rng):
     ''' See np.random.hypergeometric but allows nsamp to have zeros
 
     Expects ngood, nbad to be integers and nsamp a 1d array of ints'''
 
     out = np.zeros(shape = len(nsamp), dtype=int)
     nonzero = (nsamp != 0)
-    out[nonzero] = np.random.hypergeometric(ngood, nbad, nsamp[nonzero])
+    out[nonzero] = rng.hypergeometric(ngood, nbad, nsamp[nonzero])
     return out
 
 class PCRAmplificationStep:
@@ -51,7 +51,7 @@ class PCRAmplificationStep:
         # unique ids may be assigned to those molecule's descendants.
         self.sample_id_ctr = dict()
 
-    def execute(self, molecule_packet):
+    def execute(self, molecule_packet, rng):
         """
         For each cycle, duplicates each molecule from the current list of molecules (including those created in
         prior cycles) and assigns a unique id.
@@ -87,7 +87,7 @@ class PCRAmplificationStep:
             # These are computed under the assumption of no GC-content bias
             # GC-bias will further reduce the actual numbers later on
             retention_rate = self.retention_percentage / 100
-            descendants = np.random.binomial(n=2**self.number_cycles, p = retention_rate, size=len(molecules))
+            descendants = rng.binomial(n=2**self.number_cycles, p = retention_rate, size=len(molecules))
 
             # Rate of success (per molecule) of each PCR cycle
             gc = np.array([gc_content(molecule) for molecule in molecules])
@@ -109,11 +109,12 @@ class PCRAmplificationStep:
                 original_descendants = hypergeometric(
                         possible_descendants,
                         possible_descendants,
-                        descendants)
+                        descendants,
+                        rng)
                 copy_descendants = descendants - original_descendants
 
                 # Account for failure in PCR
-                pcr_succeeded = np.random.random(success_rate.shape) < success_rate
+                pcr_succeeded = rng.random(success_rate.shape) < success_rate
 
                 # Retain molecules if the original has descendants (not from the copy made this round)
                 new_molecules = [molecule
@@ -213,38 +214,3 @@ class PCRAmplificationStep:
                    f" must be between 0 and 100.")
 
         return valid
-
-
-if __name__ == "__main__":
-    # Single step test - using a seed to allow reproducible runs but now out of date
-    # TODO fix to allow single step testing.
-    np.random.seed(100)
-
-    # Getting original molecule packet (to preserve original sample metadata in case it is needed)
-    with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
-        molecule_packet = pickle.load(molecule_packet_file)
-
-    # Taking advantage of an existing log file to grab molecules.
-    molecule_packet.molecules = \
-        Utils.convert_log_data_into_molecules("../../data/tests/adapter_ligation_step_output_data.log")
-
-    # Copying these molecules into a separate log file
-    input_data_log_file = "../../data/tests/pcr_amplification_step_input_data.log"
-    with open(input_data_log_file, "w+") as input_data_log:
-        input_data_log.write(Molecule.header)
-        for rna_molecule in molecule_packet.molecules:
-            input_data_log.write(rna_molecule.log_entry())
-
-    # Selecting step log file and parameter info and using both to instantiate a step
-    # object (not bothering with validation)
-    output_data_log_file = "../../data/tests/pcr_amplification_step_output_data.log"
-    input_parameters = {
-        "number_cycles": 3
-    }
-    step = PCRAmplificationStep(output_data_log_file, input_parameters)
-
-    # Executing the step and noting the time taken.
-    start = timer()
-    result = step.execute(molecule_packet)
-    end = timer()
-    print(f"PCRAmplification Step: {end - start} sec for {len(result.molecules)} molecules.")

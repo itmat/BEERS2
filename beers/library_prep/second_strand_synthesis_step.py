@@ -22,7 +22,7 @@ class SecondStrandSynthesisStep:
         self.perfect_priming = self.parameters['perfect_priming']
         print("Second Strand cDNA Synthesis Step instantiated.")
 
-    def execute(self, molecule_packet):
+    def execute(self, molecule_packet, rng):
         print("Second strand cDNA synthesis step starting...")
         # TODO: this takes ONLY the second synthesis strand. Is that correct?
         #       Is this right for non-strand-specific analyses?
@@ -39,7 +39,7 @@ class SecondStrandSynthesisStep:
                     primed_site = 0
                 else:
                     # First choose how many places will be primed
-                    number_of_primed_sites = np.random.binomial(n = len(molecule.sequence), p = self.primes_per_kb/1000)
+                    number_of_primed_sites = rng.binomial(n = len(molecule.sequence), p = self.primes_per_kb/1000)
                     if number_of_primed_sites == 0:
                         number_of_primed_sites = 1 # TODO: we force everything to be primed at least once, but maybe we should allow non-priming?
 
@@ -48,7 +48,7 @@ class SecondStrandSynthesisStep:
                     weights = np.array([np.lib.stride_tricks.sliding_window_view(seq_bases[i], self.primer_length) * self.position_probability_matrix[i, :]
                                                             for i in range(4)]).sum(axis=0).prod(axis=1)
                     # Then choose the priming sites and take the 5'-most one
-                    priming_sites = np.random.choice(len(weights), p=weights/weights.sum(), size=number_of_primed_sites)
+                    priming_sites = rng.choice(len(weights), p=weights/weights.sum(), size=number_of_primed_sites)
                     primed_site = min(priming_sites)
 
                 cdna_start = primed_site + 1

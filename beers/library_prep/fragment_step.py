@@ -44,13 +44,13 @@ class FragmentStep:
             self.beta_B = parameters["beta_B"]
             self.beta_N = parameters["beta_N"]
 
-    def execute(self, molecule_packet):
+    def execute(self, molecule_packet, rng):
         print("Fragment Step acting on sample")
         sample = molecule_packet.molecules
         if self.method == "uniform":
-            fragment_locations =  compute_fragment_locations_uniform(sample, self.lambda_, self.runtime)
+            fragment_locations =  compute_fragment_locations_uniform(sample, self.lambda_, self.runtime, rng)
         elif self.method == "beta":
-            fragment_locations = compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime)
+            fragment_locations = compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime, rng)
         else:
             raise NotImplementedError(f"Unknown fragmentation method {self.method}")
 
@@ -91,13 +91,14 @@ def estimate_uniform_lambda(starting_median_length, desired_median_length):
 # MOST GENERAL SOLUTION
 # Much slower than uniform fragmentation
 # Unlike other methods, allows an arbitrary lambda_ depending upon location
-def compute_fragment_locations(molecules, lambda_, runtime):
+def compute_fragment_locations(molecules, lambda_, runtime, rng):
     """fragment molecules with varying lambas
 
     molecules -- a list of molecules
     lambda_ -- a function mapping (j, (start,end), molecule) to the rate of breakage of
             the bond at position j of the molecule if it is in a fragment (start,end) of molecule
     runtime -- length of this process, longer times means more breakage
+    rng -- random number generator
 
     returns a list of tuples (start, end, k) of fragments
     each fragment being k'th molecule from positions start to end (zero-based, non-inclusive of end)
@@ -119,11 +120,11 @@ def compute_fragment_locations(molecules, lambda_, runtime):
         num_bonds = end - start - 1
         lambdas = numpy.array([lambda_(j,start, end, molecules[k]) for j in range(start, end-1)])
         total_lambda = sum(lambdas)
-        time_until_break = numpy.random.exponential(scale = 1/total_lambda)
+        time_until_break = rng.exponential(scale = 1/total_lambda)
 
         if time_until_break < time_left:
             # Break!
-            break_point = numpy.random.choice(num_bonds, p=lambdas/total_lambda) + start
+            break_point = rng.choice(num_bonds, p=lambdas/total_lambda) + start
             todo.append(((start, break_point + 1), time_left - time_until_break, k))
             todo.append(((break_point + 1, end), time_left - time_until_break, k))
         else:
@@ -133,7 +134,7 @@ def compute_fragment_locations(molecules, lambda_, runtime):
     return [(start, end, k) for (start, end), k in done]
 
 # Used by direct_fragment
-def sample_without_replacement(n, k):
+def sample_without_replacement(n, k, rng):
     """uniformly sample k numbers from 0,...,n-1 without replacement
 
     Intended to be faster than numpy.random.choice(n, size=k, replace=False)
@@ -141,14 +142,14 @@ def sample_without_replacement(n, k):
     (About 1000x times faster for n=1,000,000 and k=4.)
     Sample is returned in sorted order """
 
-    sample = set(numpy.random.choice(n, size=k, replace=True))
+    sample = set(rng.choice(n, size=k, replace=True))
     while len(sample) < k:
-        sample = sample.union( numpy.random.choice(n, size=(k-len(sample)), replace=True) )
+        sample = sample.union( rng.choice(n, size=(k-len(sample)), replace=True) )
 
     # Sort it since list(set) will give a sort-of arbitrary but not random order
     return numpy.array(sorted(sample), dtype=int)
 
-def compute_fragment_locations_uniform(molecules, lambda_, runtime):
+def compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
     """uniform fragmentation with a rate lambda_ parameter
     All bonds between adjacent bases are equally likely to break (they're iid)
 
@@ -173,9 +174,9 @@ def compute_fragment_locations_uniform(molecules, lambda_, runtime):
     for k, molecule in enumerate(molecules):
         num_bonds = len(molecule) - 1
 
-        num_breakpoints = numpy.random.binomial(n=num_bonds, p=probability_of_base_breaking)
+        num_breakpoints = rng.binomial(n=num_bonds, p=probability_of_base_breaking)
 
-        breakpoints = sample_without_replacement(num_bonds, num_breakpoints)
+        breakpoints = sample_without_replacement(num_bonds, num_breakpoints, rng)
         bps = numpy.concatenate([[0], breakpoints + 1, [len(molecule)]])
         output.extend( (bps[i], bps[i+1], k) for i in range(len(bps)-1) )
 
@@ -191,7 +192,7 @@ def compute_fragment_locations_uniform(molecules, lambda_, runtime):
 # A = B = 5 gives reasonable values
 # NOTE: there is no theoretical justification for why this should be an appropriate model
 #       but it gives a reasonable looking length distribution while the uniform methods do not
-def compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime):
+def compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime, rng):
     """fragment molecules with varying lambas
 
     molecules -- a list of molecules
@@ -220,16 +221,16 @@ def compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime):
 
         num_bonds = end - start - 1
         break_rate = lambda_ * num_bonds**N / TYPICAL_MOLECULE_SIZE**(N-1)
-        time_until_break = numpy.random.exponential(scale = 1/break_rate)
+        time_until_break = rng.exponential(scale = 1/break_rate)
 
         if time_until_break < time_left:
             # Break!
 
             # pick breakpoint by a beta distribution times the length of the molecule and round
-            beta_variable = numpy.random.beta(A,B)
+            beta_variable = rng.beta(A,B)
             break_point = math.floor(beta_variable*(num_bonds)) + start
             if beta_variable == 1.0:
-                # Surprisingly, numpy.random.beta CAN return a 1.0
+                # Surprisingly, rng.beta CAN return a 1.0
                 # Which won't round down in the floor above, so we handle it here
                 break_point = start+num_bonds - 1
 

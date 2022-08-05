@@ -326,28 +326,3 @@ class SequencePipeline(AbstractBeersPipeline):
 
 class BeersSequenceValidationException(Exception):
     pass
-
-if __name__ == '__main__':
-    """
-    Prepare and process command line arguments. This code is an intermediate
-    step along to way to updating BEERS2 to full support the BEERS_UTILS job
-    submission framework. Ideally, we can move this argument processing to
-    the main function itself, and distribute some of the main() function's
-    operations to the initialization and execute functions.
-    """
-
-    parser = argparse.ArgumentParser(description='Sequence Pipeline')
-    parser.add_argument('-s', '--seed', required=True, help="Seed")
-    parser.add_argument('-c', '--config', required=True, help='Configuration')
-    parser.add_argument('-C', '--config_file', required=True, help='Configuration File Path')
-    parser.add_argument('-o', '--output_directory', required=True, help='Path to output directory.')
-    parser.add_argument('-p', '--cluster_packet_path', required=True, help="Serialized cluster packet file path.")
-    parser.add_argument('-d', '--directory_structure', required=True, help="Structure of data and logs directories.")
-
-    args = parser.parse_args()
-    SequencePipeline.main(args.seed,
-                          args.config,
-                          args.config_file,
-                          args.output_directory,
-                          args.directory_structure,
-                          args.cluster_packet_path)

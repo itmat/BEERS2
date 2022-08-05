@@ -16,7 +16,7 @@ class AdapterLigationStep:
         self.global_config = global_config
         print(f"{self.name} instantiated")
 
-    def execute(self, molecule_packet):
+    def execute(self, molecule_packet, rng):
         print(f"{self.name} starting")
         sample = molecule_packet.sample
         # Adapters combine a fixed sequence (specified in 'resources' config)

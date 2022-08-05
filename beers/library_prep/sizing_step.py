@@ -51,7 +51,7 @@ class SizingStep:
         self.global_config = global_config
         print("Sizing step instantiated")
 
-    def execute(self, molecule_packet):
+    def execute(self, molecule_packet, rng):
         """
         Remove those molecules that are outside the filter range.  Parameters dictate whether cutoffs are sharp or
         dictated by a distribution function
@@ -73,7 +73,7 @@ class SizingStep:
                         retention_prob = (seq_length - self.min_length) / (self.select_all_start_length - self.min_length)
                     else:
                         retention_prob = (self.max_length - seq_length) / (self.max_length - self.select_all_end_length)
-                    retained = (np.random.random() < retention_prob)
+                    retained = (rng.random() < retention_prob)
                 note = ''
                 if retained:
                     retained_molecules.append(molecule)
@@ -105,38 +105,3 @@ class SizingStep:
         else:
             pass
         return True
-
-if __name__ == "__main__":
-    # This is useful for single step testing, but out of date.
-    # TODO fix to allow single step testing.
-    np.random.seed(100)
-
-    # Getting original molecule packet (to preserve original sample metadata in case it is needed)
-    with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
-        molecule_packet = pickle.load(molecule_packet_file)
-
-    # Taking advantage of an existing log file to grab molecules.
-    molecule_packet.molecules = \
-        Utils.convert_log_data_into_molecules("../../data/tests/polya_step_output_data.log")
-
-    # Copying these molecules into a separate log file
-    input_data_log_file = "../../data/tests/sizing_step_input_data.log"
-    with open(input_data_log_file, "w+") as input_data_log:
-        input_data_log.write(Molecule.header)
-        for rna_molecule in molecule_packet.molecules:
-            input_data_log.write(rna_molecule.log_entry())
-
-    # Selecting step log file and parameter info and using both to instantiate a step
-    # object (not bothering with validation)
-    output_data_log_file = "../../data/tests/sizing_step_output_data.log"
-    input_parameters = {
-        "min_length": 100,
-        "max_length": 400
-    }
-    step = SizingStep(output_data_log_file, input_parameters)
-
-    # Executing the step and noting the time taken.
-    start = timer()
-    step.execute(molecule_packet)
-    end = timer()
-    print(f"Sizing Step: {end - start} for {len(molecule_packet.molecules)} molecules.")

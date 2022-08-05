@@ -1,4 +1,7 @@
 {
+
+    "seed": 100,
+
     "samples": {
         "1": {
             "barcodes": {
@@ -14,29 +17,23 @@
         }
     },
 
-    "controller": {
-        "run_id": null,
-        "seed": 100,
-        "dispatcher_mode": "lsf",
-        "output_directory_path": "{{output directory of your choice}}",
-        "flowcell": {
-            "flowcell_geometry": {
-                "min_x": 1012,
-                "max_x": 32816,
-                "min_y": 998,
-                "max_y": 49247,
-                "min_tile": 1101,
-                "max_tile": 2228,
-                "min_lane": 1,
-                "max_lane": 8
-            },
-            "lanes_to_use": [
-                1,
-                2,
-                8
-            ],
-            "coordinate_strategy": "random"
-        }
+    "flowcell": {
+        "flowcell_geometry": {
+            "min_x": 1012,
+            "max_x": 32816,
+            "min_y": 998,
+            "max_y": 49247,
+            "min_tile": 1101,
+            "max_tile": 2228,
+            "min_lane": 1,
+            "max_lane": 8
+        },
+        "lanes_to_use": [
+            1,
+            2,
+            8
+        ],
+        "coordinate_strategy": "random"
     },
 
     "library_prep_pipeline": {
@@ -151,9 +148,6 @@
                 }
             }
         ],
-        "input": {
-            "directory_path": "{{path to the run directory containing the library prep pipeline results - not needed if running prep_and_sequence_pipeline}}/library_prep_pipeline/data/"
-        },
         "output":  {
             "output_fastq": true,
             "output_sam": true

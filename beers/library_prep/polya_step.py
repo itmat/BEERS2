@@ -30,7 +30,7 @@ class PolyAStep:
         self.global_config = global_config
         print("Poly A selection step instantiated")
 
-    def execute(self, molecule_packet):
+    def execute(self, molecule_packet, rng):
         """
         Remove nearly all molecules that don't have a poly A tail.  Most molecules with a poly A tail are retained.
         Some bleed over modeled to occur in both directions.  Additionally, retained molecules have a chance of being
@@ -50,12 +50,12 @@ class PolyAStep:
                 tail_length = tail_length if tail_length > self.min_polya_tail_length else 0
                 retention_odds = min(self.min_retention_prob + self.length_retention_prob * tail_length,
                                      self.max_retention_prob)
-                retained = np.random.random() <= retention_odds
+                retained = rng.random() <= retention_odds
                 note = ''
                 if retained:
                     retained_molecules.append(molecule)
                     note += 'retained'
-                    note = self.apply_three_prime_bias(molecule, tail_length, note)
+                    note = self.apply_three_prime_bias(molecule, tail_length, note, rng)
                 else:
                     note += 'removed'
                 log_file.write(molecule.log_entry(note))
@@ -63,7 +63,7 @@ class PolyAStep:
         molecule_packet.molecules = retained_molecules
         return molecule_packet
 
-    def apply_three_prime_bias(self, molecule, tail_length, note):
+    def apply_three_prime_bias(self, molecule, tail_length, note, rng):
         """
         Model for polyA selection 3' bias.  Assuming that polyA tail plays no role in truncation of 5' end.
         :param molecule: molecule to evaluate for truncation
@@ -75,7 +75,7 @@ class PolyAStep:
         sequence_minus_tail_length = len(molecule.sequence) - tail_length
         # Determine the base at which the molecule would break
         if self.breakpoint_prob_per_base > 0:
-            break_point = np.random.geometric(self.breakpoint_prob_per_base)
+            break_point = rng.geometric(self.breakpoint_prob_per_base)
             if break_point < sequence_minus_tail_length:
                 # Break occured before the end of the molecule
                 # breakpoint is referenced from the end of the pre-polyA tail molecule
@@ -102,29 +102,3 @@ class PolyAStep:
                   file=sys.stderr)
             return False
         return True
-
-
-if __name__ == "__main__":
-    # This is useful for single step testing, but out of date.
-    # TODO fix to allow single step testing.
-    np.random.seed(100)
-    with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
-        molecule_packet = pickle.load(molecule_packet_file)
-    input_data_log_file = "../../data/tests/polya_step_input_data.log"
-    with open(input_data_log_file, "w+") as input_data_log:
-        input_data_log.write(Molecule.header)
-        for rna_molecule in molecule_packet.molecules:
-            input_data_log.write(rna_molecule.log_entry())
-    step_log_file_path = "../../data/tests/polya_step_output_data.log"
-    input_parameters = {
-        "min_polya_tail_length": 40,
-        "min_retention_prob": 0.0,
-        "max_retention_prob": 1.0,
-        "length_retention_prob": 0.2,
-        "breakpoint_prob_per_base": 0.0
-      }
-    step = PolyAStep(step_log_file_path, input_parameters)
-    start = timer()
-    step.execute(molecule_packet)
-    end = timer()
-    print(f"PolyA Selection Step: {end - start} for {len(molecule_packet.molecules)} molecules.")
