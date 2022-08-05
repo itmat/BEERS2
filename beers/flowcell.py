@@ -22,7 +22,7 @@ class Flowcell:
 
     coords_match_pattern = re.compile(r'^.*:(\w+):(\d+):(\d+):(\d+):(\d+)$')
 
-    def __init__(self, run_id, configuration, parameters):
+    def __init__(self, configuration, parameters):
         """
         A flowcell's geometry (i.e., coordinate ranges for lane, tile, x, y) are either provided via the configuration
         file or derived from the initial FASTQ files applied to the expression portion of the pipeline.  The flowcell
@@ -32,13 +32,11 @@ class Flowcell:
         track of the coordinates used for its given lane.  Each lane has its own coordinate generator to produce new
         coordinates for each newly retained molecule.
         own coordinate generator.
-        :param run_id: The BEERS run id
         :param configuration: The entire configuration file - only used to find the paths to the input FASTQ files
         if needed.
         :param parameters: Parameters specific to the flowcell defined in the configuration file under the
         controller.
         """
-        self.run_id = run_id
         self.configuration = configuration
         self.parameters = parameters
         self.min_coords = {"lane": 10_000, "tile": 10_000, "x": 10_000, "y": 10_000}
@@ -90,8 +88,7 @@ class Flowcell:
         :return: A cluster packet containing the retained molecules as cluster objects with a lane and set of
         coordinates identified.
         """
-        cluster_packet_id = ClusterPacket.next_cluster_packet_id
-        ClusterPacket.next_cluster_packet_id += 1
+        cluster_packet_id = molecule_packet.molecule_packet_id
         clusters = []
         molecules_per_lane = len(molecule_packet.molecules)//len(self.lanes_to_use)
         lane_index = 0
@@ -101,7 +98,7 @@ class Flowcell:
             if (counter + 1) % molecules_per_lane == 0 and lane_index + 1 < len(self.lanes_to_use):
                 lane_index += 1
                 lane = self.lanes_to_use[lane_index]
-            clusters.append(Cluster(self.run_id, cluster_id, molecule, lane, next(self.coordinate_generators[lane])))
+            clusters.append(Cluster(cluster_id, molecule, lane, next(self.coordinate_generators[lane])))
             Cluster.next_cluster_id += 1
         print(f"Assigned flowcell coordinates to {counter + 1} clusters.")
         return ClusterPacket(cluster_packet_id, molecule_packet.sample, clusters)

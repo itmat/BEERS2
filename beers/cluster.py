@@ -22,14 +22,13 @@ class Cluster:
 
     next_cluster_id = 1  # Static variable for creating increasing cluster id's
 
-    def __init__(self, run_id, cluster_id, molecule, lane, coordinates, *, molecule_count=1, diameter=0,
+    def __init__(self, cluster_id, molecule, lane, coordinates, *, molecule_count=1, diameter=0,
                  called_sequences=None, called_barcode=None, quality_scores=None,
                  read_starts = None, read_cigars = None, read_strands = None, base_counts=None,):
         """
         The constructor contains many attributes, the values of which, may be unknown at the time of instantiation.
         But the object is serializable via custom methods and a serialized version will often contain values for
         these attributes.  So they are in the parameter list here (with defaults) to simplify deserialization.
-        :param run_id: The id of the beers run - used in the flowcell header
         :param cluster_id: The unique id of this cluster
         :param molecule: The original molecule object from which the cluster is derived.
         :param lane: The flowcell lane where this cluster is found
@@ -51,7 +50,6 @@ class Cluster:
         self.lane = lane
         self.coordinates = coordinates
         self.cluster_id = cluster_id
-        self.run_id = run_id
         self.molecule = molecule
         self.diameter = diameter
         self.molecule_count = molecule_count
@@ -99,7 +97,7 @@ class Cluster:
         """
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
         tile, x, y = self.coordinates
-        return f"BEERS:{self.run_id}:1:{self.lane}:{tile}:{x}:{y}:{self.molecule.molecule_id}"
+        return f"BEERS:1:{self.lane}:{tile}:{x}:{y}:{self.molecule.molecule_id}"
 
 
     def get_base_counts_by_position(self, index):
@@ -116,7 +114,7 @@ class Cluster:
         complete representation.  Depends on what is useful for debugging.
         :return: string representation.
         """
-        header = f"run id: {self.run_id}, cluster_id: {self.cluster_id}, molecule_id: {self.molecule.molecule_id}, " \
+        header = f"cluster_id: {self.cluster_id}, molecule_id: {self.molecule.molecule_id}, " \
                  f"molecule_count: {self.molecule_count}, lane: {self.lane}, coordinates: {self.coordinates}\n"
         for index in range(len(self.called_sequences)):
             header += f"called sequence: {self.called_sequences[index]}\n"
@@ -139,7 +137,7 @@ class Cluster:
         :return: The serialized string output.
         """
         tile, x, y = self.coordinates
-        output = f"#{self.cluster_id}\t{self.run_id}\t{self.molecule_count}\t{self.diameter}\t{self.lane}\t" \
+        output = f"#{self.cluster_id}\t{self.molecule_count}\t{self.diameter}\t{self.lane}\t" \
                  f"{self.called_barcode}\n"
         output += f"#{tile}\t{x}\t{y}\n#{self.molecule.serialize()}\n"
         for index in range(len(self.called_sequences)):
@@ -186,7 +184,7 @@ class Cluster:
                 read_strands.append(read_strand)
             elif line.startswith("#"):
                 if line_number == 0:
-                    cluster_id, run_id, molecule_count, diameter, lane, called_barcode \
+                    cluster_id, molecule_count, diameter, lane, called_barcode \
                         = line[1:].rstrip('\n').split("\t")
                 if line_number == 1:
                     coordinates = tuple(int(x) for x in (line[1:].rstrip('\n').split("\t")))
@@ -207,7 +205,6 @@ class Cluster:
             base_counts = np.array((a_counts, c_counts, g_counts, t_counts))
 
         return Cluster(
-                run_id = int(run_id),
                 cluster_id = cluster_id,
                 molecule = molecule,
                 lane = int(lane),
