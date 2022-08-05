@@ -77,11 +77,11 @@ class SequenceBySynthesisStep:
 
         print(f"{SequenceBySynthesisStep.name} instantiated")
 
-    def execute(self, cluster_packet):
+    def execute(self, cluster_packet, rng):
         print(f"Starting {self.name}")
 
         # make an 'estimated' cross-talk matrix TODO: should be estimated from an entire tile
-        cross_talk_est = self.CROSS_TALK + np.random.normal(size=self.CROSS_TALK.shape)* 0.01
+        cross_talk_est = self.CROSS_TALK + rng.normal(size=self.CROSS_TALK.shape)* 0.01
         cross_talk_inv_est = np.linalg.inv(cross_talk_est)
         # Assume epsilon (flourescence imaging noise) is perfectly known)
         #TODO: epsilon should be estimated from data and can be cycle number dependent
@@ -95,6 +95,7 @@ class SequenceBySynthesisStep:
                     self.forward_read_start,
                     self.forward_read_end,
                     direction = "+",
+                    rng = rng,
             )
             forward_bases, forward_quality = self.call_bases(forward_flourescence, epsilon_est, cross_talk_inv_est)
 
@@ -103,6 +104,7 @@ class SequenceBySynthesisStep:
                     self.reverse_read_start,
                     self.reverse_read_end,
                     direction = "-",
+                    rng = rng,
             )
             reverse_bases, reverse_quality = self.call_bases(reverse_flourescence, epsilon_est, cross_talk_inv_est)
 
@@ -146,7 +148,7 @@ class SequenceBySynthesisStep:
             return False
         return True
 
-    def read_flourescence(self, cluster, range_start, range_end, direction="+"):
+    def read_flourescence(self, cluster, range_start, range_end, direction, rng):
         """
         Generates flourescence readings from sequence-by-synthesis over the range given
         (specified from 5' to 3' if direction = '+' else from 3' to 5').
@@ -194,10 +196,10 @@ class SequenceBySynthesisStep:
         # individually by just using average molecule counts
 
         # Each base is equally likely to give a skip
-        frac_skipped = get_frac_skipped_cython(self.skip_rate, self.MAX_SKIPS, cluster.molecule_count, read_len)
+        frac_skipped = get_frac_skipped_cython(self.skip_rate, self.MAX_SKIPS, cluster.molecule_count, read_len, rng)
         # Drops (aka (post)phasing), where bases are not added when they should have been,
         # are done the same as skips
-        frac_dropped = get_frac_skipped_cython(self.drop_rate, self.MAX_DROPS, cluster.molecule_count, read_len)
+        frac_dropped = get_frac_skipped_cython(self.drop_rate, self.MAX_DROPS, cluster.molecule_count, read_len, rng)
 
         # 'smear' base counts according to the number of skips
         smeared_base_counts = np.sum( [padded_base_counts[:, prepad_len + skip : prepad_len + read_len + skip] * frac_skipped[:,skip]
@@ -212,7 +214,7 @@ class SequenceBySynthesisStep:
         smeared_base_counts = padded_base_counts[:, prepad_len:prepad_len + read_len] * frac_maintained
 
         # Flourescence comes from these after including cross talk between the different colors
-        flourescence = self.CROSS_TALK @ (smeared_base_counts + self.EPSILON * np.random.normal(size=smeared_base_counts.shape))
+        flourescence = self.CROSS_TALK @ (smeared_base_counts + self.EPSILON * rng.normal(size=smeared_base_counts.shape))
 
         if direction == "+":
             # 1-based alignement
@@ -291,7 +293,7 @@ def get_inv_phasing_matrix(read_len, skip_rate, drop_rate):
     phasing_mat_inv = np.linalg.inv(phasing_matrix)
     return phasing_mat_inv
 
-def get_frac_skipped_py(rate, max_skips, molecule_count, read_len):
+def get_frac_skipped_py(rate, max_skips, molecule_count, read_len, rng):
     ''' Return an array of length (read_len, max_skips+1) that indicate how many
     of the `molecule_count` molecules have incurred exactly `i` skips by the `j`th
     base in (i,j) element
@@ -304,7 +306,7 @@ def get_frac_skipped_py(rate, max_skips, molecule_count, read_len):
     #for i in range(0, read_len):
     #    # Compute how many skips occur among the molecules
     #    # divided up by how many skips have already occured
-    #    new_skips = np.random.binomial(n=num_skipped[i, :-1], p=rate)
+    #    new_skips = rng.binomial(n=num_skipped[i, :-1], p=rate)
     #    num_skipped[i, 1:] += new_skips
     #    num_skipped[i, :-1] -= new_skips
     #    if i + 1 < read_len:
@@ -314,7 +316,7 @@ def get_frac_skipped_py(rate, max_skips, molecule_count, read_len):
 
     # skip_locs[i,j] is the base number at which the ith molecule makes its jth skip
     # if past the end of read_len, then 'never' skips
-    skip_locs = np.cumsum(np.random.geometric(rate, size=(molecule_count, max_skips)), axis=1)
+    skip_locs = np.cumsum(rng.geometric(rate, size=(molecule_count, max_skips)), axis=1)
     # num_skipped[k,j] is the number of molecules that have had exactly j skips by the kth base
     num_skipped = np.count_nonzero(skip_locs[:,None,:] <= np.arange(1, read_len+1)[None,:,None], axis=0)
     frac_skipped = num_skipped / molecule_count
@@ -327,69 +329,10 @@ def get_frac_skipped_py(rate, max_skips, molecule_count, read_len):
     #return frac_skipped
 
 
-    #skips = np.random.random(size = (molecule_count, read_len)) < rate
+    #skips = rng.random(size = (molecule_count, read_len)) < rate
     #num_skips_so_far = np.minimum(np.cumsum(skips, axis=1), max_skips)
     ## Count number of molecules that have had exactly k skips at the nth base, for k= 0,1,...MAX_SKIPS
     #num_mols_skipped = np.count_nonzero((num_skips_so_far[:,:,None] == np.arange(0, max_skips+1)[None,None,:]), axis=0)
     #frac_skipped = num_mols_skipped / molecule_count
     #lkajf
     return frac_skipped
-
-if __name__ == "__main__":
-    # Test run of SBS
-    clusters = []
-    for i in range(100):
-        seq = "ACGT"*100
-        encoded = np.frombuffer(seq.encode("ascii"), dtype='uint8')
-        base_counts = np.array([encoded == ord(nt) for nt in beers.cluster.BASE_ORDER]).astype(int) * 1024
-        molecule = beers_utils.molecule.Molecule(
-                molecule_id = i,
-                sequence = seq,
-                start = 1,
-                source_start = 10,
-                source_cigar = "400M",
-                source_strand = "+",
-                source_chrom = "chr2",
-            )
-        cluster = beers.cluster.Cluster(
-            run_id = 5,
-            cluster_id = i,
-            lane = 1,
-            coordinates = (i,i),
-            molecule = molecule,
-            molecule_count = 1024,
-            base_counts = base_counts)
-        clusters.append(cluster)
-    cluster_packet = beers.cluster_packet.ClusterPacket(5, None, clusters)
-    seq_by_synth = SequenceBySynthesisStep("",
-        {
-            "forward_is_5_prime": True,
-            "read_length": 100,
-            "paired_ends": True,
-            "skip_rate": 0.002,
-            "drop_rate": 0.002
-        },
-        {"resources": {
-                "pre_i5_adapter": "AATGATACGGCGACCACCGAGATCTACAC",
-                "post_i5_adapter":  "ACACTCTTTCCCTACACGACGCTCTTCCGATCT",
-                "pre_i7_adapter": "GATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
-                "post_i7_adapter":  "ATCTCGTATGCCGTCTTCTGCTTG"
-            },
-        "samples": {
-                "sample1": {
-                    "barcodes": {
-                        "i5": "AGCGCTAG",
-                        "i7": "AACCGCGG"
-                    }
-                },
-                "sample2": {
-                    "barcodes": {
-                        "i5": "GATATCGA",
-                        "i7": "TTATAACC"
-                    }
-                }
-            }
-        }
-    )
-
-    seq_by_synth.execute(cluster_packet)

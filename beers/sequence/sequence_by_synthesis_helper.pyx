@@ -2,7 +2,7 @@ import numpy as np
 cimport numpy as np
 np.import_array()
 
-def get_frac_skipped(float rate, int max_skips, int molecule_count, int read_len):
+def get_frac_skipped(float rate, int max_skips, int molecule_count, int read_len, rng):
     ''' Return an array of length (read_len, max_skips+1) that indicate how many
     of the `molecule_count` molecules have incurred exactly `i` skips by the `j`th
     base in (i,j) element
@@ -19,7 +19,7 @@ def get_frac_skipped(float rate, int max_skips, int molecule_count, int read_len
     # Geometric distribution gives the number of throws until the first 'success' in
     # a bias coin-toss, so this determines where the skips happen.
     # Note: faster than performing a coin toss for each base if the skip rate is small, as usual
-    cdef np.ndarray[long, ndim=2] skip_locs = np.random.geometric(rate, size=(molecule_count, max_skips))
+    cdef np.ndarray[long, ndim=2] skip_locs = rng.geometric(rate, size=(molecule_count, max_skips))
     skip_locs = np.cumsum(skip_locs, axis=1) - 1
     # num_skipped[k,j] is the number of molecules that have had exactly j skips by the kth base
     cdef np.ndarray[long, ndim=2] num_skipped = np.zeros((read_len, max_skips), dtype=int)

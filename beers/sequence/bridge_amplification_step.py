@@ -30,7 +30,7 @@ class BridgeAmplificationStep:
         print(f"{BridgeAmplificationStep.name} instantiated")
 
 
-    def execute(self, cluster_packet):
+    def execute(self, cluster_packet, rng):
         """
         Amplifies the molecule in the cluster for each cluster in the cluster packet by the given number of cycles
         and keeps track of which base positions have incurred substitutions
@@ -51,12 +51,12 @@ class BridgeAmplificationStep:
                     # in later ones, they don't matter enough to include
 
                     # Number of substitutions in each position and of each base type
-                    substitutions = np.random.binomial(copies, p = self.substitution_rate)
+                    substitutions = rng.binomial(copies, p = self.substitution_rate)
 
                     # First remove substituted bases
                     copies -= substitutions
                     # then replace them with random draws from A, C, G, T
-                    copies += multinomial(substitutions.sum(axis=0), [0.25, 0.25, 0.25, 0.25])
+                    copies += multinomial(substitutions.sum(axis=0), [0.25, 0.25, 0.25, 0.25], rng)
 
                 # Add to existing molecules
                 cluster.base_counts += copies
@@ -83,7 +83,7 @@ class BridgeAmplificationStep:
         return True
 
 
-def multinomial(n, p):
+def multinomial(n, p, rng):
     '''
     Partially vectorized version of np.random.multinomial, see
     https://stackoverflow.com/questions/55818845/fast-vectorized-multinomial-in-python
@@ -104,7 +104,7 @@ def multinomial(n, p):
         condp = p / ps
     condp[np.isnan(condp)] = 0.0
     for i in range(p.shape[-1]-1, 0, -1):
-        binsample = np.random.binomial(count, condp[i])
+        binsample = rng.binomial(count, condp[i])
         out[i] = binsample
         count -= binsample
     out[0] = count
