@@ -59,6 +59,7 @@ class SAM:
 
         cluster_packet_file_paths = glob.glob(f'{self.cluster_packet_directory}{os.sep}**{os.sep}*.gzip',
                                               recursive=True)
+        print("Loading from", cluster_packet_file_paths)
         def cluster_generator():
             def inner_cluster_generator():
                 for cluster_packet_file_path in cluster_packet_file_paths:
@@ -84,8 +85,6 @@ class SAM:
 
             bad_barcode_files = {lane: stack.enter_context(pysam.AlignmentFile(bad_barcode_file_path[lane], ('wb' if BAM else 'w'), header=sam_header))
                                                 for lane in self.flowcell.lanes_to_use}
-            print(bad_barcode_file_path)
-            print(bad_barcode_files)
             def sam_by_barcode(lane):
                 sam_files = {barcode: stack.enter_context(pysam.AlignmentFile(file_path, ('wb' if BAM else 'w'), header=sam_header))
                                 for barcode, file_path in sam_output_file_path[lane].items()}

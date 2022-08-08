@@ -2,8 +2,6 @@ import pathlib
 import functools
 import json
 
-print(__file__)
-
 if not config:
     raise Exception("No config provided - must pass `--configfile path/to/config.yaml` to snakemake to run pipeline")
 
@@ -151,7 +149,7 @@ rule create_sequencer_outputs_sam_or_bam:
     output:
         expand("results/S{{sample}}_L{lane}.{{sequencer_output_filetype}}", lane=lanes),
     params:
-        cluster_packet_dir = "sequence_pipeline/output_cluster_packets/sample{sample}",
+        cluster_packet_dir = "sequence_pipeline/sample{sample}/output_cluster_packets",
         outdir = "results/",
     script:
         'scripts/create_sequencer_outputs.py'
@@ -164,9 +162,9 @@ rule create_sequencer_outputs_fastq:
     output:
         # NOTE: fastq outputs have both R1 and R2 files to create
         expand("results/S{{sample}}_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
-        es = expand("results/S{{sample}}_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
+        expand("results/S{{sample}}_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
     params:
-        cluster_packet_dir = "sequence_pipeline/output_cluster_packets/sample{sample}",
+        cluster_packet_dir = "sequence_pipeline/sample{sample}/output_cluster_packets",
         outdir = "results/",
     script:
         'scripts/create_sequencer_outputs.py'
