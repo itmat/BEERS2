@@ -122,20 +122,20 @@ rule create_cluster_packets:
             for packet_num in range(num_packets_from_molecule_file_for_sample[sample], num_total_packets_for_sample[sample])
         ],
     output:
-        cluster_packets = [f"sequence_pipeline/input_cluster_packets/sample{sample}/cluster_packet_start_pkt{packet_num}.gzip"
+        cluster_packets = [f"sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
                                 for sample in samples.keys()
                                 for packet_num in range(num_total_packets_for_sample[sample])]
     params:
-        outdir = "sequence_pipeline/input_cluster_packets/",
+        outdir = "sequence_pipeline/",
         configuration = json.dumps(config),
     script:
         "scripts/create_cluster_packets.py"
 
 rule sequence_cluster_packet:
     input:
-        cluster_packet = "sequence_pipeline/input_cluster_packets/sample{sample}/cluster_packet_start_pkt{packet_num}.gzip"
+        cluster_packet = "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
     output:
-        cluster_packet = "sequence_pipeline/output_cluster_packets/sample{sample}/sequence_cluster_packet{packet_num}.gzip"
+        cluster_packet = "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
     params:
         seed = seed,
         config = json.dumps(config),
@@ -143,9 +143,9 @@ rule sequence_cluster_packet:
     script:
         'scripts/run_sequence_pipeline.py'
 
-rule create_sequencer_outputs:
+rule create_sequencer_outputs_sam_or_bam:
     input:
-        cluster_packets = lambda wildcards: [f"sequence_pipeline/output_cluster_packets/sample{{sample}}/sequence_cluster_packet{packet_num}.gzip"
+        cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
         reference_genome = try_absolute_and_relative_path(config['resources']['reference_genome_fasta']),
     output:
@@ -158,7 +158,7 @@ rule create_sequencer_outputs:
 
 rule create_sequencer_outputs_fastq:
     input:
-        cluster_packets = lambda wildcards: [f"sequence_pipeline/output_cluster_packets/sample{{sample}}/sequence_cluster_packet{packet_num}.gzip"
+        cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
         reference_genome = try_absolute_and_relative_path(config['resources']['reference_genome_fasta']),
     output:

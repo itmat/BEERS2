@@ -28,7 +28,7 @@ for molecule_packet_filename in molecule_packet_file_paths:
     print(f"Loading {molecule_packet_filename} to flowcell")
     molecule_packet = MoleculePacket.deserialize(molecule_packet_filename)
     sample = molecule_packet.sample.sample_id
-    sample_dir = output_directory / f"sample{sample}" 
+    sample_dir = output_directory / f"sample{sample}" / "input_cluster_packets"
     sample_dir.mkdir(exist_ok=True)
 
     cluster_packet = flowcell.load_flowcell(molecule_packet)
