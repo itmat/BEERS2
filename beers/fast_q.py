@@ -15,7 +15,7 @@ class FastQ:
     processed.
     """
 
-    def __init__(self, flowcell, cluster_packet_directory, fastq_output_directory, sample_barcodes):
+    def __init__(self, flowcell, cluster_packet_directory, fastq_output_directory, sample_id, sample_barcodes):
         """
         The FastQ object requires the flowcell, the top level directory housing the cluster packets that have
         emerged from the sequence pipeline (they will be in the data directory under the sequence pipeline stage name),
@@ -25,13 +25,14 @@ class FastQ:
         :param cluster_packet_directory: The location of the cluster packet files coming from the sequence pipeline.
         The assumption is the all the cluster packets are available, which is why the report generation is defered by
         the controller until the auditor determines that all cluster packets have been processed.
-        :param fastq_output_directory: The location where the FASTQ reports are filed.  Note that no organization into
-        subdirectories is needed here since compartively few reports are generated (at most 2 per flowcell lane).
+        :param fastq_output_directory: The location where the FASTQ reports are filed.  
+        :param sample_id: id of the sample whose fastq files we generate
         :param sample_barcodes: dict mapping sample ids to barcodes as tuple (i5, i7). Demultiplexing is done off these
         """
         self.flowcell = flowcell
         self.cluster_packet_directory = cluster_packet_directory
         self.fastq_output_directory = fastq_output_directory
+        self.sample_id = sample_id
         self.sample_barcodes = sample_barcodes
 
     def generate_report(self, sort_by_coordinates=False):
@@ -65,7 +66,7 @@ class FastQ:
 
         with contextlib.ExitStack() as stack:
             # Open all the files
-            bad_barcode_file_path = {direction: {lane: os.path.join(self.fastq_output_directory, f"unidentified_L{lane}_R{direction}.fastq")
+            bad_barcode_file_path = {direction: {lane: os.path.join(self.fastq_output_directory, f"S{self.sample_id}_unidentified_L{lane}_R{direction}.fastq")
                                                     for lane in self.flowcell.lanes_to_use}
                                                 for direction in CONSTANTS.DIRECTION_CONVENTION}
             fastq_output_file_path = {direction: {lane: {barcode: os.path.join(self.fastq_output_directory, f"S{sample}_L{lane}_R{direction}.fastq")
