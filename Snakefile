@@ -9,11 +9,13 @@ samples = config['samples']
 lanes =  config['flowcell']['lanes_to_use']
 seed = config['seed']
 
-def input_molecule_file_dir(sample):
-    return pathlib.Path(config['library_prep_pipeline']['input']['directory_path']) / f"sample{sample}"
 @functools.cache
 def input_molecule_files(sample):
-    return sorted(list(input_molecule_file_dir(sample).glob("*")))
+    path = config['library_prep_pipeline']['input'].get('directory_path', None)
+    if not path:
+        return []
+    input_molecule_file_dir = pathlib.Path(path)/ f"sample{sample}"
+    return sorted(list(input_molecule_file_dir.glob("*")))
 def try_absolute_and_relative_path(path):
     # Some resources should be allowed to be relative to the pipeline
     # since we need to specify the provided resources in the example config files
