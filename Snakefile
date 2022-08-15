@@ -91,6 +91,8 @@ rule run_library_prep_packet_from_molecule_file:
         config = json.dumps(config['library_prep_pipeline']),
         global_config = json.dumps(config),
         seed = seed,
+    resources:
+        mem_mb = 12_000
     script:
         "scripts/run_library_prep_pipeline.py"
 
@@ -107,6 +109,8 @@ rule run_library_prep_packet_from_distribution:
         config = json.dumps(config['library_prep_pipeline']),
         global_config = json.dumps(config),
         seed = seed,
+    resources:
+        mem_mb = 12_000
     script:
         "scripts/run_library_prep_pipeline.py"
 
@@ -125,6 +129,8 @@ rule create_cluster_packets:
         cluster_packets = [f"sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
                                 for sample in samples.keys()
                                 for packet_num in range(num_total_packets_for_sample[sample])]
+    resources:
+        mem_mb = 12_000
     params:
         outdir = "sequence_pipeline/",
         configuration = json.dumps(config),
@@ -140,6 +146,8 @@ rule sequence_cluster_packet:
         seed = seed,
         config = json.dumps(config),
         logdir = "sequence_pipeline/sample{sample}/logs/",
+    resources:
+        mem_mb = 12_000
     script:
         'scripts/run_sequence_pipeline.py'
 
@@ -153,6 +161,8 @@ rule create_sequencer_outputs_sam_or_bam:
     params:
         cluster_packet_dir = "sequence_pipeline/sample{sample}/output_cluster_packets",
         outdir = "results/",
+    resources:
+        mem_mb = 6_000
     script:
         'scripts/create_sequencer_outputs.py'
 
@@ -168,5 +178,7 @@ rule create_sequencer_outputs_fastq:
     params:
         cluster_packet_dir = "sequence_pipeline/sample{sample}/output_cluster_packets",
         outdir = "results/",
+    resources:
+        mem_mb = 6_000
     script:
         'scripts/create_sequencer_outputs.py'
