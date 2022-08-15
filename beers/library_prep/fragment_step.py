@@ -37,6 +37,10 @@ class FragmentStep:
         self.method = parameters["method"]
         self.lambda_ = parameters["lambda"]
         self.runtime = parameters["runtime"]
+        # Reject fragments that are below this size. This limits computation and memory significantly
+        # and tiny fragments fail priming and/or size selection later regardless. Most generated fragments
+        # are very small, so even small minimum size requirements reduce the number of fragments dramatically
+        self.min_frag_size = parameters["min_frag_size"]
 
         # Parameters used ONLY for beta_fragmentation method
         if self.method == "beta":
@@ -54,7 +58,8 @@ class FragmentStep:
         else:
             raise NotImplementedError(f"Unknown fragmentation method {self.method}")
 
-        result = [sample[k].make_fragment(start+1,end) for (start, end, k) in fragment_locations]
+        result = [sample[k].make_fragment(start+1,end) for (start, end, k) in fragment_locations
+                    if end - start >= self.min_frag_size]
 
         # Output all the molecules to log
         with open(self.history_filename, "w+") as log_file:
@@ -74,6 +79,9 @@ class FragmentStep:
             return False
         if self.method not in METHODS:
             print("Fragmentation method must be one of the following" + str(METHODS), file=sys.stderr)
+            return False
+        if self.min_frag_size <= 0:
+            print("min_frag_size must be a positive number", file=sys.stderr)
             return False
         return True
 
