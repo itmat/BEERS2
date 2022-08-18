@@ -13,7 +13,6 @@ config = snakemake.config
 sample = snakemake.wildcards.sample
 
 flowcell = beers.flowcell.Flowcell(
-        config,
         config['flowcell'],
 )
 

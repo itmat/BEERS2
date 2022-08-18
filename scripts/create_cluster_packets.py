@@ -15,9 +15,9 @@ configuration = json.loads(snakemake.params.configuration)
 output_directory = pathlib.Path(snakemake.params.outdir)
 output_directory.mkdir(exist_ok=True)
 
-molecule_packet_file_paths = snakemake.input.packet_files_from_molecule_files + snakemake.input.packet_files_from_distribution
+molecule_packet_file_paths = snakemake.input#.packet_files_from_molecule_files + snakemake.input.packet_files_from_distribution
 
-flowcell = Flowcell(configuration, configuration['flowcell'])
+flowcell = Flowcell(configuration['flowcell'])
 valid, msg = flowcell.validate()
 if not valid:
     raise (ControllerValidationException(msg))

@@ -22,22 +22,18 @@ class Flowcell:
 
     coords_match_pattern = re.compile(r'^.*:(\w+):(\d+):(\d+):(\d+):(\d+)$')
 
-    def __init__(self, configuration, parameters):
+    def __init__(self, parameters):
         """
         A flowcell's geometry (i.e., coordinate ranges for lane, tile, x, y) are either provided via the configuration
-        file or derived from the initial FASTQ files applied to the expression portion of the pipeline.  The flowcell
-        retention rate is specified as a percentage in the configuration file.  The user may restrict which lanes of
-        the flowcell to use via the configuration.  Otherwise, all the lanes described by the flowcell's geometry are
-        used.  The individual flowcell lanes to be used are instantiated as FlowcellLane objects, each of which keeps
+        The flowcell retention rate is specified as a percentage in the configuration file.  The user may restrict which
+        lanes of the flowcell to use via the configuration. Otherwise, all the lanes described by the flowcell's geometry
+        are used.  The individual flowcell lanes to be used are instantiated as FlowcellLane objects, each of which keeps
         track of the coordinates used for its given lane.  Each lane has its own coordinate generator to produce new
         coordinates for each newly retained molecule.
         own coordinate generator.
-        :param configuration: The entire configuration file - only used to find the paths to the input FASTQ files
-        if needed.
         :param parameters: Parameters specific to the flowcell defined in the configuration file under the
         controller.
         """
-        self.configuration = configuration
         self.parameters = parameters
         self.min_coords = {"lane": 10_000, "tile": 10_000, "x": 10_000, "y": 10_000}
         self.max_coords = {"lane": 0, "tile": 0, "x": 0, "y": 0}
@@ -181,19 +177,10 @@ class Flowcell:
         input FASTQ file is applied to obtain the same ranges.
         """
         geometry = self.parameters['flowcell_geometry']
-        if not geometry:
-            fastq_file_paths = []
-            # TODO - untested since latest config.json changes
-            input_directory_path = self.configuration['expression_pipeline']['input']['directory_path']
-            fastq_filenames = [item['filename'] for item in self.configuration['expression_pipeline']['input']['data']]
-            for fastq_filename in fastq_filenames:
-                fastq_file_paths.append(os.path.join(input_directory_path, fastq_filename))
-            self.get_coordinate_ranges(fastq_file_paths)
-        else:
-            self.min_coords = {"lane": geometry['min_lane'], "tile": geometry['min_tile'],
-                               "x": geometry['min_x'], "y": geometry['min_y']}
-            self.max_coords = {"lane": geometry['max_lane'], "tile": geometry['max_tile'],
-                               "x": geometry['max_x'], "y": geometry['max_y']}
+        self.min_coords = {"lane": geometry['min_lane'], "tile": geometry['min_tile'],
+                           "x": geometry['min_x'], "y": geometry['min_y']}
+        self.max_coords = {"lane": geometry['max_lane'], "tile": geometry['max_tile'],
+                           "x": geometry['max_x'], "y": geometry['max_y']}
 
     def get_coordinate_ranges(self, fastq_file_paths):
         """

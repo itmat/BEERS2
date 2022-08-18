@@ -114,28 +114,46 @@ rule run_library_prep_packet_from_distribution:
     script:
         "scripts/run_library_prep_pipeline.py"
 
-rule create_cluster_packets:
+def get_lib_prep_result_packet_path(sample, packet_num):
+    from_molecule_files = num_packets_from_molecule_file_for_sample[sample]
+    if int(packet_num) < from_molecule_files:
+        return f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+    else:
+        return f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+
+rule create_cluster_packet:
     input:
-        packet_files_from_molecule_files = [f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
-            for sample in samples.keys()
-            for packet_num in range(num_packets_from_molecule_file_for_sample[sample])
-        ],
-        packet_files_from_distribution = [f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
-            for sample in samples.keys()
-            # numbered starting where the molecule file ones left off - no repeated sample numbers
-            for packet_num in range(num_packets_from_molecule_file_for_sample[sample], num_total_packets_for_sample[sample])
-        ],
+        packet = lambda wildcards: get_lib_prep_result_packet_path(wildcards.sample, wildcards.packet_num)
     output:
-        cluster_packets = [f"sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
-                                for sample in samples.keys()
-                                for packet_num in range(num_total_packets_for_sample[sample])]
-    resources:
-        mem_mb = 12_000
+        "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip",
     params:
         outdir = "sequence_pipeline/",
         configuration = json.dumps(config),
     script:
         "scripts/create_cluster_packets.py"
+
+#rule create_cluster_packets_distinct_coords:
+#    input:
+#        packet_files_from_molecule_files = [f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+#            for sample in samples.keys()
+#            for packet_num in range(num_packets_from_molecule_file_for_sample[sample])
+#        ],
+#        packet_files_from_distribution = [f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+#            for sample in samples.keys()
+#            # numbered starting where the molecule file ones left off - no repeated sample numbers
+#            for packet_num in range(num_packets_from_molecule_file_for_sample[sample], num_total_packets_for_sample[sample])
+#        ],
+#    output:
+#        cluster_packets = [f"sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
+#                                for sample in samples.keys()
+#                                for packet_num in range(num_total_packets_for_sample[sample])]
+#    resources:
+#        mem_mb = 12_000
+#    params:
+#        outdir = "sequence_pipeline/",
+#        parameters = json.dumps(config['flowcell']),
+#    script:
+#        "scripts/create_cluster_packets.py"
 
 rule sequence_cluster_packet:
     input:
