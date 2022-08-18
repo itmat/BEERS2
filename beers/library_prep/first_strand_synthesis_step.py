@@ -43,8 +43,17 @@ class FirstStrandSynthesisStep:
                     seq_bases = GeneralUtils.sequence_to_matrix(molecule.sequence)
                     weights = np.array([np.lib.stride_tricks.sliding_window_view(seq_bases[i], self.primer_length) * self.position_probability_matrix[i, :]
                                                             for i in range(4)]).sum(axis=0).prod(axis=1)
+
+                    if weights.sum() == 0:
+                        # Should only occur if a sequence lacks all the normal bases, which is an error condition. We log it here
+                        # and choose a random priming site
+                        print(f"Weighting failed unexpectedly on the following molecule {molecule.molecule_id} with sequence {molecule.sequence}")
+                        p = None
+                    else:
+                        p = weights/weights.sum()
+
                     # Then choose the priming sites and take the 5'-most one
-                    priming_sites = rng.choice(len(weights), p=weights/weights.sum(), size=number_of_primed_sites)
+                    priming_sites = rng.choice(len(weights), p=p, size=number_of_primed_sites)
                     primed_site = min(priming_sites)
 
                 cdna_start = primed_site + 1
