@@ -79,8 +79,17 @@ for sample in samples.keys():
     sample_dir.mkdir(exist_ok=True)
     (sample_dir / "logs").mkdir(exist_ok=True)
 
+rule validate_library_prep:
+    output:
+        flag = "library_prep_pipeline/validated.flag"
+    run:
+        from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
+        validated = LibraryPrepPipeline.validate(config['library_prep_pipeline'], config)
+        pathlib.Path(output.flag).touch()
+
 rule run_library_prep_packet_from_molecule_file:
     input:
+        validation = "library_prep_pipeline/validated.flag",
         molecule_file = lambda wildcards: input_molecule_files(wildcards.sample)[int(wildcards.packet_num)]
     output:
         packet_file = "library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
@@ -160,8 +169,17 @@ rule create_cluster_packet:
 #    script:
 #        "scripts/create_cluster_packets.py"
 
+rule validate_sequence_pipeline:
+    output:
+        flag = "sequence_pipeline/validated.flag"
+    run:
+        from beers.sequence.sequence_pipeline import SequencePipeline
+        validated = SequencePipeline.validate(config['sequence_pipeline'], config)
+        pathlib.Path(output.flag).touch()
+
 rule sequence_cluster_packet:
     input:
+        validation = "sequence_pipeline/validated.flag",
         cluster_packet = "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
     output:
         cluster_packet = "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
