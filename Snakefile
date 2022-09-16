@@ -132,6 +132,11 @@ rule create_cluster_packet:
     script:
         "scripts/create_cluster_packets.py"
 
+# TODO: this has been commented out for now but this is to to perform an aggregation
+# of all the packets to distribute all the flowcell coordinates so that they are unique
+# However this considerably slows down execution as its a big bottleneck that is not
+# parallelizable. We should later allow both this and the rule above to operate, choosing
+# them based off the config settings
 #rule create_cluster_packets_distinct_coords:
 #    input:
 #        packet_files_from_molecule_files = [f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
