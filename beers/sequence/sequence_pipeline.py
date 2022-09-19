@@ -1,16 +1,9 @@
-import argparse
 import importlib
 import pathlib
-import os
 import sys
 import time
 import numpy as np
-import resource
-import json
-import re
-from beers_utils.constants import CONSTANTS
 from beers.cluster_packet import ClusterPacket
-from beers_utils.general_utils import GeneralUtils
 
 class SequencePipeline():
     """
@@ -76,7 +69,7 @@ class SequencePipeline():
         log_file_path = log_directory / f"sequence_pipeline_cluster_pkt{input_cluster_packet.cluster_packet_id}.log"
 
         # Load and instantiate all steps listed in configuration prior to executing them below.
-        self.steps = []
+        steps = []
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             step_log_filename = f"{step_name}_cluster_pkt{input_cluster_packet.cluster_packet_id}.log"
@@ -86,13 +79,13 @@ class SequencePipeline():
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=SequencePipeline.package)
             step_class = getattr(module, step_name)
-            self.steps.append(step_class(step_log_file_path, parameters, global_config))
+            steps.append(step_class(step_log_file_path, parameters, global_config))
 
         print(f"Execution of the {SequencePipeline.stage_name} Started...")
         with open(log_file_path, 'w') as log_file:
             pipeline_start = time.time()
             cluster_packet = input_cluster_packet
-            for step in self.steps:
+            for step in steps:
                 cluster_packet = step.execute(cluster_packet, rng)
 
             pipeline_elapsed_time = time.time() - pipeline_start
@@ -122,10 +115,8 @@ class SequencePipeline():
         # the file cannot be found, we still need an id to report back to the auditor if at all possible.  So we
         # extract it from the file name just in case.
         cluster_packet = None
-        cluster_packet_filename = str(pathlib.Path(input_packet_path).name)
-        cluster_packet_id_pattern = re.compile(r'^.*cluster_packet.*_pkt(\d+)\..*$')
 
-        cluster_packet = ClusterPacket.get_serialized_cluster_packet(input_packet_path)
+        cluster_packet = ClusterPacket.deserialize(input_packet_path)
         sample_id = cluster_packet.sample.sample_id
         packet_id = cluster_packet.cluster_packet_id
 
