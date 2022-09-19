@@ -23,8 +23,6 @@ class SAM:
         name).
         :param flowcell: The flowcell to which this SAM object applies.
         :param cluster_packet_directory: The location of the cluster packet files coming from the sequence pipeline.
-        The assumption is the all the cluster packets are available, which is why the report generation is defered by
-        the controller until the auditor determines that all cluster packets have been processed.
         :param sam_output_directory: The location where the SAM reports are filed.
         :param sample_id: ID of the sample we are making SAMs for
         :param sample_barcodes: dictionary mapping sample id to barcode as a string like f'{i5}+{i7}'

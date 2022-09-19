@@ -23,8 +23,6 @@ class FastQ:
         name).
         :param flowcell: The flowcell to which this fastQ object applies.
         :param cluster_packet_directory: The location of the cluster packet files coming from the sequence pipeline.
-        The assumption is the all the cluster packets are available, which is why the report generation is defered by
-        the controller until the auditor determines that all cluster packets have been processed.
         :param fastq_output_directory: The location where the FASTQ reports are filed.
         :param sample_id: id of the sample whose fastq files we generate
         :param sample_barcodes: dict mapping sample ids to barcodes as tuple (i5, i7). Demultiplexing is done off these

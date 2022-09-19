@@ -100,9 +100,7 @@ class SequencePipeline():
         This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
         directory containing the relevant parts of the user's configuration file, unmarshalls a cluster packet from
         the provided cluster packet filename, initializes and validates the sequence pipeline stage and then
-        executes it for the cluster packet.  Since the controller cannot conclude until all sequence pipelines are
-        run, the last action taken by the sequence pipeline is to note its completion to the auditor, which records
-        the cluster id in an audit file.  This happens regardless of the outcome of this pipeline stage.
+        executes it for the cluster packet.
         :param seed: value to use as the seed for the random number generator
         :param configuration: the json string containing the configration data specific to the sequencing prep pipeline
         :param global_configuration: json string containing the full configuratino of the entire run
