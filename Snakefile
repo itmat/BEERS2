@@ -79,17 +79,16 @@ for sample in samples.keys():
     sample_dir.mkdir(exist_ok=True)
     (sample_dir / "logs").mkdir(exist_ok=True)
 
-rule validate_library_prep:
-    output:
-        flag = "library_prep_pipeline/validated.flag"
-    run:
-        from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
-        validated = LibraryPrepPipeline.validate(config['library_prep_pipeline'], config)
-        pathlib.Path(output.flag).touch()
+# Perform validation of configuration
+# These functions will throw exception if not validated properly
+# and print to standard error the reasons
+from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
+from beers.sequence.sequence_pipeline import SequencePipeline
+LibraryPrepPipeline.validate(config['library_prep_pipeline'], config)
+SequencePipeline.validate(config['sequence_pipeline'], config)
 
 rule run_library_prep_packet_from_molecule_file:
     input:
-        validation = "library_prep_pipeline/validated.flag",
         molecule_file = lambda wildcards: input_molecule_files(wildcards.sample)[int(wildcards.packet_num)]
     output:
         packet_file = "library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
@@ -107,7 +106,6 @@ rule run_library_prep_packet_from_molecule_file:
 
 rule run_library_prep_packet_from_distribution:
     input:
-        validation = "library_prep_pipeline/validated.flag",
         sample_data_dir = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['sample_data_directory'],
     output:
         packet_file ="library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
@@ -169,14 +167,6 @@ rule create_cluster_packet:
 #        parameters = json.dumps(config['flowcell']),
 #    script:
 #        "scripts/create_cluster_packets.py"
-
-rule validate_sequence_pipeline:
-    output:
-        flag = "sequence_pipeline/validated.flag"
-    run:
-        from beers.sequence.sequence_pipeline import SequencePipeline
-        validated = SequencePipeline.validate(config['sequence_pipeline'], config)
-        pathlib.Path(output.flag).touch()
 
 rule sequence_cluster_packet:
     input:
