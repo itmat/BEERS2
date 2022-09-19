@@ -58,20 +58,3 @@ class AdapterLigationStep:
             valid = False
             print(f"In resources config, need to  specify all of {adapters}")
         return valid
-
-if __name__ == "__main__":
-    np.random.seed(100)
-    with open("../../data/tests/molecule_packet.pickle", 'rb') as molecule_packet_file:
-        molecule_packet = pickle.load(molecule_packet_file)
-    input_data_log_file = "../../data/tests/adapter_ligation_step_input_data.log"
-    with open(input_data_log_file, "w+") as input_data_log:
-        input_data_log.write(Molecule.header)
-        for rna_molecule in molecule_packet.molecules:
-            input_data_log.write(rna_molecule.log_entry())
-    step_log_file_path = "../../data/tests/adapter_ligation_step_output_data.log"
-    input_parameters = {}
-    step = AdapterLigationStep(step_log_file_path, input_parameters)
-    start = timer()
-    step.execute(molecule_packet)
-    end = timer()
-    print(f"Adapter Ligation Step: {end - start} for {len(molecule_packet.molecules)} molecules.")

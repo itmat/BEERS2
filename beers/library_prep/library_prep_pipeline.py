@@ -4,6 +4,7 @@ import pathlib
 import time
 import re
 import os
+import sys
 import resource
 import json
 import math
@@ -42,15 +43,25 @@ class LibraryPrepPipeline():
         """
         #if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
         #    raise BeersLibraryPrepValidationException("Validation error in molecule packet: see stderr for details.")
-        steps = []
+
+        # Gather the step classes
+        validation_okay = True
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=LibraryPrepPipeline.package)
             step_class = getattr(module, step_name)
-            steps.append(step_class(None, parameters, global_config))
-        if not all([step.validate() for step in steps]):
-            raise BeersLibraryPrepValidationException("Validation error in step: see stderr for details.")
+
+            # Valdiate steps's parameters and print out their errors (if any)
+            errors = step_class.validate(parameters, global_config)
+            if len(errors) > 0:
+                validation_okay = False
+                print(f"Validation errors in {step['step_name']}:", file=sys.stderr)
+                for error in errors:
+                    print('\t' + error, file=sys.stderr)
+
+        if not validation_okay:
+            raise BeersLibraryPrepValidationException("Validation error: see stderr for details.")
 
     def execute(self, configuration, global_config, output_directory, log_directory, input_molecule_packet, rng):
         """

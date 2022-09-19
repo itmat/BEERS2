@@ -85,20 +85,22 @@ class PolyAStep:
                 note += ' broken'
         return note
 
-    def validate(self):
+    @staticmethod
+    def validate(parameters, global_config):
         """
         Insures that the parameters provided are valid.  Error messages are sent to stderr.
         :return: True if the step's parameters are all valid and false otherwise.
         """
-        print(f"Poly A step validating parameters")
-        if self.min_retention_prob < 0 or self.min_retention_prob > 1:
-            print("The minimum retention probability parameter must be between 0 and 1", file=sys.stderr)
-            return False
-        if self.max_retention_prob < 0 or self.max_retention_prob > 1:
-            print("The maximum retention probability parameter must be between 0 and 1", file=sys.stderr)
-            return False
-        if self.max_retention_prob < self.min_retention_prob:
-            print("The maximum retention probability parameter must be >= to the minimum retention probability.",
-                  file=sys.stderr)
-            return False
-        return True
+        errors = []
+        min_retention_prob = parameters.get("min_retention_prob", 0.0)
+        max_retention_prob = parameters.get("max_retention_prob", 1.0)
+        length_retention_prob = parameters.get("length_retention_prob", 1.0)
+        breakpoint_prob_per_base = parameters.get("breakpoint_prob_per_base", 0.0)
+        min_polya_tail_length = parameters.get("min_polya_tail_length", 40)
+        if min_retention_prob < 0 or min_retention_prob > 1:
+            errors.append("The minimum retention probability parameter must be between 0 and 1")
+        if max_retention_prob < 0 or max_retention_prob > 1:
+            errors.append("The maximum retention probability parameter must be between 0 and 1")
+        if max_retention_prob < min_retention_prob:
+            errors.append("The maximum retention probability parameter must be >= to the minimum retention probability.")
+        return errors

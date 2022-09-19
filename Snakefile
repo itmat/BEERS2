@@ -107,6 +107,7 @@ rule run_library_prep_packet_from_molecule_file:
 
 rule run_library_prep_packet_from_distribution:
     input:
+        validation = "library_prep_pipeline/validated.flag",
         sample_data_dir = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['sample_data_directory'],
     output:
         packet_file ="library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",

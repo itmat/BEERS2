@@ -4,19 +4,28 @@ from beers_utils.molecule import Molecule
 from beers_utils.general_utils import GeneralUtils
 import beers_utils.cigar
 
-
 class SecondStrandSynthesisStep:
+    '''
+    Second Strand Synthesis Step
 
-    name = "Second Strand Synthesis Step"
+    A library preparation step that places random primers onto the first strand cDNA
+    and then extends the primers to obtain double-stranded DNA.
+
+    Primer location can be biased by read sequence (see the 'position probability matrix' parameter).
+    Even when not biased, priming can be either perfect or imperfect. Perfect means that the first
+    base will always have a primer bind to it and therefore the entire molecule will be perfectly
+    duplicated as cDNA. Imperfect means that primers are placed randomly (at a rate of 'primers_per_kb')
+    and the 5'-most one is extended to create the molecule, potentially losing some of the 5' end of the
+    molecule.
+    '''
+
+    name = "Second Strand Synthsis Step"
 
     def __init__(self, log_file, parameters, global_config):
         self.history_filename = log_file
         self.parameters = parameters
         self.global_config = global_config
-        self.position_probability_matrix = np.array([
-            self.parameters["position_probability_matrix"][base]
-                for base in GeneralUtils.BASE_ORDER
-        ])
+        self.position_probability_matrix = self.get_position_probability_matrix(self.parameters)
         self.primer_length = self.position_probability_matrix.shape[1]
         self.primes_per_kb = self.parameters['primes_per_kb']
         self.perfect_priming = self.parameters['perfect_priming']
@@ -24,13 +33,10 @@ class SecondStrandSynthesisStep:
 
     def execute(self, molecule_packet, rng):
         print("Second strand cDNA synthesis step starting...")
-        # TODO: this takes ONLY the second synthesis strand. Is that correct?
-        #       Is this right for non-strand-specific analyses?
         cdna_sample = []
         with open(self.history_filename, "w+") as log_file:
             log_file.write(Molecule.header)
             for molecule in molecule_packet.molecules:
-                # TODO: this code is duplicated with first strand synthesis - should we refactor it out?
                 if len(molecule.sequence) < self.primer_length:
                     continue # Can't prime a sequence this short, so it'll just drop
 
@@ -85,7 +91,57 @@ class SecondStrandSynthesisStep:
             molecule_packet.molecules = cdna_sample
             return molecule_packet
 
+    @staticmethod
+    def get_position_probability_matrix(parameters):
+        position_probability_matrix = np.array([
+            parameters["position_probability_matrix"][base]
+                for base in GeneralUtils.BASE_ORDER
+        ])
+        return position_probability_matrix
 
 
-    def validate(self):
-        return True
+    @staticmethod
+    def validate(parameters, global_config):
+        errors = []
+        if 'position_probability_matrix' not in parameters:
+            errors.append("Must contain 'position_probability_matrix'")
+        else:
+            ppm = parameters['position_probability_matrix']
+            okay = True
+            length = None
+            for base in GeneralUtils.BASE_ORDER:
+                if base not in ppm:
+                    errors.append(f"Must specify {base} in 'position_probability_matrix'")
+                    continue
+                probs = ppm[base]
+                if not isinstance(probs, list) or not all(isinstance(x, (float, int)) for x in probs):
+                    errors.append(f"Position probability matrix entry for {base} must be list of numbers")
+                    okay = False
+                    continue
+
+                if length is None:
+                    length = len(probs)
+                elif length != len(probs):
+                    errors.append(f"All position probability matrix entries must have the same length: had {len(probs)} for {base} but expected {length}")
+                    okay = False
+            if okay:
+                ppm =  SecondStrandSynthesisStep.get_position_probability_matrix(parameters)
+                sums = ppm.sum(axis=0)
+                if not np.isclose(sums, 1).all():
+                    errors.append(f"Position probability matrix entries must sum to 1 across all the four bases at each position")
+                if not (ppm > 0).all():
+                    errors.append("Position probability matrix entries must all be positive")
+
+        if 'primes_per_kb' not in parameters:
+            errors.append("Must contain 'primes_per_kb' parameter")
+        elif not isinstance(parameters['primes_per_kb'], (float, int)):
+            errors.append("primes_per_kb must be a number")
+        elif parameters['primes_per_kb'] <= 0:
+            errors.append("primer_per_kb must be positive")
+
+        if 'perfect_priming' not in parameters:
+            errors.append("Must specify 'perfect_priming' (as true/false)")
+        elif not isinstance(parameters['perfect_priming'], bool):
+            errors.append(f"Expected 'perfect_priming' to be a bool but instead was {parameters['perfect_priming']}")
+
+        return errors

@@ -70,20 +70,44 @@ class FragmentStep:
         molecule_packet.molecules = result
         return molecule_packet
 
-    def validate(self):
-        if self.lambda_ <= 0:
-            print("Rate of fragmentation must be positive", file=sys.stderr)
-            return False
-        if self.runtime <= 0:
-            print("Fragmentation runtime must be a positive number", file=sys.stderr)
-            return False
-        if self.method not in METHODS:
-            print("Fragmentation method must be one of the following" + str(METHODS), file=sys.stderr)
-            return False
-        if self.min_frag_size <= 0:
-            print("min_frag_size must be a positive number", file=sys.stderr)
-            return False
-        return True
+    @staticmethod
+    def validate(parameters, global_config):
+        errors = []
+        if 'method' not in parameters:
+            errors.append(f"Must specify 'method' as one of {METHODS}")
+        else:
+            method = parameters['method']
+            if method not in METHODS:
+                errors.append(f"Fragmentation method must be one of the following: {METHODS}, instead received {method}")
+
+            # Parameters used ONLY for beta_fragmentation method
+            if method == "beta":
+                if any((beta_param not in parameters) for beta_param in ['beta_A', 'beta_B', 'beta_N']):
+                    errors.append("Must specify all of 'beta_A', 'beta_B', and 'beta_N' when using method == 'beta'")
+                else:
+                    beta_A = parameters["beta_A"]
+                    beta_B = parameters["beta_B"]
+                    beta_N = parameters["beta_N"]
+                    if any((not isinstance(beta_param, (float, int))
+                                or (beta_param < 0))
+                                for beta_param in [beta_A, beta_B, beta_N]):
+                        errors.append("All of 'beta_A', 'beta_B', and 'beta_N' must be positive numbers")
+        if "lambda" not in parameters:
+            errors.append("Must specify 'lambda' value")
+        elif (not isinstance(parameters['lambda'], (int, float)) or parameters['lambda'] <= 0):
+            errors.append("Rate of fragmentation must be positive number")
+
+        if "runtime" not in parameters:
+            errors.append("Must specify 'runtime' value")
+        elif (not isinstance(parameters['runtime'], (int, float)) or parameters['runtime'] <= 0):
+            errors.append("Fragmentation 'runtime' must be positive number")
+
+        if "min_frag_size" not in parameters:
+            errors.append("Must specify 'min_frag_size' value")
+        elif (not isinstance(parameters['min_frag_size'], int) or parameters['min_frag_size'] <= 0):
+            errors.append("Fragmentation 'min_frag_size' must be positive integer")
+
+        return errors
 
 
 def estimate_uniform_lambda(starting_median_length, desired_median_length):
