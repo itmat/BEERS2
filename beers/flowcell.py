@@ -1,4 +1,3 @@
-from beers.flowcell_lane import FlowcellLane
 from beers.cluster_packet import ClusterPacket
 from beers.beers_exception import BeersException
 from beers.cluster import Cluster
