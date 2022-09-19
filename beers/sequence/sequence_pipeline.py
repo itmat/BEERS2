@@ -2,6 +2,7 @@ import argparse
 import importlib
 import pathlib
 import os
+import sys
 import time
 import numpy as np
 import resource
@@ -32,22 +33,32 @@ class SequencePipeline():
         pass
 
     @staticmethod
-    def validate(configuration, global_configuration):
+    def validate(configuration, global_config):
         """
         Static method to run each step validate process to identify errant parameters.  If any errors are found,
         a validation exception is raised.
         """
-        steps = []
-        # Find the step classes in the configuration
+        #if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
+        #    raise BeersLibraryPrepValidationException("Validation error in molecule packet: see stderr for details.")
+
+        # Gather the step classes
+        validation_okay = True
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=SequencePipeline.package)
             step_class = getattr(module, step_name)
-            steps.append(step_class(None, parameters, global_configuration))
-        # Validate configuration of each step
-        if not all([step.validate() for step in steps]):
-            raise BeersSequenceValidationException("Validation error in step: see stderr for details.")
+
+            # Valdiate steps's parameters and print out their errors (if any)
+            errors = step_class.validate(parameters, global_config)
+            if len(errors) > 0:
+                validation_okay = False
+                print(f"Validation errors in {step['step_name']}:", file=sys.stderr)
+                for error in errors:
+                    print('\t' + error, file=sys.stderr)
+
+        if not validation_okay:
+            raise BeersSequenceValidationException("Validation error: see stderr for details.")
 
     def execute(self, configuration, global_config, input_cluster_packet, output_packet_path, log_directory, rng):
         """

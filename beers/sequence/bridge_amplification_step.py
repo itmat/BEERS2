@@ -8,7 +8,6 @@ class BridgeAmplificationStep:
     """
 
     BASES = ['G','A','T','C']
-    MAX_CYCLES = 16
     MAX_SNP_RATE = 1
     CYCLE_AT_WHICH_TO_IGNORE_SUBS = 4
 
@@ -66,21 +65,19 @@ class BridgeAmplificationStep:
         return cluster_packet
 
 
-    def validate(self):
-        """
-        Insures that the parameters provided are valid.  Error messages are sent to stderr.
-        :return: True if the step's parameters are all valid and false otherwise.
-        """
-        print(f"{BridgeAmplificationStep.name} validating parameters")
-        if not self.cycles or self.cycles < 0 or self.cycles > BridgeAmplificationStep.MAX_CYCLES:
-            print(f"The number of bridge amplification cycles must be a non-negative integer less than or"
-                  f" equal to {BridgeAmplificationStep.MAX_CYCLES}", file=sys.stderr)
-            return False
-        if self.substitution_rate < 0 or self.substitution_rate > BridgeAmplificationStep.MAX_SNP_RATE:
-            print(f"The substitution rate must be a non-negative value less than or"
-                  f" equal to {BridgeAmplificationStep.MAX_SNP_RATE} ", file=sys.stderr)
-            return False
-        return True
+    @staticmethod
+    def validate(parameters, global_config):
+        errors = []
+        if 'cycles' not in parameters:
+            errors.append("Must specify 'cycles' for number of bridge amplification cycles.")
+        elif not isinstance(parameters['cycles'], int) or parameters['cycles'] <= 0:
+            errors.append("'cycles' must be a positive integer")
+
+        substitution_rate = parameters.get("substitution_rate", 0)
+        if substitution_rate < 0 or substitution_rate > 1:
+            errors.append(f"The substitution rate must be between 0 and 1")
+
+        return errors
 
 
 def multinomial(n, p, rng):

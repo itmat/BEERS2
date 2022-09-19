@@ -141,12 +141,62 @@ class SequenceBySynthesisStep:
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet
 
-    def validate(self):
-        print(f"{SequenceBySynthesisStep.name} validating parameters")
-        if not self.read_length or self.read_length < 0 or not isinstance(self.read_length, int):
-            print(f"The read length, {self.read_length}, is required and must be a non-negative integer,", file=sys.stderr)
-            return False
-        return True
+    @staticmethod
+    def validate(parameters, global_config):
+        errors = []
+
+        if 'read_length' not in parameters:
+            errors.append("Must specify 'read_length'")
+        elif not isinstance(parameters['read_length'], int):
+            errors.append("'read_length' must be a positive integer")
+        elif not parameters['read_length'] > 0:
+            errors.append("'read_length' must be a positive")
+
+        if not isinstance(parameters.get('forward_is_5_prime', True), bool):
+            errors.append("forward_is_5_prime must be either true (default) or false")
+
+        if not isinstance(parameters.get('paired_ends', True), bool):
+            errors.append("paired_ends must be either true (default) or false")
+
+        for var in ['skip_rate', 'drop_rate']:
+            if var not in parameters:
+                errors.append(f"Must specify {var}")
+            elif not isinstance(parameters[var], (float, int)):
+                errors.append(f"{var} must be a number")
+            elif parameters[var] < 0:
+                errors.append(f"{var} must be non-negative")
+
+        # Validate adapters
+        resources =  global_config['resources']
+        for var in ['pre_i5_adapter', 'post_i7_adapter', 'post_i5_adapter', 'pre_i5_adapter']:
+            if var not in resources:
+                errors.append(f"resources must specify {var}")
+            elif not isinstance(resources[var], str):
+                errors.append(f"resources {var} must be an sequence (e.g. ACGT...)")
+            elif len(set(resources[var]).difference("ACGT")) > 0:
+                errors.append(f"resources {var} must contain only the letters ACGT")
+            elif len(resources[var]) == 0:
+                errors.append(f"resources {var} must contain at least one base")
+
+        # Validate the sample barcodes
+        for barcode in ['i5', 'i7']:
+            missing = False
+            for sample, vals in global_config['samples'].items():
+                if barcode not in vals['barcodes']:
+                    errors.append(f"samples.barcodes must specify {barcode} barcodes for sample {sample}")
+                    missing = True
+                elif not isinstance(vals['barcodes'][barcode], str):
+                    errors.append(f"sample {sample} barcode {barcode} must be an sequence (e.g. ACGT...)")
+                elif len(set(vals['barcodes'][barcode]).difference("ACGT")) > 0:
+                    errors.append(f"sample {sample} barcode {barcode} must contain only the letters ACGT")
+                elif len(vals['barcodes'][barcode]) == 0:
+                    errors.append(f"sample {sample} barcode {barcode} must contain at least one base")
+            if not missing:
+                barcode_lengths = [len(sample_vals['barcodes'][barcode]) for sample_vals in global_config['samples'].values()]
+                if len(set(barcode_lengths))  != 1:
+                    errors.append(f"All samples {barcode} barcodes must be the same length.")
+
+        return errors
 
     def read_flourescence(self, cluster, range_start, range_end, direction, rng):
         """
