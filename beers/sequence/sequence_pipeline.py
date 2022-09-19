@@ -12,8 +12,6 @@ from beers_utils.constants import CONSTANTS
 from beers.cluster_packet import ClusterPacket
 from beers_utils.general_utils import GeneralUtils
 
-from beers.abstract_beers_pipeline import AbstractBeersPipeline
-
 class SequencePipeline():
     """
     The class runs all the steps in the sequence pipeline as described and wired together in the configuration

@@ -19,8 +19,6 @@ from beers_utils.general_utils import GeneralUtils
 
 from camparee.molecule_maker import MoleculeMakerStep
 
-from beers.abstract_beers_pipeline import AbstractBeersPipeline
-
 class LibraryPrepPipeline():
     """
     The class runs all the steps in the library_prep pipeline as described and wired together in the configuration
