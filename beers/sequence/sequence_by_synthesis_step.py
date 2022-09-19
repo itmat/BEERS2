@@ -1,4 +1,3 @@
-import sys
 import functools
 
 import numpy as np
@@ -21,6 +20,26 @@ PHRED_MAX_QUALITY = 41
 BASE_ARRAY = np.array([ord(x) for x in beers.cluster.BASE_ORDER], dtype="uint8")
 
 class SequenceBySynthesisStep:
+    """
+    Sequence by Synthesis Step
+
+    Given a bridge-amplified cluster packet, generates the reads from them.
+    Reads are determined by flourescence as bases are added one-by-one.
+    We approximate this, allowing for phasing (where some molecules are
+    further ahead or behind others in the sequencing steps).
+
+    Flourescence reads are then turned into base calls. Then the values are
+    filled in on the Clusters for the reads, in:
+    - called_sequences
+    - called_barcodes
+    - quality_scores
+    - read_starts
+    - read_cigars
+    - read_strands
+    Which together give all the read information necessary to make a fastq
+    and the ideal true alignment necessary to report as a SAM file with
+    true alignment.
+    """
 
     name = "Sequence By Synthesis Step"
 
@@ -38,6 +57,20 @@ class SequenceBySynthesisStep:
         )
 
     def __init__(self, step_log_file_path, parameters, global_config):
+        """
+        Initializes the step with a file path to the step log and a dictionary of parameters.  Missing parameters that
+        control non-idealized behavior are replaced with default values that produce idealized step behavior.
+
+        Parameters
+        ----------
+        step_log_file_path: string
+            location of step logfile
+        parameters: json-like
+            Dictionary of parameters.  Any required parameters not provided are identified by the
+            validate method.
+        global_config: json-like
+            A dictionary of general parameters, not specific to the step
+        """
         self.log_filename = step_log_file_path
         self.read_length = parameters['read_length']
         self.forward_is_5_prime = parameters.get('forward_is_5_prime', True)
@@ -78,6 +111,19 @@ class SequenceBySynthesisStep:
         print(f"{SequenceBySynthesisStep.name} instantiated")
 
     def execute(self, cluster_packet, rng):
+        """
+        Execute the Sequence By Synthess step on one packet
+        Parameters
+        ----------
+        cluster_packet:  beers.cluster_packet.ClusterPacket
+            The input cluster packet
+        rng: numpy.random.Generator
+            Random number generator instance
+
+        Returns
+        ------
+        ClusterPacket
+        """
         print(f"Starting {self.name}")
 
         # make an 'estimated' cross-talk matrix TODO: should be estimated from an entire tile
@@ -204,12 +250,22 @@ class SequenceBySynthesisStep:
         (specified from 5' to 3' if direction = '+' else from 3' to 5').
         Use call_bases to then get bases and quality scores from the read
 
-        :param cluster: cluster to read by sequence-by-synthesis
-        :param range_start:  The starting position (from the 5' end), 0-based
-        :param range_end: The ending position (exlusive, from the 5' end), 0-based
-        :param direction: '+' if reading from the 5'-3' direction, '-' if reading from 3'-5' direction
+        Parameters
+        ----------
 
-        returns flourescence, read_start, read_cigar, read_strand
+        cluster: Cluster
+            cluster to read by sequence-by-synthesis
+        range_start: int
+            The starting position (from the 5' end), 0-based
+        range_end: int
+            The ending position (exlusive, from the 5' end), 0-based
+        direction: str
+            '+' if reading from the 5'-3' direction, '-' if reading from 3'-5' direction
+
+        Returns
+        -------
+        tuple
+            (flourescence, read_start, read_cigar, read_strand)
         """
         read_len = range_end - range_start
 
@@ -287,13 +343,21 @@ class SequenceBySynthesisStep:
         From a flourescence reading, call sequences bases and quality score
         From an approximation of the Bustard algorithm
 
-        :param flourescence: 2d array of shape (4, read_length) with flourescence values
-                             for each of the 4 frequencies for each base read
-        :param epsilon_est: estimate for EPSILON, the noise size in the flourescence
-                            imaging
-        :param cross_talk_est_inv: inverse of the estimate of the 4x4 cross talk matrix
+        Parameters
+        ---------
 
-        returns called sequence and quality scores (as phred score string)
+        flourescence: ndarray, 1-dim
+            2d array of shape (4, read_length) with flourescence values
+            for each of the 4 frequencies for each base read
+        epsilon_est: float
+            estimate for EPSILON, the noise size in the flourescence imaging
+        cross_talk_est_inv: ndarray, 2-dim
+            inverse of the estimate of the 4x4 cross talk matrix
+
+        Returns
+        -------
+        str
+            called sequence and quality scores (as phred score string)
         '''
 
         ## We will approximate the Bustard algorithm for calling bases and quality scores
@@ -332,6 +396,19 @@ def get_inv_phasing_matrix(read_len, skip_rate, drop_rate):
 
     Cached for speed-ups. Since reads are all the same length, they all get the same
     matrix and caching is very useful.
+
+    Parameters
+    ----------
+    read_len: int
+        lenght of reads
+    skip_rate: float
+        Rate of skipping events (forward phasing)
+    drop_rate: float
+        Rate of skipping events (reverse phasing)
+
+    Returns
+    -------
+    ndarray
     '''
     phasing_matrix = np.array([[(1 -  skip_rate - drop_rate) if j == t else
                                     (skip_rate**(j - t)*(1-skip_rate) if j > t else
@@ -344,9 +421,27 @@ def get_inv_phasing_matrix(read_len, skip_rate, drop_rate):
     return phasing_mat_inv
 
 def get_frac_skipped_py(rate, max_skips, molecule_count, read_len, rng):
-    ''' Return an array of length (read_len, max_skips+1) that indicate how many
+    ''' 
+    Compute the array of length (read_len, max_skips+1) that indicate how many
     of the `molecule_count` molecules have incurred exactly `i` skips by the `j`th
     base in (i,j) element
+
+    Parameters
+    ----------
+    rate: float
+        Positive number indicating rate of skipping
+    max_skips: int
+        Maximum number of skipps we consider
+    molecule_count: int
+        Number of molecules in the cluster
+    read_len: int
+        lenght of reads
+    rng: numpy.random.Generator
+        Random number generator instance
+
+    Returns
+    -------
+    ndarray
     '''
     if rate == 0:
         return np.zeros((read_len, max_skips+1))
