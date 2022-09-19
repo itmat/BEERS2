@@ -41,6 +41,8 @@ class BridgeAmplificationStep:
         ----------
         cluster_packet:  beers.cluster_packet.ClusterPacket
             The input cluster packet
+        rng: numpy.random.Generator
+            Random number generator instance
 
         Returns
         ------
