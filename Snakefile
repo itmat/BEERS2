@@ -1,3 +1,21 @@
+"""
+Snakemake file that governs the BEERS2 pipeline.
+
+Snakemake is a system for running pipelines.
+The 'all' rule below defines the default output that BEERS will create.
+This can be overridden by passing Snakemake the name of a rule or the output
+file you wish it to create. Most uses can use the default outputs (sam + fastq files),
+unless only one wants to only run one part of the pipeline.
+
+Configuration is required and must be supplied via the `--configfile` option to Snakemake.
+An example config is provided in config/baby.config.yaml - modify this to suit your needs.
+
+Output will be put in the directory that snakemake is run, unless the `--directory /path/to/output`
+option is provided to Snakemake.
+Output is divided into three main parts: library prep, sequencing, and result generation.
+The outputs of those are divided likewise into library_prep, sequence, and results directories.
+"""
+
 import pathlib
 import functools
 import json

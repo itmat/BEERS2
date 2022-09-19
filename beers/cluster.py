@@ -29,23 +29,39 @@ class Cluster:
         The constructor contains many attributes, the values of which, may be unknown at the time of instantiation.
         But the object is serializable via custom methods and a serialized version will often contain values for
         these attributes.  So they are in the parameter list here (with defaults) to simplify deserialization.
-        :param cluster_id: The unique id of this cluster
-        :param molecule: The original molecule object from which the cluster is derived.
-        :param lane: The flowcell lane where this cluster is found
-        :param coordinates: The other flowcell coordinates (tile, x, y) identifying the cluster's location in the
-         flowcell
-        :param molecule_count:  The total number of molecules contained within the cluster (starts a 1 and
-         geometrically increases with each bridge amplification cycle
-        :param diameter: The physical space take up by the cluster (currently unused)
-        :param called_sequences: An array of sequences that result from single or paired end reads.  The first
-        sequence in the array is the forward read.  The second is the reverse read.
-        :param called_barcode: A string representing the read 5' barcode + 3' barcode - used in the flowcell header
-        :param quality_scores: An array of quality score sequences corresponding to the called sequences array.
-        :param read_starts: An array of alignment start position, one for each read, aligning them to the reference genome
-        :param read_cigars: An array of alignment cigar strings, one for each read, aligning them to the reference genome
-        :param read_strands: An array of alignment strand strings, one for each read, aligning them to the reference genome
-        :param base_counts: An array of counts for each of the 4 nt bases for each position in the original molecule.
-        The initial base counts array exactly matches the original molecule sequence
+
+        Parameters
+        ----------
+        cluster_id: int
+            The unique id of this cluster
+        molecule: Molecule
+            The original molecule object from which the cluster is derived.
+        lane: FlowcellLane
+            The flowcell lane where this cluster is found
+        coordinates: tuple
+            The other flowcell coordinates (tile, x, y) identifying the cluster's location in the flowcell
+        molecule_count: int
+            The total number of molecules contained within the cluster (starts a 1 and geometrically increases
+            with each bridge amplification cycle
+        diameter: float
+            The physical space take up by the cluster (currently unused)
+        called_sequences: list of strings
+            An array of sequences that result from single or paired end reads.  The first
+            sequence in the array is the forward read.  The second is the reverse read.
+        called_barcode: string
+            A string representing the read 5' barcode + 3' barcode - used in the flowcell header
+        quality_scores: list of strings
+            An array of quality score sequences corresponding to the called sequences array.
+        read_starts: list of ints
+            An array of alignment start position, one for each read, aligning them to the reference genome
+        read_cigars: list of strings
+            An array of alignment cigar strings, one for each read, aligning them to the reference genome
+        read_strands: list of strings
+            An array of alignment strand strings, one for each read, aligning them to the reference genome
+        base_counts: list of arrays
+            An array of counts for each of the 4 nt bases for each position in the original molecule.
+            In the order of A, C, G, T counts.  The initial base counts array exactly matches the original
+            molecule sequence.
         """
         self.lane = lane
         self.coordinates = coordinates
@@ -73,15 +89,23 @@ class Cluster:
     def assign_coordinates(self, coordinates):
         """
         Assign a lane coordinates object to the cluster.
-        :param coordinates:  a tuple (tile, x, y)
+
+        Parameters
+        ----------
+        coordinates:  a tuple 
+            tile, x, y)
         """
         self.coordinates = coordinates
 
     def generate_fasta_header(self, direction):
         """
         Assembles the cluster data into a FASTQ header for the given direction (forward or reverse)
-        :param direction: The direction for which the header is created (using convention as described in the
-        constants module).
+
+        Parameters
+        ---------
+        direction: int, either 1 or 2
+            Direction of the read. 1 is the 'forward' read, 2 is the 'reverse' read.
+            If single ended reads, just use 1.
         """
         if direction == CONSTANTS.DIRECTION_CONVENTION[0]:
             self.header = f"@{self.encode_sequence_identifier()}\t1:N:0:{self.called_barcode}"
@@ -93,7 +117,10 @@ class Cluster:
         Creates a sequence identifier for the cluster based upon the information contained in the cluster.  The
         instrument is BEERS.  The run id is the identifier set by the user when running the software.  The lane and the
         coordinates define the location on the flowcell.  The flowcell id is just filler for now.
-        :return: The sequence identifier as defined for the FASTQ format used here.
+
+        Returns
+        -------
+        The sequence identifier as defined for the FASTQ format used here.
         """
         # TODO the 1 is a placeholder for flowcell.  What should we do with this?
         tile, x, y = self.coordinates
@@ -103,8 +130,15 @@ class Cluster:
     def get_base_counts_by_position(self, index):
         """
         Conveninece method to gather base counts by index (position)
-        :param index: index (position) of interest
-        :return: tuple of base counts in ACGT order.
+
+        Parameters
+        ---------
+        index: int
+            index (position) of interest
+
+        Returns
+        ------
+        tuple of base counts in ACGT order.
         """
         return tuple(self.base_counts[:,index])
 
@@ -112,7 +146,8 @@ class Cluster:
         """
         String representation of a cluster that may be displayed when a cluster is printed.  This may not be a
         complete representation.  Depends on what is useful for debugging.
-        :return: string representation.
+
+        Returns string representation.
         """
         header = f"cluster_id: {self.cluster_id}, molecule_id: {self.molecule.molecule_id}, " \
                  f"molecule_count: {self.molecule_count}, lane: {self.lane}, coordinates: {self.coordinates}\n"
@@ -134,7 +169,10 @@ class Cluster:
         preceded by a '#'.  Next, may be 0 to 2 lines preceded by '##', each containing a called sequence and
         a called quality score.  The remaining line have no preceding hashes but list the base counts for each
         position on the molecule.
-        :return: The serialized string output.
+
+        Returns
+        -------
+        The serialized string output.
         """
         tile, x, y = self.coordinates
         output = f"#{self.cluster_id}\t{self.molecule_count}\t{self.diameter}\t{self.lane}\t" \
@@ -159,9 +197,17 @@ class Cluster:
         """
         Method to re-render the result of the serialize method above back into a complete cluster object (without
         losing or scrambling state)
-        :param data: The string data containing the serialized version of the object
-        :param skip_base_counts: If True, they don't load the base_count data (for memory efficiency)
-        :return The Cluster object created from the data provided.
+
+        Parameters
+        ----------
+        data: string
+            The string data containing the serialized version of the object
+        skip_base_counts: bool
+            If True, don't load the base_count data (for memory efficiency)
+
+        Returns
+        -------
+        The Cluster object created from the data provided.
         """
         data = data.rstrip('\n')
         called_sequences = []
