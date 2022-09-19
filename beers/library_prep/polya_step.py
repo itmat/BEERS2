@@ -103,4 +103,9 @@ class PolyAStep:
             errors.append("The maximum retention probability parameter must be between 0 and 1")
         if max_retention_prob < min_retention_prob:
             errors.append("The maximum retention probability parameter must be >= to the minimum retention probability.")
+        if not (0 <= breakpoint_prob_per_base <= 1):
+            errors.append("breakpoint_prob_per_base must be between 0 and 1")
+        if not (0 <= length_retention_prob <= 1):
+            errors.append("length_retention_prob must be between 0 and 1")
+
         return errors

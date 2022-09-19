@@ -195,22 +195,42 @@ class PCRAmplificationStep:
         new_molecule.molecule_id = f"{ancestor_id}.{self.sample_id_ctr[ancestor_id]}"
         self.sample_id_ctr[ancestor_id] += 1
 
-    def validate(self):
+    @staticmethod
+    def validate(parameters, global_config):
         """
         Insure that the parameters supplied for this step are appropriate.  In this case, the number of cycles
         parameter should be a counting integer no greater than the number of maximum cycles allowed.
         :return: True if validation passed, False otherwise
         """
-        print(f"PCR Amplification step validating parameters")
-        valid = True
-        if self.number_cycles < 0 or self.number_cycles > PCRAmplificationStep.MAX_CYCLE_NUMBER:
-            print(f"The cycle number parameter must be greater than 0 and less"
-                  f" than {PCRAmplificationStep.MAX_CYCLE_NUMBER}", file=sys.stderr)
-            valid = False
+        errors = []
 
-        elif self.retention_percentage <= 0 or self.retention_percentage > 100:
-            valid = False
-            print(f"The retention_percentage, {self.retention_percentage}," \
+
+        if 'number_cycles' not in parameters:
+            errors.append("Must specify 'number_cycles'")
+        elif not isinstance(parameters['number_cycles'],int):
+            errors.append("'number_cylces' must be an integer")
+        elif parameters['number_cycles'] < 0 or parameters['number_cycles'] > PCRAmplificationStep.MAX_CYCLE_NUMBER:
+            errors.append(
+                  f"The cycle number parameter must be greater than 0 and less"
+                  f" than {PCRAmplificationStep.MAX_CYCLE_NUMBER}")
+
+        if 'retention_percentage' not in parameters:
+            errors.append("Must specify 'retention_percentage'")
+        elif parameters['retention_percentage'] <= 0 or parameters['retention_percentage'] > 100:
+            errors.append(
+                    f"The retention_percentage, {parameters['retention_percentage']},"
                    f" must be between 0 and 100.")
 
-        return valid
+        for var in ['substitution_rate', 'insertion_rate', 'deletion_rate']:
+            if var not in parameters:
+                errors.append(f"Must specify {var}")
+            elif not (0 <= parameters[var] <= 1):
+                errors.append(f"{var} must be betwen 0 and 1")
+
+        for var in ['gc_bias_constant', 'gc_bias_linear', 'gc_bias_quadratic']:
+            if var not in parameters:
+                errors.append(f"Must specify {var}")
+            elif not isinstance(parameters, (float, int)):
+                errors.append(f"{var} must be a number")
+
+        return errors

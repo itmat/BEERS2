@@ -46,15 +46,15 @@ class AdapterLigationStep:
                 log_file.write(molecule.log_entry())
         return molecule_packet
 
-    def validate(self):
-        print(f"{self.name} validating parameters")
-        valid = True
-        for sample in self.global_config['samples'].values():
+    @staticmethod
+    def validate(parameters, global_config):
+        errors = []
+        for sample in global_config['samples'].values():
             if not 'i5' in sample['barcodes'] or not 'i7' in sample['barcodes']:
-                valid = False
-                print(f"In sample {sample.sample_id} expected to find i5 and i7 adpters in config.")
+                errors.append(f"In sample {sample.sample_id}, expected to find i5 and i7 adpters in config.")
+
         adapters = ['pre_i5_adapter', 'pre_i7_adapter', 'post_i5_adapter', 'post_i7_adapter']
-        if not all(adapter in self.global_config['resources'] for adapter in adapters):
-            valid = False
-            print(f"In resources config, need to  specify all of {adapters}")
-        return valid
+        if not all(adapter in global_config['resources'] for adapter in adapters):
+            errors.append(f"In resources config, need to  specify all of {adapters}")
+
+        return errors

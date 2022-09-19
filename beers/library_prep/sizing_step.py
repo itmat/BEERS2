@@ -42,7 +42,6 @@ class SizingStep:
         :param parameters: dictionary of parameters, which must include at least min_length and max_length
         :param global_config: dictionary of step-independent configuration settings
         """
-        self.idealized = False
         self.log_filename = step_log_file_path
         self.min_length = parameters.get("min_length")
         self.max_length = parameters.get("max_length")
@@ -85,23 +84,25 @@ class SizingStep:
         molecule_packet.molecules = retained_molecules
         return molecule_packet
 
-    def validate(self):
-        """
-        Insures that the parameters provided are valid.  Error messages are sent to stderr.
-        :return: True if the step's parameters are all valid and false otherwise.
-        """
-        print(f"Sizing step validating parameters")
-        if self.idealized:
-            if not self.min_length or not self.max_length:
-                print("The minimum and maximum cutoff lengths must be specified.", file=sys.stderr)
-                return False
-            if self.min_length < 0 or self.min_length > self.max_length:
-                print("The minimum cutoff length {self.min_length} must be non-zero and less than the"
-                      "maximum cutoff length, {self.max_length}.", file=sys.stderr)
-                return False
-            if not (self.min_length <= self.select_all_start_length <= self.select_all_end_length <= self.max_length):
-                print("SizingStep needs min_length <= select_all_start_length <= select_all_end_length <= max_length")
-                return False
-        else:
-            pass
-        return True
+    @staticmethod
+    def validate(parameters, global_config):
+
+        errors = []
+        for param in ['min_length', 'max_length']:
+            if param not in parameters:
+                errors.append(f"Must specify '{param}'")
+            elif not (0 <= parameters[param]):
+                errors.append(f"{param} must be positive")
+        if len(errors) == 0:
+            if parameters['min_length'] >= parameters['max_length']:
+                errors.append("min_length must be less than max_length")
+
+            if 'select_all_start_length' in parameters or 'select_all_end_length' in parameters:
+                min_length = parameters.get("min_length")
+                max_length = parameters.get("max_length")
+                select_all_start_length = parameters.get("select_all_start_length", min_length)
+                select_all_end_length = parameters.get("select_all_end_length", max_length)
+                if not (min_length <= select_all_start_length <= select_all_end_length <= max_length):
+                    errors.append("SizingStep needs min_length <= select_all_start_length <= select_all_end_length <= max_length")
+
+        return errors
