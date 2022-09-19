@@ -8,13 +8,10 @@ beers/personal/
 resources/index_files/
 venv*
 *.egg-info
-config/*_config.json
 Log.out
-cris_*
 output/
 summary/
+.snakemake
 
 *.swp
 doc/_build/
-
-CAMPAREE/doc/_build/
