@@ -377,8 +377,10 @@ sequence_pipeline:
         # From these readings, the final sequenced values are generated.
         parameters:
             # Determines which read is the forward and which is the reverse read
+            # NOTE: currently only 'true' is implemented
             forward_is_5_prime: true
             # Whether to sequence both ends or just one
+            # NOTE: currently only 'true' is implemented
             paired_ends: true
             # Length of the reads to generate, in bases
             read_length: 100
