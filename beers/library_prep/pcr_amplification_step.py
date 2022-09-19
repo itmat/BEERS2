@@ -230,7 +230,7 @@ class PCRAmplificationStep:
         for var in ['gc_bias_constant', 'gc_bias_linear', 'gc_bias_quadratic']:
             if var not in parameters:
                 errors.append(f"Must specify {var}")
-            elif not isinstance(parameters, (float, int)):
+            elif not isinstance(parameters[var], (float, int)):
                 errors.append(f"{var} must be a number")
 
         return errors
