@@ -2,6 +2,7 @@ from beers.flowcell_lane import FlowcellLane
 from beers.cluster_packet import ClusterPacket
 from beers.beers_exception import BeersException
 from beers.cluster import Cluster
+
 import gzip
 import itertools
 import numpy as np
@@ -10,6 +11,20 @@ import pysam
 import math
 import os
 
+
+class FlowcellLane:
+    """
+    These objects partly compose the flowcell object, representing the lanes that the current BEERS run is using.  The
+    object keeps track of all used coordinates to prevent duplication.
+    """
+
+    def __init__(self, lane):
+        """
+        Instantiates a flowcell lane object for the given lane starting with no used coordinates.
+        :param lane: the lane to which this object applies.
+        """
+        self.consumed_coordinates = set()
+        self.lane = lane
 
 class Flowcell:
     """
