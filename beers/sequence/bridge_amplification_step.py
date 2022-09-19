@@ -1,14 +1,11 @@
-import sys
 import numpy as np
 
 class BridgeAmplificationStep:
     """
-    This step serves to simulate the amplification of the molecule in each cluster on the flowcell.  In the idealized
-    case, no substitutions are introduced.  The non-ideal case of introducing substitutions is allows via a substitution_rate parameter.
+    This step serves to simulate the amplification of the molecule in each cluster on the flowcell.
+    Introducing substitutions is allowed via a substitution_rate parameter.
     """
 
-    BASES = ['G','A','T','C']
-    MAX_SNP_RATE = 1
     CYCLE_AT_WHICH_TO_IGNORE_SUBS = 4
 
     name = "Bridge Amplification Step"
@@ -17,10 +14,16 @@ class BridgeAmplificationStep:
         """
         Initializes the step with a file path to the step log and a dictionary of parameters.  Missing parameters that
         control non-idealized behavior are replaced with default values that produce idealized step behavior.
-        :param step_log_file_path: location of step logfile
-        :param parameters: dictionary of parameters.  Any required parameters not provided are identified by the
-        validate method.
-        :param global_config: dictionary of general parameters
+
+        Parameters
+        ----------
+        step_log_file_path: string
+            location of step logfile
+        parameters: json-like
+            Dictionary of parameters.  Any required parameters not provided are identified by the
+            validate method.
+        global_config: json-like
+            A dictionary of general parameters, not specific to the step
         """
         self.log_filename = step_log_file_path
         self.cycles = parameters.get("cycles")
@@ -33,8 +36,15 @@ class BridgeAmplificationStep:
         """
         Amplifies the molecule in the cluster for each cluster in the cluster packet by the given number of cycles
         and keeps track of which base positions have incurred substitutions
-        :param cluster_packet:
-        :return:
+
+        Parameters
+        ----------
+        cluster_packet:  beers.cluster_packet.ClusterPacket
+            The input cluster packet
+
+        Returns
+        ------
+        ClusterPacket
         """
         for cluster in cluster_packet.clusters:
             # Generate the initial base_count values
@@ -85,11 +95,19 @@ def multinomial(n, p, rng):
     Partially vectorized version of np.random.multinomial, see
     https://stackoverflow.com/questions/55818845/fast-vectorized-multinomial-in-python
 
-    :param n: 1-d array of non-negative integers denoting the 'number of experiments'
-    :param p: 1-d array of probabilities of each possibility being drawn
+    Parameters
+    ----------
 
-    Returns an 2-d array where the first dimension corresponds to the possible draws (length of p)
-    and the second to the length of n
+    n: ndarray
+        1-d array of non-negative integers denoting the 'number of experiments'
+    p: ndarray
+        1-d array of probabilities of each possibility being drawn
+
+    Returns
+    ------
+    ndarray
+        A 2-d array where the first dimension corresponds to the possible draws (length of p)
+        and the second to the length of n.
     '''
     n = np.array(n)
     p = np.array(p)
