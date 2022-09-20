@@ -26,8 +26,8 @@ class BridgeAmplificationStep:
             json-like object of configuration for the overall BEERS2 run.
         """
         self.log_filename = step_log_file_path
-        self.cycles = parameters.get("cycles")
-        self.substitution_rate = parameters.get("substitution_rate", 0)
+        self.cycles: int = parameters["cycles"]
+        self.substitution_rate: float = parameters.get("substitution_rate", 0)
         self.global_config = global_config
         print(f"{BridgeAmplificationStep.name} instantiated")
 
@@ -54,6 +54,7 @@ class BridgeAmplificationStep:
 
         for cycle in range(1,self.cycles + 1):
             for cluster in cluster_packet.clusters:
+                assert cluster.base_counts is not None
                 # Start with a perfect copy
                 copies = cluster.base_counts.copy()
 
@@ -92,7 +93,7 @@ class BridgeAmplificationStep:
         return errors
 
 
-def multinomial(n: np.ndarray, p: np.ndarray, rng: np.random.Generator):
+def multinomial(n: np.ndarray, p: list, rng: np.random.Generator):
     '''
     Partially vectorized version of np.random.multinomial, see
     https://stackoverflow.com/questions/55818845/fast-vectorized-multinomial-in-python
@@ -112,15 +113,15 @@ def multinomial(n: np.ndarray, p: np.ndarray, rng: np.random.Generator):
         and the second to the length of n.
     '''
     n = np.array(n)
-    p = np.array(p)
+    p_array = np.array(p)
     count = n.copy()
-    out = np.empty((len(p), len(n)), dtype=int)
-    ps = p.cumsum(axis=-1)
+    out = np.empty((len(p_array), len(n)), dtype=int)
+    ps = p_array.cumsum(axis=-1)
     # Conditional probabilities
     with np.errstate(divide='ignore', invalid='ignore'):
         condp = p / ps
     condp[np.isnan(condp)] = 0.0
-    for i in range(p.shape[-1]-1, 0, -1):
+    for i in range(p_array.shape[-1]-1, 0, -1):
         binsample = rng.binomial(count, condp[i])
         out[i] = binsample
         count -= binsample

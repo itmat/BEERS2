@@ -81,15 +81,15 @@ class SequencePipeline():
             random number generator to use
         """
 
-        log_directory = pathlib.Path(log_directory)
-        log_file_path = log_directory / f"sequence_pipeline_cluster_pkt{input_cluster_packet.cluster_packet_id}.log"
+        log_dir = pathlib.Path(log_directory)
+        log_file_path = log_dir / f"sequence_pipeline_cluster_pkt{input_cluster_packet.cluster_packet_id}.log"
 
         # Load and instantiate all steps listed in configuration prior to executing them below.
         steps = []
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
             step_log_filename = f"{step_name}_cluster_pkt{input_cluster_packet.cluster_packet_id}.log"
-            step_log_dir = log_directory / step_name
+            step_log_dir = log_dir / step_name
             step_log_dir.mkdir(exist_ok=True)
             step_log_file_path = step_log_dir / step_log_filename
             parameters = step["parameters"]

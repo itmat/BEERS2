@@ -244,7 +244,7 @@ class SequenceBySynthesisStep:
 
         return errors
 
-    def read_flourescence(self, cluster: Cluster, range_start: int, range_end: int, direction: str, rng: np.random.Generator) -> tuple[float, int, str, str]:
+    def read_flourescence(self, cluster: Cluster, range_start: int, range_end: int, direction: str, rng: np.random.Generator) -> tuple[np.ndarray, int, str, str]:
         """
         Generates flourescence readings from sequence-by-synthesis over the range given
         (specified from 5' to 3' if direction = '+' else from 3' to 5').
@@ -270,6 +270,7 @@ class SequenceBySynthesisStep:
         """
         read_len = range_end - range_start
 
+        assert cluster.base_counts is not None
         base_counts = cluster.base_counts
         if direction == '-':
             # Take reverse...
