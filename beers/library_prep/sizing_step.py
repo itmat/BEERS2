@@ -18,30 +18,37 @@ class SizingStep:
     at 'min_length' up to 1 between 'select_all_start_length' and 'select_all_end_length'
     and then down to 0 again at 'max_length'.
 
-    Probability of retention by length
-                     __________________
-       1|        ___/                  \___
-    p   |   ____/                          \____
-       0|__/                                    \___
-        ---------------------------------------------
-           |          |               |          |
-           min_length |               |          max_length
-                      |   select_all  |
-                    start            end
+    Diagram::
+
+        Probability of retention by length
+                         __________________
+           1|        ___/                  \___
+        p   |   ____/                          \____
+           0|__/                                    \___
+            ---------------------------------------------
+               |          |               |          |
+               min_length |               |          max_length
+                          |   select_all  |
+                        start            end
+
     If select_all_start_length or select_all_end_length are not provided
-    then they are set to min_lenght and max_length respectively and the probability
+    then they are set to min_length and max_length respectively and the probability
     jumps from 0 to 1 immediately.
+
+    Config Example::
+
+        parameters:
+            # See above diagram for meanings of these
+            min_length: 100
+            max_length: 400
+            select_all_start_length: 200
+            select_all_end_length: 300
+
     """
 
     name = "Sizing Step"
 
     def __init__(self, step_log_file_path, parameters, global_config):
-        """
-        Initializes the step with a file path to the step log and a dictionary of parameters.
-        :param step_log_file_path: location of step logfile
-        :param parameters: dictionary of parameters, which must include at least min_length and max_length
-        :param global_config: dictionary of step-independent configuration settings
-        """
         self.log_filename = step_log_file_path
         self.min_length = parameters.get("min_length")
         self.max_length = parameters.get("max_length")
@@ -51,12 +58,6 @@ class SizingStep:
         print("Sizing step instantiated")
 
     def execute(self, molecule_packet, rng):
-        """
-        Remove those molecules that are outside the filter range.  Parameters dictate whether cutoffs are sharp or
-        dictated by a distribution function
-        :param molecule_packet: rna molecules subject to sizing
-        :return: rna molecules retained following filtration
-        """
         print("Sizing step starting")
         retained_molecules = []
         with open(self.log_filename, "w+") as log_file:

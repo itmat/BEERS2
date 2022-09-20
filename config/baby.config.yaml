@@ -71,7 +71,7 @@ resources:
     # are used to initiate transcription.
     # Each adapter flanks the corresponding sample barcode, which all flanks the original molecule
     # So the molecule ends up looking like (5' to 3'):
-    #  (pre_i5_adapter) (i5) (post_i5_adapter) (molecule sequence (pre_i7_adapter) (i7) (post_i7_adapter)
+    #  (pre_i5_adapter) (i5) (post_i5_adapter) (molecule sequence) (pre_i7_adapter) (i7) (post_i7_adapter)
     # These ones have been obtained from:
     # https://support-docs.illumina.com/SHARE/AdapterSeq/Content/SHARE/AdapterSeq/TruSeq/UDIndexes.htm
     pre_i5_adapter: AATGATACGGCGACCACCGAGATCTACAC
@@ -163,7 +163,7 @@ library_prep_pipeline:
             # Fragmentation methods are available.
             # 'uniform' fragments at each base equally and is the default
             method: uniform
-            # The 'lambda' parameter is the the rate parameter for an exponential distribution
+            # The 'lambda' parameter is the rate parameter for an exponential distribution
             # which determines the time it takes until a molecule to fragments.
             # Molecules which would take longer then 'runtime' to fragment, do not fragment.
             # Molecules may also fragment multiple times if lambda is high enough.
@@ -171,7 +171,7 @@ library_prep_pipeline:
             runtime: 1
             # Since fragmentation generates many very small fragments that will
             # be quickly lost in the following steps, we have the option to
-            # drop those fragments immediately. Setting this value can significant
+            # drop those fragments immediately. Setting this value can significantly
             # decrease runtime and memory requirements.
             min_frag_size: 20
 

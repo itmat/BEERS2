@@ -3,6 +3,42 @@ Library Prep Pipeline
 .. automodule:: beers.library_prep.library_prep_pipeline
     :members:
 
+PolyA Selection Step
+---------------------
+.. automodule:: beers.library_prep.polya_step
+    :members:
+
+First Strand Synthesis Step
+---------------------------
+.. automodule:: beers.library_prep.first_strand_synthesis_step
+    :members:
+
+Second Strand Synthesis Step
+----------------------------
+.. automodule:: beers.library_prep.second_strand_synthesis_step
+    :members:
+
+Fragmentation Step
+---------------------------
+.. automodule:: beers.library_prep.fragment_step
+    :members:
+
+Sizing Step
+--------------------
+.. automodule:: beers.library_prep.sizing_step
+    :members:
+
+PCR Amplification Step
+----------------------
+.. automodule:: beers.library_prep.pcr_amplification_step
+    :members:
+
+Adapter Ligation Step
+---------------------
+.. automodule:: beers.library_prep.adapter_ligation_step
+    :members:
+
+
 Cluster
 -------
 .. automodule:: beers.cluster

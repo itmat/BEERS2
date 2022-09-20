@@ -7,6 +7,30 @@ import beers_utils.cigar
 
 
 class AdapterLigationStep:
+    """
+    Adpater Ligation attaches adapters to each end of the molecules
+    These are used for the PCR step to initiate PCR and include the
+    sample identifying barcodes.
+    
+    This uses the adapters specified in the resources section
+    as well as the sample i5/i7 barcodes in the samples section
+    Each adapter flanks the corresponding sample barcode,
+    which all flanks the original molecule
+    So the molecule ends up looking like (5' to 3')::
+
+        (pre_i5_adapter) (i5) (post_i5_adapter) (molecule sequence) (pre_i7_adapter) (i7) (post_i7_adapter)
+
+    The example config adapters and barcodes have been obtained from:
+    https://support-docs.illumina.com/SHARE/AdapterSeq/Content/SHARE/AdapterSeq/TruSeq/UDIndexes.htm
+
+    Config Example::
+
+        resources:
+            pre_i5_adapter: AATGATACGGCGACCACCGAGATCTACAC
+            post_i5_adapter: ACACTCTTTCCCTACACGACGCTCTTCCGATCT
+            pre_i7_adapter: GATCGGAAGAGCACACGTCTGAACTCCAGTCAC
+            post_i7_adapter: ATCTCGTATGCCGTCTTCTGCTTG
+    """
 
     name = "Adapter Ligation Step"
 

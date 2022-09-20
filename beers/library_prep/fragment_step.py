@@ -19,19 +19,50 @@ TYPICAL_MOLECULE_SIZE = 1000
 
 
 class FragmentStep:
+    """
+    Fragmentation step breaks each molecule into pieces
+
+    Two fragmentation methods are available:
+     1. 'uniform' fragments at each base equally and is the default.
+        Note that fragment length distributions will not be uniform.
+        Instead, the fragment locations are chosen uniformly.
+     2. 'beta' biases fragment location by position within the fragment
+        and can bias not fragmenting already short fragments
+        NOTE: using 'beta' can generate unusual coverage plots since there are
+        significant edge effects around the transcript. However, it can be used
+        to give a more realistic fragment distribution.
+
+    Configuration
+    -------------
+
+    The 'lambda' parameter is the rate parameter for an exponential distribution
+    which determines the time it takes until a molecule to fragments.
+    Molecules which would take longer then 'runtime' to fragment, do not fragment.
+    Molecules may also fragment multiple times if lambda is high enough.
+
+    Since fragmentation generates many very small fragments that will
+    be quickly lost in the following steps, we have the option to
+    drop those fragments immediately. Setting ``min_frag_size`` can significantly
+    decrease runtime and memory requirements.
+
+    If method == 'beta', then the fragmentation sites can be biased within
+    the molecule, according to a beta distribution.
+    If using 'beta', you must also specify the following:
+   
+    The parameters for the beta distribution, beta_A and beta_B.
+    Setting these so that A = B > 0 to bias towards fragmentation in
+    the middle of the fragment, with larger values biasing further towards the middle.
+    If A > B, then would bias towards the 5' end instead.
+   
+    And the beta_N factor allows a non-linear fragmentation rate depending
+    upon the length of the molecule. Values >1 indicate that longer molecules
+    are more likely to fragment than smaller ones, biasing towards larger
+    fragment sizes.
+    """
 
     name = "Fragment Step"
 
     def __init__(self, logfile, parameters, global_config):
-        """
-        Make fragmentation step that with rate of fragmentation lambda_ running for run_time
-
-        lambda_ -- either a value > 0 in which case all positions in each molecule are equally likely to break
-                or a function (k, (start,end), molecule) -> rate
-                that gives a rate of breaking (in breaks/unit time) of the bond between nucleotides
-                at positions k and k+1 of the fragment that goes from (start,end) in molecule
-        runtime -- length of running the experiment (Has the inverse units of lambda_)
-        """
         self.global_config = global_config
         self.history_filename = logfile
         self.method = parameters["method"]
@@ -52,9 +83,9 @@ class FragmentStep:
         print("Fragment Step acting on sample")
         sample = molecule_packet.molecules
         if self.method == "uniform":
-            fragment_locations =  compute_fragment_locations_uniform(sample, self.lambda_, self.runtime, rng)
+            fragment_locations =  _compute_fragment_locations_uniform(sample, self.lambda_, self.runtime, rng)
         elif self.method == "beta":
-            fragment_locations = compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime, rng)
+            fragment_locations = _compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime, rng)
         else:
             raise NotImplementedError(f"Unknown fragmentation method {self.method}")
 
@@ -109,64 +140,8 @@ class FragmentStep:
 
         return errors
 
-
-def estimate_uniform_lambda(starting_median_length, desired_median_length):
-    """Computes a (lambda_, rate) pair that give the desired amount of fragmentation"""
-    #TODO: verify correctness of this
-    runtime = 1 # Chosing this just rescales the lambda_ (choosing different units for time)
-    lambda_ = starting_median_length/desired_median_length
-
-    return lambda_, runtime
-
 ### FRAGMENTATION METHODS
-
-# MOST GENERAL SOLUTION
-# Much slower than uniform fragmentation
-# Unlike other methods, allows an arbitrary lambda_ depending upon location
-def compute_fragment_locations(molecules, lambda_, runtime, rng):
-    """fragment molecules with varying lambas
-
-    molecules -- a list of molecules
-    lambda_ -- a function mapping (j, (start,end), molecule) to the rate of breakage of
-            the bond at position j of the molecule if it is in a fragment (start,end) of molecule
-    runtime -- length of this process, longer times means more breakage
-    rng -- random number generator
-
-    returns a list of tuples (start, end, k) of fragments
-    each fragment being k'th molecule from positions start to end (zero-based, non-inclusive of end)
-    """
-    assert runtime > 0
-
-    todo = collections.deque()
-    todo.extend(((0, len(molecule)), runtime, k) for k, molecule in enumerate(molecules))
-    done = collections.deque()
-
-    while todo:
-        # start, end are zero based python slice-style half-open
-        (start, end), time_left, k = todo.pop()
-        if end - start == 1:
-            done.append(((start, end), k))
-            continue
-
-
-        num_bonds = end - start - 1
-        lambdas = numpy.array([lambda_(j,start, end, molecules[k]) for j in range(start, end-1)])
-        total_lambda = sum(lambdas)
-        time_until_break = rng.exponential(scale = 1/total_lambda)
-
-        if time_until_break < time_left:
-            # Break!
-            break_point = rng.choice(num_bonds, p=lambdas/total_lambda) + start
-            todo.append(((start, break_point + 1), time_left - time_until_break, k))
-            todo.append(((break_point + 1, end), time_left - time_until_break, k))
-        else:
-            # No break!
-            done.append( ((start, end), k) )
-
-    return [(start, end, k) for (start, end), k in done]
-
-# Used by direct_fragment
-def sample_without_replacement(n, k, rng):
+def _sample_without_replacement(n, k, rng):
     """uniformly sample k numbers from 0,...,n-1 without replacement
 
     Intended to be faster than numpy.random.choice(n, size=k, replace=False)
@@ -181,8 +156,9 @@ def sample_without_replacement(n, k, rng):
     # Sort it since list(set) will give a sort-of arbitrary but not random order
     return numpy.array(sorted(sample), dtype=int)
 
-def compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
-    """uniform fragmentation with a rate lambda_ parameter
+def _compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
+    """
+    uniform fragmentation with a rate lambda_ parameter
     All bonds between adjacent bases are equally likely to break (they're iid)
 
     Use the fact that the methods of fragment is equivalent (when lambda constant)
@@ -208,7 +184,7 @@ def compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
 
         num_breakpoints = rng.binomial(n=num_bonds, p=probability_of_base_breaking)
 
-        breakpoints = sample_without_replacement(num_bonds, num_breakpoints, rng)
+        breakpoints = _sample_without_replacement(num_bonds, num_breakpoints, rng)
         bps = numpy.concatenate([[0], breakpoints + 1, [len(molecule)]])
         output.extend( (bps[i], bps[i+1], k) for i in range(len(bps)-1) )
 
@@ -224,15 +200,22 @@ def compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
 # A = B = 5 gives reasonable values
 # NOTE: there is no theoretical justification for why this should be an appropriate model
 #       but it gives a reasonable looking length distribution while the uniform methods do not
-def compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime, rng):
-    """fragment molecules with varying lambas
-
-    molecules -- a list of molecules
-    lambda_ -- the rate of breakage of the bond between adjacent bases
-    runtime -- length of this process, longer times means more breakage
+def _compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime, rng):
+    """
+    fragment molecules with varying lambas
 
     returns a list of tuples (start, end, k) of fragments
     each fragment being k'th molecule from positions start to end (zero-based, non-inclusive of end)
+
+    Parameters
+    ----------
+    molecules:
+        a list of molecules to fragment
+    lambda_:
+        the rate of breakage of the bond between adjacent bases
+    runtime:
+        length of this process, longer times means more breakage
+
     """
     assert runtime > 0
     assert A > 0

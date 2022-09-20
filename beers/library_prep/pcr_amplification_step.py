@@ -10,10 +10,12 @@ from beers_utils.molecule import Molecule
 from beers.utilities.gc_content import gc_content
 
 
-def hypergeometric(ngood, nbad, nsamp, rng):
-    ''' See np.random.hypergeometric but allows nsamp to have zeros
-
-    Expects ngood, nbad to be integers and nsamp a 1d array of ints'''
+def hypergeometric(ngood: int, nbad: int, nsamp: np.ndarray, rng: np.random.Generator):
+    '''
+    Sample from the hypergeometric distribution
+    
+    See np.random.hypergeometric but allows nsamp to have zeros
+    '''
 
     out = np.zeros(shape = len(nsamp), dtype=int)
     nonzero = (nsamp != 0)
@@ -21,6 +23,61 @@ def hypergeometric(ngood, nbad, nsamp, rng):
     return out
 
 class PCRAmplificationStep:
+    """
+    PCR amplification step creates many copies of each molecule
+    Since the number of molecules generated is quite large and
+    since in real sequencing, only a small fraction of the molecules
+    prepped end up forming clusters on the flowcell and being
+    sequenced, we give the option to remove most of the PCR
+    generated molecules prior to the end of the step.
+    This provides a very large increase in speed and decrease
+    in memory usage.
+
+    Config Example::
+
+        parameters:
+            # Number of cycles to use
+            # Generates 2^n fragments for each input fragment
+            number_cycles: 10
+
+            # Retain only this percent of the data
+            # NOTE: scale is 0-100, not 0-1, so 0.08 means 0.0008 of the generated molecules are kep
+            # This value can be approximated from real data with UMI tags by the following:
+            # Compute the PCR duplication rate using the UMI tags.
+            # Let N be the number of PCR steps. Assuming that each molecule generates 2^N
+            # PCR descendants, if all were sequenced, we would expect all molecules to be duped
+            # 2^N times. Instead, choose retention_percentage with the following:
+            #
+            # '''
+            # import scipy.stats
+            # pcr_rate = scipy.stats.binom(p=retention_percentage / 100, n=2^N).sf(1)
+            # # Choose retention_percentage so that pcr_rate is approximately the observed PCR rate
+            # '''
+            #
+            # For example, retention_percentage = 0.08 and number_cycles=10 gives dupe rate
+            # of about 20%, which is pretty typical. If number_cycles changes, this should
+            # be modified too to maintain dupe rate.
+            retention_percentage: 0.08
+
+            # Induce a GC bias by discarding some PCR duplicates
+            # according to their GC bias. All fragments overall
+            # GC content is computed and then the following three
+            # parameters are used to compute a probability of retention
+            # gc_bias_constant + gc_bias_linear*(gc - 0.5) + gc_bias_quadratic*(gc - 0.5)^2
+            # clipped to always be within 0 and 1
+            # For no bias, set to 1, 0, and 0 for const, linear, and quadratic, respectively.
+            # To bias towards GC=0.5 content, set gc_bias_quadratic to be negative,
+            # such as -100 for a large GC bias.
+            gc_bias_constant: 1.0
+            gc_bias_linear: 0.0
+            gc_bias_quadratic: -100
+
+            # During PCR, we have some chance of mis-copying the molecules
+            # These are specified here as probability per-base, so 0.001 is one error per 1kb
+            deletion_rate: 0.0001
+            insertion_rate: 0.0001
+            substitution_rate: 0.001
+    """
 
     name = "PCR Amplification Step"
 
@@ -29,15 +86,6 @@ class PCRAmplificationStep:
     MAX_CYCLE_NUMBER = 16
 
     def __init__(self, step_log_file_path, parameters, global_config):
-        """
-        Instantiates the step with a log file name and a list of parameters.
-        Must specify the number of PCR cycles in the parameters and also
-        a retention rate, which allows down-sampling PCR copies such as what
-        happens at the start of sequencing with flow-cell retention.
-
-        :param step_log_file_path: path to log file
-        :param parameters: parameter json object
-        """
         self.log_filename = step_log_file_path
         self.number_cycles = parameters.get("number_cycles")
         self.retention_percentage = parameters.get('retention_percentage')

@@ -9,18 +9,28 @@ class PolyAStep:
     This step simulates the polyA selection step intended to separate mRNA from all other RNA.  It includes biases but
     idealized behavior is available by not specifying parameter values and the default values provide idealized
     behavior.  Any parameter not specified via the configuration file will default to its idealized setting.
+
+    Configuration Example::
+
+        # Chance per base of fragmentation prior to selection
+        # Increasing this above 0 induces a 3' bias.
+        # A value of 0.001 induces a reasonably high 3' bias
+        breakpoint_prob_per_base: 0.0
+
+        # Probability of retention is computed as a value between
+        # min_retention_prob and max_retention_prob
+        # For every base of the polyA tail beyond min_polya_tail_length
+        # the probability increases linearly from min_retention_prob
+        # by length_retention_prob, up to a max of max_polya_tail_length.
+        max_retention_prob: 1.0
+        min_retention_prob: 0.0
+        min_polya_tail_length: 40
+        length_retention_prob: 0.05
     """
 
     name = "PolyA Selection Step"
 
     def __init__(self, step_log_file_path, parameters, global_config):
-        """
-        Initializes the step with a file path to the step log and a dictionary of parameters.  Idenalized defaults
-        substitute for missing parameters.
-        :param step_log_file_path: location of step logfile
-        :param parameters: dictionary of parameters, all of which are optional.
-        :param global_config: dictionary of step-independent configuration settings
-        """
         self.log_filename = step_log_file_path
         self.min_polya_tail_length = parameters.get("min_polya_tail_length", 40)
         self.min_retention_prob = parameters.get("min_retention_prob", 0.0)
@@ -31,14 +41,6 @@ class PolyAStep:
         print("Poly A selection step instantiated")
 
     def execute(self, molecule_packet, rng):
-        """
-        Remove nearly all molecules that don't have a poly A tail.  Most molecules with a poly A tail are retained.
-        Some bleed over modeled to occur in both directions.  Additionally, retained molecules have a chance of being
-        truncated on the 5' end.
-        :param molecule_packet: rna molecules subject to the poly A selection step
-        :return: molecule packet containing rna molecules, possibly modified, that remain following the poly A
-         selection step.
-        """
         print("Poly A selection step starting")
         retained_molecules = []
         with open(self.log_filename, "w+") as log_file:
@@ -63,13 +65,31 @@ class PolyAStep:
         molecule_packet.molecules = retained_molecules
         return molecule_packet
 
-    def apply_three_prime_bias(self, molecule, tail_length, note, rng):
+    def apply_three_prime_bias(
+            self,
+            molecule: Molecule,
+            tail_length: int,
+            note: str,
+            rng: np.random.Generator,
+        ) -> str:
         """
         Model for polyA selection 3' bias.  Assuming that polyA tail plays no role in truncation of 5' end.
-        :param molecule: molecule to evaluate for truncation
-        :param tail_length: length of polyA tail, which may be 0
-        :param note: comment added to log
-        :return: note with an addendum if a truncation occurs
+
+        Parameters
+        ----------
+        molecule:
+            molecule to evaluate for truncation
+        tail_length:
+            length of polyA tail, which may be 0
+        note:
+            comment added to log
+        rng:
+            random number generator
+
+        Returns
+        -------
+        str
+            note to add to log
         """
 
         sequence_minus_tail_length = len(molecule.sequence) - tail_length
@@ -87,10 +107,6 @@ class PolyAStep:
 
     @staticmethod
     def validate(parameters, global_config):
-        """
-        Insures that the parameters provided are valid.  Error messages are sent to stderr.
-        :return: True if the step's parameters are all valid and false otherwise.
-        """
         errors = []
         min_retention_prob = parameters.get("min_retention_prob", 0.0)
         max_retention_prob = parameters.get("max_retention_prob", 1.0)
