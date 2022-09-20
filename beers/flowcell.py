@@ -1,7 +1,3 @@
-from beers.cluster_packet import ClusterPacket
-from beers.beers_exception import BeersException
-from beers.cluster import Cluster
-
 import gzip
 import itertools
 import numpy as np
@@ -9,61 +5,70 @@ import re
 import pysam
 import math
 import os
+from dataclasses import dataclass, field
+from typing import Generator
+
+from beers.cluster_packet import ClusterPacket
+from beers.beers_exception import BeersException
+from beers.cluster import Cluster
 
 
+@dataclass
 class FlowcellLane:
     """
     These objects partly compose the flowcell object, representing the lanes that the current BEERS run is using.  The
     object keeps track of all used coordinates to prevent duplication.
+
+    Attributes
+    ---------
+    lane
+        Lane number
+    consumed_coordinates
+        set of coordinates already used
     """
 
-    def __init__(self, lane):
-        """
-        Instantiates a flowcell lane object for the given lane starting with no used coordinates.
-        :param lane: the lane to which this object applies.
-        """
-        self.consumed_coordinates = set()
-        self.lane = lane
+    lane: int
+    consumed_coordinates: set = field(default_factory = set)
 
+coords_match_pattern = re.compile(r'^.*:(\w+):(\d+):(\d+):(\d+):(\d+)$')
+@dataclass
 class Flowcell:
     """
-    The flowcell object is meant to be a singleton object instantiated by the controller since only a single flowcell
-    is simulated for any given BEERS run. This object simulates the retention (attachment) of a subset of the
-    molecules derived from library prep, and insures that no two retained molecules share the same coordinate set.
-    In the process molecules are converted into cluster objects and molecule packets into cluster packets, the
-    latter of which is the medium of exchange for the subsequence sequence pipeline steps.
+    Models a flowcell. MoleculePackets can be loaded and are converted to ClusterPackets with assigned coordinates
+    for all the clusters.
+
+    A flowcell's geometry (i.e., coordinate ranges for lane, tile, x, y) are either provided via the configuration
+    The flowcell retention rate is specified as a percentage in the configuration file.  The user may restrict which
+    lanes of the flowcell to use via the configuration. Otherwise, all the lanes described by the flowcell's geometry
+    are used.  The individual flowcell lanes to be used are instantiated as FlowcellLane objects, each of which keeps
+    track of the coordinates used for its given lane.  Each lane has its own coordinate generator to produce new
+    coordinates for each newly retained molecule.
     """
 
-    coords_match_pattern = re.compile(r'^.*:(\w+):(\d+):(\d+):(\d+):(\d+)$')
+    parameters: dict
+    min_coords: dict = field(default_factory = lambda: {"lane": 0, "tile": 0, "x": 0, "y": 0})
+    max_coords: dict = field(default_factory = lambda: {"lane": 10_000, "tile": 10_000, "x": 10_000, "y": 10_000})
+    available_lanes: list[int] = field(default_factory = list)
+    lanes_to_use: list[int] = field(default_factory = list)
+    flowcell_lanes: dict[str, FlowcellLane] = field(default_factory = dict)
+    coordinate_generators: dict[str, Generator] = field(default_factory = dict)
 
-    def __init__(self, parameters):
+    def __post_init__(self):
         """
-        A flowcell's geometry (i.e., coordinate ranges for lane, tile, x, y) are either provided via the configuration
-        The flowcell retention rate is specified as a percentage in the configuration file.  The user may restrict which
-        lanes of the flowcell to use via the configuration. Otherwise, all the lanes described by the flowcell's geometry
-        are used.  The individual flowcell lanes to be used are instantiated as FlowcellLane objects, each of which keeps
-        track of the coordinates used for its given lane.  Each lane has its own coordinate generator to produce new
-        coordinates for each newly retained molecule.
-        own coordinate generator.
-        :param parameters: Parameters specific to the flowcell defined in the configuration file under the
-        controller.
         """
-        self.parameters = parameters
-        self.min_coords = {"lane": 10_000, "tile": 10_000, "x": 10_000, "y": 10_000}
-        self.max_coords = {"lane": 0, "tile": 0, "x": 0, "y": 0}
         self.set_flowcell_coordinate_ranges()
         self.available_lanes = list(range(self.min_coords['lane'], self.max_coords['lane'] + 1))
         self.lanes_to_use = self.parameters["lanes_to_use"] or self.available_lanes
-        if parameters['coordinate_strategy'] == 'random':
+
+        if self.parameters['coordinate_strategy'] == 'random':
             # Generate coordinates with replacement, i.e. may not be distinct
             # this is the fastest/simplest method
             generate_coordinates = self.generate_coordinates_random
-        elif parameters['coordinate_strategy'] == 'random_distinct':
+        elif self.parameters['coordinate_strategy'] == 'random_distinct':
             # Generate coordinates without replacement, i.e. are all distinct
             # Uses much more memory if sequencing millions of reads
             generate_coordinates = self.generate_coordinates_distinct
-        self.flowcell_lanes = {}
-        self.coordinate_generators = {}
+
         for lane in self.lanes_to_use:
             self.flowcell_lanes[lane] = FlowcellLane(lane)
             self.coordinate_generators[lane] = generate_coordinates(lane)
@@ -178,10 +183,10 @@ class Flowcell:
         for line in input_file.fetch():
             if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
                 continue
-            coords_match = re.match(Flowcell.coords_match_pattern, line.qname)
+            coords_match = re.match(coords_match_pattern, line.qname)
             if coords_match:
                 (flowcell, lane, tile, x, y) = coords_match.groups()
-                coordinates = LaneCoordinates(tile, x, y)
+                coordinates = (tile, x, y)
                 yield coordinates
 
     def set_flowcell_coordinate_ranges(self):
@@ -214,7 +219,7 @@ class Flowcell:
                         print(f"{counter + 1} reads")
                     header = byte_header.decode()
                     sequence_identifier = header.split(" ")[0]
-                    coords_match = re.match(Flowcell.coords_match_pattern, sequence_identifier)
+                    coords_match = re.match(coords_match_pattern, sequence_identifier)
                     if coords_match:
                         (flowcell, lane, tile, x, y) = coords_match.groups()
                         lane, tile, x, y = int(lane), int(tile), int(x), int(y)

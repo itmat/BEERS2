@@ -15,7 +15,7 @@ class ClusterPacket:
 
     next_cluster_packet_id = 0  # Static variable for creating increasing cluster packet id's
 
-    def __init__(self, cluster_packet_id, sample, clusters):
+    def __init__(self, cluster_packet_id: int, sample: Sample, clusters: list[Cluster]):
         """
         The cluster packet is mostly a wrapper for the clusters but additionally, it does contain data from the
         sample from which the original molecules were drawn.  Note then that a cluster packet respresents a portion
@@ -23,12 +23,12 @@ class ClusterPacket:
 
         Parameters
         ---------
-        cluster_packet_id: int
+        cluster_packet_id:
             Unique identifier for a cluster packet.  This is normally included in filenames to
             assure uniqueness when saving cluster data to disk.
-        sample: beers_utils.sample.Sample
+        sample:
             A sample object representing the sample ancestor of the contained clusters
-        clusters: list of Cluster
+        clusters:
             The contained clusters
         """
         self.cluster_packet_id = cluster_packet_id
@@ -47,7 +47,7 @@ class ClusterPacket:
         return f"cluster_packet_id: {self.cluster_packet_id}, sample_name: {self.sample.sample_name}, " \
                f"# of clusters: {len(self.clusters)}"
 
-    def serialize(self, file_path):
+    def serialize(self, file_path: str):
         """
         Cluster packets are serialized and saved to the file system and likewise de-serialized from the file system.
         The serialized data is written, in compressed form, to a gzip file.  The first line contains the cluster packet
@@ -56,7 +56,7 @@ class ClusterPacket:
 
         Parameters
         ----------
-        file_path: str
+        file_path:
             location of the file into which the serialized, compressed data is to go.
         """
         with gzip.open(file_path, 'wb') as obj_file:
@@ -67,16 +67,16 @@ class ClusterPacket:
                 obj_file.write("-\n".encode())
 
     @staticmethod
-    def deserialize(file_path, skip_base_counts=False):
+    def deserialize(file_path: str, skip_base_counts: bool=False) -> 'ClusterPacket':
         """
-        This method re-rendered that serialized, compressed data found in the gzipped file located via the given
+        Deserialize the compressed data found in the gzipped file located via the given
         file path, into a fully restored object of the ClusterPacket class.
 
         Parameters
         ----------
-        file_path: str
+        file_path:
             The locatation of the gzipped file containing the serialized object.
-        skip_base_counts: bool
+        skip_base_counts:
             if True, don't load base counts (for memory efficiency)
 
         Returns

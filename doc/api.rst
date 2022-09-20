@@ -1,3 +1,17 @@
+Cluster
+-------
+.. automodule:: beers.cluster
+    :members:
+
+.. automodule:: beers.cluster_packet
+    :members:
+
+
+Flowcell
+--------
+.. automodule:: beers.flowcell
+    :members:
+
 Sequence Pipeline
 -----------------------------
 
