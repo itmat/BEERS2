@@ -188,7 +188,6 @@ rule create_cluster_packet:
 
 rule sequence_cluster_packet:
     input:
-        validation = "sequence_pipeline/validated.flag",
         cluster_packet = "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
     output:
         cluster_packet = "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
