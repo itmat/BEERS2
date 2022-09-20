@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'CAMPAREE'
-copyright = '2019, Greg Grant, Nick Lahens, Soumyashant Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
+copyright = '2022, Greg Grant, Nick Lahens, Soumyashant Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
 author = 'Greg Grant, Nick Lahens, Soumyashant Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence'
 
 # The short X.Y version
@@ -78,7 +78,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -132,7 +132,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'BEERS20.tex', 'CAMPAREE Documentation',
+    (master_doc, 'BEERS2.tex', 'CAMPAREE Documentation',
      'Greg Grant, Nick Lahens, Soumyashant Nayak, Dimitra Sarantopoulou, Thomas Brooks, Cris Lawrence', 'manual'),
 ]
 
@@ -142,7 +142,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'beers20', 'CAMPAREE Documentation',
+    (master_doc, 'beers2', 'CAMPAREE Documentation',
      [author], 1)
 ]
 
@@ -153,8 +153,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'BEERS20', 'CAMPAREE Documentation',
-     author, 'BEERS20', 'One line description of project.',
+    (master_doc, 'BEERS2', 'CAMPAREE Documentation',
+     author, 'BEERS2', 'One line description of project.',
      'Miscellaneous'),
 ]
 
