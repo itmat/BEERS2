@@ -68,9 +68,9 @@ class SequencePipeline():
         Parameters
         ----------
         configuration:
-            dictionary of the configuration data relevant to this pipeline stage.
+            json-like object of the configuration data relevant to this pipeline stage.
         global_config:
-            dictionary of the full configuration data
+            json-like object of the full configuration data
         input_cluster_packet:
             the cluster packet to run through this pipeline stage
         output_packet_path:

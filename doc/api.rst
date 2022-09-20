@@ -1,3 +1,8 @@
+Library Prep Pipeline
+---------------------
+.. automodule:: beers.library_prep.library_prep_pipeline
+    :members:
+
 Cluster
 -------
 .. automodule:: beers.cluster
@@ -5,7 +10,6 @@ Cluster
 
 .. automodule:: beers.cluster_packet
     :members:
-
 
 Flowcell
 --------
@@ -28,4 +32,12 @@ Sequence by Synthesis Step
 -----------------------------
 
 .. automodule:: beers.sequence.sequence_by_synthesis_step
+    :members:
+
+
+FastQ and SAM generation
+-----------------------------
+.. automodule:: beers.fast_q
+    :members:
+.. automodule:: beers.sam
     :members:

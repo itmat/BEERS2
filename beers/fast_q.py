@@ -6,6 +6,7 @@ import collections
 from beers.cluster_packet import ClusterPacket
 from beers.utilities.demultiplex import demultiplexer
 from beers_utils.constants import CONSTANTS
+from beers.flowcell import Flowcell
 
 
 class FastQ:
@@ -15,17 +16,32 @@ class FastQ:
     processed.
     """
 
-    def __init__(self, flowcell, cluster_packet_directory, fastq_output_directory, sample_id, sample_barcodes):
+    def __init__(
+            self,
+            flowcell: Flowcell,
+            cluster_packet_directory: str,
+            fastq_output_directory: str,
+            sample_id: str,
+            sample_barcodes: dict[str, tuple[str, str]],
+        ):
         """
         The FastQ object requires the flowcell, the top level directory housing the cluster packets that have
         emerged from the sequence pipeline (they will be in the data directory under the sequence pipeline stage name),
         and the output directory for the fasta files (they will be in the data directory under the controller stage
         name).
-        :param flowcell: The flowcell to which this fastQ object applies.
-        :param cluster_packet_directory: The location of the cluster packet files coming from the sequence pipeline.
-        :param fastq_output_directory: The location where the FASTQ reports are filed.
-        :param sample_id: id of the sample whose fastq files we generate
-        :param sample_barcodes: dict mapping sample ids to barcodes as tuple (i5, i7). Demultiplexing is done off these
+
+        Parameters
+        ----------
+        flowcell:
+            The flowcell to which this fastQ object applies.
+        cluster_packet_directory:
+            The location of the cluster packet files coming from the sequence pipeline.
+        fastq_output_directory:
+            The location where the FASTQ reports are filed.
+        sample_id:
+            id of the sample whose fastq files we generate
+        sample_barcodes:
+            dict mapping sample ids to barcodes as tuple (i5, i7). Demultiplexing is done off these
         """
         self.flowcell = flowcell
         self.cluster_packet_directory = cluster_packet_directory
@@ -33,7 +49,7 @@ class FastQ:
         self.sample_id = sample_id
         self.sample_barcodes = sample_barcodes
 
-    def generate_report(self, sort_by_coordinates=False):
+    def generate_report(self, sort_by_coordinates: bool=False):
         """
         The principal method of this object generates one or two reports depending upon whether paired end reads are
         called for.  All the information needed to create the FASTQ files is found in the cluster packets themselves.
@@ -45,8 +61,12 @@ class FastQ:
 
         Output files are named according to barcode_S#_L#_R#.fastq specifying sample, lane and read direction numbers.
 
-        :param sort_by_coordinates: Whether to sort output by coordinates, as would typically be done with a fastq
-                file from Illumina. Default: False. Setting this to True will consume considerably more memroy
+
+        Parameters
+        ----------
+        sort_by_coordinates:
+                Whether to sort output by coordinates, as would typically be done with a fastq
+                file from Illumina. Default: False. Setting this to True will consume considerably more memory
                 as all reads are read in at once.
         """
         cluster_packet_file_paths = glob.glob(f'{self.cluster_packet_directory}{os.sep}**{os.sep}*.gzip',

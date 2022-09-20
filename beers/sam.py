@@ -7,6 +7,7 @@ from beers.cluster_packet import ClusterPacket
 from beers_utils.general_utils import GeneralUtils
 from beers_utils.constants import CONSTANTS
 from beers.utilities.demultiplex import demultiplexer
+from beers.flowcell import Flowcell
 
 class SAM:
     """
@@ -15,17 +16,32 @@ class SAM:
     processed.
     """
 
-    def __init__(self, flowcell, cluster_packet_directory, sam_output_directory, sample_id, sample_barcodes):
+    def __init__(
+            self,
+            flowcell: Flowcell,
+            cluster_packet_directory: str,
+            sam_output_directory: str,
+            sample_id: str,
+            sample_barcodes: dict[str, tuple[str, str]],
+        ):
         """
         The SAM object requires the flowcell, the top level directory housing the cluster packets that have
         emerged from the sequence pipeline (they will be in the data directory under the sequence pipeline stage name),
         and the output directory for the fasta files (they will be in the data directory under the controller stage
         name).
-        :param flowcell: The flowcell to which this SAM object applies.
-        :param cluster_packet_directory: The location of the cluster packet files coming from the sequence pipeline.
-        :param sam_output_directory: The location where the SAM reports are filed.
-        :param sample_id: ID of the sample we are making SAMs for
-        :param sample_barcodes: dictionary mapping sample id to barcode as a string like f'{i5}+{i7}'
+
+        Parameters
+        ----------
+        flowcell:
+            The flowcell to which this SAM object applies.
+        cluster_packet_directory:
+            The location of the cluster packet files coming from the sequence pipeline.
+        sam_output_directory:
+            The location where the FASTQ reports are filed.
+        sample_id:
+            id of the sample whose SAM files we generate
+        sample_barcodes:
+            dict mapping sample ids to barcodes as tuple (i5, i7). Demultiplexing is done off these
         """
         self.flowcell = flowcell
         self.cluster_packet_directory = cluster_packet_directory
@@ -42,11 +58,16 @@ class SAM:
         affixed to the lanes of interest. The remaining clusters are sorted by their coordinates and each entry is written to
         the SAM file.
 
-        :param reference_seqs: dictionary mapping reference names to reference sequences, used for SAM header
-        :param BAM: if true, output in BAM format, else SAM (default)
-        :param sort_by_coordinates: Whether to sort output by coordinates, as would typically be done with a fastq
-                file from Illumina. Default: False. Setting this to True will consume considerably more memroy
-                as all reads are read in at once.
+        Parameters
+        ----------
+        reference_seqs:
+            dictionary mapping reference names to reference sequences, used for SAM header
+        BAM:
+            if true, output in BAM format, else SAM (default)
+        sort_by_coordinates:
+            Whether to sort output by coordinates, as would typically be done with a fastq
+            file from Illumina. Default: False. Setting this to True will consume considerably more memory
+            as all reads are read in at once.
         """
         sam_header = {
             "HD": { "VN": "1.0"},

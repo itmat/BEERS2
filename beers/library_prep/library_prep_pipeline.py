@@ -22,8 +22,7 @@ from camparee.molecule_maker import MoleculeMakerStep
 class LibraryPrepPipeline():
     """
     The class runs all the steps in the library_prep pipeline as described and wired together in the configuration
-    file.  The point of entry into this class is the static method main().  In HPC scenarios, this object's main is
-    invoked on each node included in the compute, with a different molecule packet delivered to each node.
+    file.  The point of entry into this class is the static method main().
     """
 
     stage_name = "library_prep_pipeline"
@@ -34,10 +33,17 @@ class LibraryPrepPipeline():
         pass
 
     @staticmethod
-    def validate(configuration, global_config):
+    def validate(configuration: dict, global_config: dict):
         """
         Static method to run each step validate process to identify errant parameters.  If any errors are found,
-        a validation exception is raised.
+        a BeersLibraryPrepValidationException is raised. Prints error messages to stderr.
+
+        Parameters
+        ----------
+        configuration:
+            json-like object containing the SequencePipeline-specific configuration
+        global_config:
+            json-like object containing the full config of the BEERS run
         """
         #if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
         #    raise BeersLibraryPrepValidationException("Validation error in molecule packet: see stderr for details.")
@@ -61,20 +67,32 @@ class LibraryPrepPipeline():
         if not validation_okay:
             raise BeersLibraryPrepValidationException("Validation error: see stderr for details.")
 
-    def execute(self, configuration, global_config, output_directory, log_directory, input_molecule_packet, rng):
+    def execute(self,
+            configuration: dict,
+            global_config: dict,
+            output_directory: str,
+            log_directory: str,
+            input_molecule_packet: MoleculePacket,
+            rng: np.random.Generator,
+        ):
         """
-        Opens the pipeline log for writing and serially runs the execute method of each step object found in the
-        step list generated when this pipeline stage was initialized.  The final product (a modified molecule
-        packet) is serialized into a data file.
-        Note that the directory structure
-        has already been created by the controller.  The steps described in the configuration dictionary are
-        instantiated and those instantiated steps are added to a list for later invocation.
-        :param configuration:  dictionary of the configuration data relevant to this pipeline stage.
-        :param global_config: dictionary of full config data
-        :param output_directory: file path to directory where results (molecule packet and quant file) should be output to
-        :param log_directory: file path to write the log file to
-        :param input_molecule_packet: the molecule packet to run through this pipeline stage
-        :param rng: random number generator object
+        Performs the Sequence Pipeline on a MoleculePacket.
+
+        Parameters
+        ----------
+        configuration:
+            json-like object of the configuration data relevant to this pipeline stage.
+        global_config:
+            json-like object of the full configuration data
+        output_directory:
+            the folder to serialize the results to as 'library_prep_pipeline_results_molecule_pkt###.txt'
+            as well as the .quant_file for both results and inputs.
+        log_directory:
+            directory to output logs to
+        input_molecule_packet:
+            the molecule packet to run through this pipeline stage
+        rng:
+            random number generator to use
         """
 
         original_ids = set(str(m.molecule_id) for m in input_molecule_packet.molecules)
@@ -120,12 +138,15 @@ class LibraryPrepPipeline():
         molecule_packet.write_quantification_file(output_quant_path)
         print(f"Output final sample quantification to {output_quant_path}")
 
-    def print_summary(self, original_ids, sample, elapsed_time=None):
+    def print_summary(self, original_ids: set[int], sample: list[Molecule], elapsed_time:float=None):
         """Output a summary of the sample (number of molecules, time taken, etc.).
 
-        :param sample: Molecule IDs from input molecule packet
-        :param sample:
-        :param elapsed_time:
+        original_ids:
+            Molecule IDs from input molecule packet
+        sample:
+            list of molecules in the sample
+        elapsed_time:
+            elapsed time to display, if not None
         """
         if elapsed_time is not None:
             print(f"Step took {elapsed_time:.3} seconds")
@@ -144,27 +165,49 @@ class LibraryPrepPipeline():
         print(f">{size_bin_cutoffs[-2]}: {size_counts[-1]}")
 
     @staticmethod
-    def main(seed, configuration, global_configuration, output_directory, log_directory,
-             molecule_packet_filename, packet_id, distribution_directory=None,
-             molecules_per_packet_from_distribution=10000, sample_id=None,
-             ):
+    def main(
+            seed: int,
+            configuration: dict,
+            global_configuration: dict,
+            output_directory: str,
+            log_directory: str,
+            molecule_packet_filename: str,
+            packet_id: str,
+            distribution_directory: str = None,
+            molecules_per_packet_from_distribution: int = 10000,
+            sample_id: str= None,
+            ):
         """
         This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
         directory containing the relevant parts of the user's configuration file, unmarshalls a molecule packet from
         the provided molecule packet filename, initializes and validates the library prep pipeline stage and then
         executes it for the molecule packet.
-        :param seed: value to use as the seed for the random number generator
-        :param configuration: the json string containing the configration data specific to the library prep pipeline
-        :param global_configuration: json string containing the configuration data for the whole run
-        :param output_directory: path to directory where we will output molecule files and quant files
-        :param log_directory: path to log directories
-        :param directory_structure: instructions for creating the scaffolding needed to house the pipeline data and logs
-        :param molecule_packet_filename: the file from which to unmarshall the molecule packet
-        :param packet_id: id number to assign the packet
-        :param distribution_directory: directory of CAMPAREE output distribution datas from which to generate molecules
+
+        Parameters
+        ----------
+        seed:
+            value to use as the seed for the random number generator
+        configuration:
+            the json string containing the configration data specific to the library prep pipeline
+        global_configuration:
+            json string containing the configuration data for the whole run
+        output_directory:
+            path to directory where we will output molecule files and quant files
+        log_directory:
+            path to log directories
+        directory_structure:
+            instructions for creating the scaffolding needed to house the pipeline data and logs
+        molecule_packet_filename:
+            the file from which to unmarshall the molecule packet
+        packet_id:
+            id number to assign the packet
+        distribution_directory:
+            directory of CAMPAREE output distribution datas from which to generate molecules
             (default None, must supply molecule_packet_filename instead)
-        :param molecules_per_packet_from_distribution: packet size to generate if using distributions
-        :param sample_id: id number of the sample (if None, derive from the molecule packet provided)
+        molecules_per_packet_from_distribution:
+            packet size to generate if using distributions
+        sample_id:
+            id number of the sample (if None, derive from the molecule packet provided)
         """
 
         configuration = json.loads(configuration)
