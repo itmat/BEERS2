@@ -138,7 +138,7 @@ class LibraryPrepPipeline():
         molecule_packet.write_quantification_file(output_quant_path)
         print(f"Output final sample quantification to {output_quant_path}")
 
-    def print_summary(self, original_ids: set[int], sample: list[Molecule], elapsed_time:float=None):
+    def print_summary(self, original_ids: set[str], sample: list[Molecule], elapsed_time:float=None):
         """Output a summary of the sample (number of molecules, time taken, etc.).
 
         original_ids:
@@ -166,16 +166,16 @@ class LibraryPrepPipeline():
 
     @staticmethod
     def main(
-            seed: int,
-            configuration: dict,
-            global_configuration: dict,
+            seed: str,
+            configuration: str,
+            global_configuration: str,
             output_directory: str,
             log_directory: str,
             molecule_packet_filename: str,
             packet_id: str,
+            sample_id: str,
             distribution_directory: str = None,
             molecules_per_packet_from_distribution: int = 10000,
-            sample_id: str= None,
             ):
         """
         This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
@@ -201,29 +201,29 @@ class LibraryPrepPipeline():
             the file from which to unmarshall the molecule packet
         packet_id:
             id number to assign the packet
+        sample_id:
+            id number of the sample
         distribution_directory:
             directory of CAMPAREE output distribution datas from which to generate molecules
             (default None, must supply molecule_packet_filename instead)
         molecules_per_packet_from_distribution:
             packet size to generate if using distributions
-        sample_id:
-            id number of the sample (if None, derive from the molecule packet provided)
         """
 
-        configuration = json.loads(configuration)
-        global_configuration = json.loads(global_configuration)
-        molecule_maker_parameters = global_configuration['molecule_maker_parameters']
-        packet_id = None if packet_id == 'None' else int(packet_id)
+        config = json.loads(configuration)
+        global_config = json.loads(global_configuration)
+        molecule_maker_parameters = global_config['molecule_maker_parameters']
+        packet_id_num = int(packet_id)
 
         # Seed the RNG by the given (global) seed, plus the sample ID, the packet ID, and a constant for the library prep stage of 1
         # This ensures that each packet is repeatable but that each gets their own seed state and that the seed state differs
         # from each of the stages it goes through.
-        seed_list = [seed, sample_id, packet_id, 1]
+        seed_list = [seed, sample_id, packet_id_num, 1]
         print(f"Initializing with seed {seed_list}")
-        rng = np.random.default_rng(seed_list)
+        rng = np.random.default_rng(seed_list) # type: ignore
 
         if molecule_packet_filename:
-            molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id)
+            molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id_num)
         elif distribution_directory:
             distribution_dir = pathlib.Path(distribution_directory)
             sample = Sample(
@@ -251,7 +251,7 @@ class LibraryPrepPipeline():
         else:
             raise BeersLibraryPrepValidationException("Neither molecule packet filename nor distribution directory provided")
         library_prep_pipeline = LibraryPrepPipeline()
-        library_prep_pipeline.execute(configuration, global_configuration, output_directory, log_directory, molecule_packet, rng)
+        library_prep_pipeline.execute(config, global_config, output_directory, log_directory, molecule_packet, rng)
 
 class BeersLibraryPrepValidationException(Exception):
     pass
