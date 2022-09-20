@@ -3,11 +3,10 @@ scipy
 roman
 pysam
 pandas
-plotly
-dash
 matplotlib
 termcolor
 prettytable
 Sphinx
+sphinx-rtd-theme
 Cython
 snakemake

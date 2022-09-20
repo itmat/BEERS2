@@ -1,4 +1,2 @@
 -r requirements.txt
-pandas==0.23.3
-plotly==3.1.0
-dash==0.23.1
+pandas
