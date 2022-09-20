@@ -1,4 +1,5 @@
 import numpy as np
+from beers.cluster_packet import ClusterPacket
 
 class BridgeAmplificationStep:
     """
@@ -10,20 +11,19 @@ class BridgeAmplificationStep:
 
     name = "Bridge Amplification Step"
 
-    def __init__(self, step_log_file_path, parameters, global_config):
+    def __init__(self, step_log_file_path: str, parameters: dict, global_config: dict):
         """
         Initializes the step with a file path to the step log and a dictionary of parameters.  Missing parameters that
         control non-idealized behavior are replaced with default values that produce idealized step behavior.
 
         Parameters
         ----------
-        step_log_file_path: string
+        step_log_file_path:
             location of step logfile
-        parameters: json-like
-            Dictionary of parameters.  Any required parameters not provided are identified by the
-            validate method.
-        global_config: json-like
-            A dictionary of general parameters, not specific to the step
+        parameters:
+            json-like object of parameters.
+        global_config:
+            json-like object of configuration for the overall BEERS2 run.
         """
         self.log_filename = step_log_file_path
         self.cycles = parameters.get("cycles")
@@ -32,21 +32,21 @@ class BridgeAmplificationStep:
         print(f"{BridgeAmplificationStep.name} instantiated")
 
 
-    def execute(self, cluster_packet, rng):
+    def execute(self, cluster_packet: ClusterPacket, rng: np.random.Generator) -> ClusterPacket:
         """
         Amplifies the molecule in the cluster for each cluster in the cluster packet by the given number of cycles
         and keeps track of which base positions have incurred substitutions
 
         Parameters
         ----------
-        cluster_packet:  beers.cluster_packet.ClusterPacket
+        cluster_packet:
             The input cluster packet
-        rng: numpy.random.Generator
+        rng:
             Random number generator instance
 
         Returns
         ------
-        ClusterPacket
+            The updated cluster packet
         """
         for cluster in cluster_packet.clusters:
             # Generate the initial base_count values
@@ -92,7 +92,7 @@ class BridgeAmplificationStep:
         return errors
 
 
-def multinomial(n, p, rng):
+def multinomial(n: np.ndarray, p: np.ndarray, rng: np.random.Generator):
     '''
     Partially vectorized version of np.random.multinomial, see
     https://stackoverflow.com/questions/55818845/fast-vectorized-multinomial-in-python
@@ -100,9 +100,9 @@ def multinomial(n, p, rng):
     Parameters
     ----------
 
-    n: ndarray
+    n:
         1-d array of non-negative integers denoting the 'number of experiments'
-    p: ndarray
+    p:
         1-d array of probabilities of each possibility being drawn
 
     Returns

@@ -8,7 +8,7 @@ from beers.cluster_packet import ClusterPacket
 class SequencePipeline():
     """
     The class runs all the steps in the sequence pipeline as described and wired together in the configuration
-    file.  The point of entry into this class is the static method main().
+    file. The point of entry into this class is the static method main().
     """
 
     stage_name = "sequence_pipeline"
@@ -16,18 +16,21 @@ class SequencePipeline():
 
     def __init__(self):
         """
-        Many initialization steps here include identifying the log and data directories and subdirectories so
-        that data and log files generated are placed in the correct locations.  Note that the directory structure
-        has already been created by the controller.  The steps described in the configuration dictionary are
-        instantiated and those instantialed steps are added to a list to further use.
         """
         pass
 
     @staticmethod
-    def validate(configuration, global_config):
+    def validate(configuration: dict, global_config: dict):
         """
         Static method to run each step validate process to identify errant parameters.  If any errors are found,
-        a validation exception is raised.
+        a BeersSequenceValidationException is raised. Prints error messages to stderr
+
+        Parameters
+        ----------
+        configuration:
+            json-like object containing the SequencePipeline-specific configuration
+        global_config:
+            json-like object containing the full config of the BEERS run
         """
         #if not all([molecule.validate() for molecule in self.molecule_packet.molecules]):
         #    raise BeersLibraryPrepValidationException("Validation error in molecule packet: see stderr for details.")
@@ -51,18 +54,31 @@ class SequencePipeline():
         if not validation_okay:
             raise BeersSequenceValidationException("Validation error: see stderr for details.")
 
-    def execute(self, configuration, global_config, input_cluster_packet, output_packet_path, log_directory, rng):
+    def execute(self,
+            configuration: dict,
+            global_config: dict,
+            input_cluster_packet: ClusterPacket,
+            output_packet_path: str,
+            log_directory: str,
+            rng: np.random.Generator,
+        ):
         """
-        Opens the pipeline log for writing and serially runs the execute method of each step object found in the
-        step list generated when this pipeline stage was initialized.  The final product (a cluster packet
-        modified with additional information) is serialized into a data file.
-        :param configuration: dictionary of the configuration data relevant to this pipeline stage.
-        :param global_config:  dictionary of the full configuration data
-        :param input_cluster_packet: the cluster packet to run through this pipeline stage
-        :param output_packet_path: the path to serialize the results to
-        :param log_directory: directory to output logs to
-        :param rng: rnadom number generator to use
-        :return:
+        Performs the Sequence Pipeline on a ClusterPacket.
+
+        Parameters
+        ----------
+        configuration:
+            dictionary of the configuration data relevant to this pipeline stage.
+        global_config:
+            dictionary of the full configuration data
+        input_cluster_packet:
+            the cluster packet to run through this pipeline stage
+        output_packet_path:
+            the path to serialize the results to
+        log_directory:
+            directory to output logs to
+        rng:
+            random number generator to use
         """
 
         log_directory = pathlib.Path(log_directory)
@@ -97,18 +113,31 @@ class SequencePipeline():
             log_file.write("Sequencing pipeline completed successfully\n")
 
     @staticmethod
-    def main(seed, configuration, global_configuration, input_packet_path, output_packet_path, log_directory):
+    def main(
+            seed: int,
+            configuration: dict,
+            global_configuration: dict,
+            input_packet_path: str,
+            output_packet_path: str,
+            log_directory: str
+        ):
         """
-        This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
-        directory containing the relevant parts of the user's configuration file, unmarshalls a cluster packet from
-        the provided cluster packet filename, initializes and validates the sequence pipeline stage and then
-        executes it for the cluster packet.
-        :param seed: value to use as the seed for the random number generator
-        :param configuration: the json string containing the configration data specific to the sequencing prep pipeline
-        :param global_configuration: json string containing the full configuratino of the entire run
-        :param input_packet_path: the file path to the cluster packet to read in
-        :param output_packet_path: the file path to output the packet to
-        :param log_directory: directory path to output logs to
+        Prepares the pipeline, loads the cluster packet, and then executes() the sequence pipeline.
+
+        Parameters
+        ----------
+        seed:
+            value to use as the seed for the random number generator.
+        configuration:
+            the json-like object containing the configration data specific to the sequencing prep pipeline
+        global_configuration:
+            json-like object  containing the full configuratino of the entire run
+        input_packet_path:
+            the file path to the cluster packet to read in
+        output_packet_path:
+            the file path to output the packet to
+        log_directory:
+            directory path to output logs to
         """
 
         # Normally the cluster_packet_id should be derived from the serialized cluster_packet in the file.  But if
