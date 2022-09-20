@@ -83,7 +83,7 @@ class ClusterPacket:
         -------
         ClusterPacket
         """
-        cluster_lines = []
+        cluster_lines: list[str] = []
         clusters = []
         cluster_packet_id = 0
         sample = None

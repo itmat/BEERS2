@@ -64,7 +64,7 @@ class Cluster:
     molecule_count: int =1
     diameter: int = 0
     called_sequences: list[str] = field(default_factory=list)
-    called_barcode: list[str] = field(default_factory=list)
+    called_barcode: Optional[str] = None
     quality_scores: list[str] = field(default_factory=list)
     read_starts: list[int] = field(default_factory=list)
     read_cigars: list[str] = field(default_factory=list)
@@ -135,7 +135,7 @@ class Cluster:
         ndarray
             tuple of base counts in ACGT order.
         """
-        return tuple(self.base_counts[:,index])
+        return tuple(self.base_counts[:,index])  # type: ignore
 
     def __str__(self) -> str:
         """
@@ -227,8 +227,12 @@ class Cluster:
                 read_strands.append(read_strand)
             elif line.startswith("#"):
                 if line_number == 0:
-                    cluster_id, molecule_count, diameter, lane, called_barcode \
+                    cluster_id_, molecule_count_, diameter_, lane_, called_barcode \
                         = line[1:].rstrip('\n').split("\t")
+                    cluster_id = int(cluster_id_)
+                    molecule_count = int(molecule_count_)
+                    diameter = int(diameter_)
+                    lane = int(lane_)
                 if line_number == 1:
                     coordinates = tuple(int(x) for x in (line[1:].rstrip('\n').split("\t")))
                 if line_number == 2:
@@ -251,7 +255,7 @@ class Cluster:
                 cluster_id = cluster_id,
                 molecule = molecule,
                 lane = int(lane),
-                coordinates = coordinates,
+                coordinates = coordinates, # type: ignore
                 molecule_count = int(molecule_count),
                 diameter = int(diameter),
                 called_sequences = called_sequences,

@@ -1,4 +1,5 @@
 import os
+import io
 import glob
 import contextlib
 import collections
@@ -115,15 +116,15 @@ class FastQ:
 
             # Iterate through all the cluster packets
             for clusters in cluster_generator():
-                for direction in CONSTANTS.DIRECTION_CONVENTION:
-                    for lane in self.flowcell.lanes_to_use:
-                        lane_clusters = [cluster for cluster in clusters if cluster.lane == lane]
+                for direction_num in CONSTANTS.DIRECTION_CONVENTION:
+                    for lane_num in self.flowcell.lanes_to_use:
+                        lane_clusters = [cluster for cluster in clusters if cluster.lane == lane_num]
 
                         for cluster in lane_clusters:
-                            cluster.generate_fasta_header(direction)
+                            cluster.generate_fasta_header(direction_num)
                             barcode = cluster.called_barcode
-                            fastq = demuxes[direction][lane](barcode)
-                            fastq.write(cluster.header + "\n")
-                            fastq.write(cluster.called_sequences[direction - 1] + "\n")
-                            fastq.write("+\n")
-                            fastq.write(cluster.quality_scores[direction - 1] + "\n")
+                            fastq_file = demuxes[direction_num][lane_num](barcode)
+                            fastq_file.write(cluster.header + "\n")
+                            fastq_file.write(cluster.called_sequences[direction_num - 1] + "\n")
+                            fastq_file.write("+\n")
+                            fastq_file.write(cluster.quality_scores[direction_num - 1] + "\n")

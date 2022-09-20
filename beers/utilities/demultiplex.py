@@ -1,6 +1,12 @@
 import functools
+import typing
 
-def demultiplexer(lookup_dict, max_allowed_errors=1):
+T = typing.TypeVar("T")
+
+def demultiplexer(
+        lookup_dict: dict[str, T],
+        max_allowed_errors: int = 1
+    ) -> typing.Callable[[str], T]:
     '''
     Demultiplexer based off a barcode allowing some number of mismatch errors
     Finds the appropriate object in lookup_dict (which maps exact barcodes to some objects,
