@@ -1,6 +1,6 @@
 from io import StringIO
 import math
-from typing import Optional
+from typing import Optional, ClassVar
 from dataclasses import dataclass, field
 from contextlib import closing
 import numpy as np
@@ -56,7 +56,6 @@ class Cluster:
         molecule sequence.
     """
 
-    next_cluster_id = 1  # Static variable for creating increasing cluster id's
     cluster_id: int
     molecule: Molecule
     lane: int
@@ -70,6 +69,8 @@ class Cluster:
     read_cigars: list[str] = field(default_factory=list)
     read_strands: list[str] = field(default_factory=list)
     base_counts: Optional[np.ndarray] = None
+
+    next_cluster_id: ClassVar[float] = 1  # Static variable for creating increasing cluster id's
 
     def initialize_base_counts(self):
         """
