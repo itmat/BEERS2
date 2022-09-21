@@ -5,6 +5,15 @@ class BridgeAmplificationStep:
     """
     This step serves to simulate the amplification of the molecule in each cluster on the flowcell.
     Introducing substitutions is allowed via a substitution_rate parameter.
+
+    Config Example::
+
+        # Number of cycles to perform. Generates 2^N molecules in the cluster
+        # via a PCR-like bridge amplification process.
+        cycles: 10
+        # Substitution rate per base in the cluster formation
+        # No indels are generated here, for computation simplicity.
+        substitution_rate: 0.01
     """
 
     CYCLE_AT_WHICH_TO_IGNORE_SUBS = 4
