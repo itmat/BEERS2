@@ -58,6 +58,46 @@ class FragmentStep:
     upon the length of the molecule. Values >1 indicate that longer molecules
     are more likely to fragment than smaller ones, biasing towards larger
     fragment sizes.
+
+    Config example::
+
+        parameters:
+            # Fragmentation methods are available.
+            # 'uniform' fragments at each base equally and is the default
+            method: uniform
+            # The 'lambda' parameter is the rate parameter for an exponential distribution
+            # which determines the time it takes until a molecule to fragments.
+            # Molecules which would take longer then 'runtime' to fragment, do not fragment.
+            # Molecules may also fragment multiple times if lambda is high enough.
+            lambda: 0.005
+            runtime: 1
+            # Since fragmentation generates many very small fragments that will
+            # be quickly lost in the following steps, we have the option to
+            # drop those fragments immediately. Setting this value can significantly
+            # decrease runtime and memory requirements.
+            min_frag_size: 20
+
+            # If method == 'beta', then the fragmentation sites can be biased within
+            # the molecule, according to a beta distribution.
+            # NOTE: using 'beta' can generate unusual coverage plots since there are
+            # significant edge effects around the transcript. However, it can be used
+            # to give a more realistic fragment distribution.
+            #
+            # If using 'beta', you must also specify the following:
+            #
+            # The parameters for the beta distribution. Set these so that
+            # A = B > 0 to bias towards fragmentation in the middle of the fragment,
+            # with larger values biasing further towards the middle.
+            # If A > B, then would bias towards the 5' end instead.
+            # beta_A: 3.0
+            # beta_B: 3.0
+            #
+            # And the N factor allows a non-linear fragmentation rate depending
+            # upon the length of the molecule. Values >1 indicate that longer molecules
+            # are more likely to fragment than smaller ones, biasing towards larger
+            # fragment sizes.
+            # beta_N: 2.0
+
     """
 
     name = "Fragment Step"

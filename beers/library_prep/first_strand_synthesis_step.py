@@ -17,6 +17,32 @@ class FirstStrandSynthesisStep:
     duplicated as cDNA. Imperfect means that primers are placed randomly (at a rate of 'primers_per_kb')
     and the 5'-most one is extended to create the molecule, potentially losing some of the 5' end of the
     molecule.
+
+    Configuration example::
+
+        parameters:
+            # If 'perfect_priming' is true, then we always prime
+            # exactly on the 5' most end of the molecule and the
+            # cDNA matches perfectly the original molecule
+            # If true, all other parameters are ignored.
+            perfect_priming: false
+
+            # PPM matrix describing biases of the priming sites
+            # Values must sum to 1 in each base. Length of the PPM
+            # determines the primer lengths.
+            # See Kasper et all, 2010 PMID: 20395217 for example
+            # observation of these biases in fragment start positions.
+            # If no bias is desired, set all values to 0.25.
+            position_probability_matrix:
+                A: [0.50, 0.1, 0.40, 0.30, 0.25, 0.15]
+                C: [0.20, 0.5, 0.3 , 0.25, 0.25, 0.15]
+                G: [0.15, 0.1, 0.15, 0.25, 0.25, 0.20]
+                T: [0.15, 0.3, 0.15, 0.20, 0.25, 0.50]
+
+            # Rate of priming: approximate number of primers that
+            # will bind (if bias-free) per kilobase of the fragment
+            # Higher numbers will loose less of the 5' side.
+            primes_per_kb: 50
     '''
 
     name = "First Strand Synthsis Step"

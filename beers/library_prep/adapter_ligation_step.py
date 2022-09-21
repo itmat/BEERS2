@@ -25,6 +25,24 @@ class AdapterLigationStep:
 
     Config Example::
 
+        samples:
+            '1':
+                # Sample one configuration
+                barcodes:
+                    # Barcodes are used by AdapterLigationStep
+                    # Each sample should have unique (i5, i7) pair of barcodes
+                    # These get sequenced to determine which sample the read came from
+                    # Typical examples of these can be founda at:
+                    # https://support-docs.illumina.com/SHARE/AdapterSeq/Content/SHARE/AdapterSeq/TruSeq/UDIndexes.htm# TODO: set this value
+                    i5: AGCGCTAG
+                    i7: AACCGCGG
+            '2':
+                # Sample 2 configuration, same as above
+                barcodes:
+                    i5: GATATCGA
+                    i7: TTATAACC
+
+
         resources:
             pre_i5_adapter: AATGATACGGCGACCACCGAGATCTACAC
             post_i5_adapter: ACACTCTTTCCCTACACGACGCTCTTCCGATCT

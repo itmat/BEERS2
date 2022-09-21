@@ -50,8 +50,8 @@ class SizingStep:
 
     def __init__(self, step_log_file_path, parameters, global_config):
         self.log_filename = step_log_file_path
-        self.min_length = parameters.get("min_length")
-        self.max_length = parameters.get("max_length")
+        self.min_length = parameters["min_length"]
+        self.max_length = parameters["max_length"]
         self.select_all_start_length = parameters.get("select_all_start_length", self.min_length)
         self.select_all_end_length = parameters.get("select_all_end_length", self.max_length)
         self.global_config = global_config
