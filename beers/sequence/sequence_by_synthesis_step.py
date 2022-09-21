@@ -3,9 +3,14 @@ import functools
 import numpy as np
 import scipy.stats
 
-import pyximport
-pyximport.install(language_level=3, reload_support=True)
-from beers.sequence.sequence_by_synthesis_helper import get_frac_skipped as get_frac_skipped_cython
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    import pyximport
+    pyximport.install(language_level=3, reload_support=True)
+
+    from beers.sequence.sequence_by_synthesis_helper import get_frac_skipped as get_frac_skipped_cython
 
 import beers_utils
 import beers_utils.molecule
@@ -39,6 +44,22 @@ class SequenceBySynthesisStep:
     Which together give all the read information necessary to make a fastq
     and the ideal true alignment necessary to report as a SAM file with
     true alignment.
+
+    Config Example::
+
+        parameters:
+            # Determines which read is the forward and which is the reverse read
+            # NOTE: currently only 'true' is implemented
+            forward_is_5_prime: true
+            # Whether to sequence both ends or just one
+            # NOTE: currently only 'true' is implemented
+            paired_ends: true
+            # Length of the reads to generate, in bases
+            read_length: 100
+            # The rate of phasing, either forward (skip) or backwards (drop)
+            # per base per molecule
+            skip_rate: 0.002
+            drop_rate: 0.002
     """
 
     name = "Sequence By Synthesis Step"
