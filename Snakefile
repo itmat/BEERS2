@@ -23,8 +23,8 @@ import json
 if not config:
     raise Exception("No config provided - must pass `--configfile path/to/config.yaml` to snakemake to run pipeline")
 
-samples = config['samples']
-lanes =  config['flowcell']['lanes_to_use']
+samples = config['global']['samples']
+lanes =  config['sequence_pipeline']['flowcell']['lanes_to_use']
 seed = config['seed']
 
 @functools.cache
@@ -76,6 +76,11 @@ rule all:
             lane = lanes,
         ) if config['sequence_pipeline']['output'].get('output_sam', True) else [],
         expand(
+            "results/S{sample}_L{lane}.bam",
+            sample = samples.keys(),
+            lane = lanes,
+        ) if config['sequence_pipeline']['output'].get('output_bam', False) else [],
+        expand(
             "results/S{sample}_L{lane}_R1.fastq",
             sample = samples.keys(),
             lane = lanes,
@@ -102,8 +107,8 @@ for sample in samples.keys():
 # and print to standard error the reasons
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sequence.sequence_pipeline import SequencePipeline
-LibraryPrepPipeline.validate(config['library_prep_pipeline'], config)
-SequencePipeline.validate(config['sequence_pipeline'], config)
+LibraryPrepPipeline.validate(config['library_prep_pipeline'], config['global'])
+SequencePipeline.validate(config['sequence_pipeline'], config['global'])
 
 rule run_library_prep_packet_from_molecule_file:
     input:
@@ -115,7 +120,7 @@ rule run_library_prep_packet_from_molecule_file:
         outdir = "library_prep_pipeline/sample{sample}/from_molecule_files/",
         logdir = "library_prep_pipeline/sample{sample}/logs/",
         config = json.dumps(config['library_prep_pipeline']),
-        global_config = json.dumps(config),
+        global_config = json.dumps(config['global']),
         seed = seed,
     resources:
         mem_mb = 12_000
@@ -133,7 +138,7 @@ rule run_library_prep_packet_from_distribution:
         logdir = "library_prep_pipeline/sample{sample}/logs/",
         num_molecules_per_packet = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['num_molecules_per_packet'],
         config = json.dumps(config['library_prep_pipeline']),
-        global_config = json.dumps(config),
+        global_config = json.dumps(config['global']),
         seed = seed,
     resources:
         mem_mb = 12_000
@@ -154,7 +159,7 @@ rule create_cluster_packet:
         "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip",
     params:
         outdir = "sequence_pipeline/",
-        configuration = json.dumps(config),
+        configuration = json.dumps(config['sequence_pipeline']['flowcell']),
     script:
         "scripts/create_cluster_packets.py"
 
@@ -193,7 +198,8 @@ rule sequence_cluster_packet:
         cluster_packet = "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
     params:
         seed = seed,
-        config = json.dumps(config),
+        config = json.dumps(config['sequence_pipeline']),
+        global_config = json.dumps(config['global']),
         logdir = "sequence_pipeline/sample{sample}/logs/",
     resources:
         mem_mb = 12_000
@@ -204,7 +210,7 @@ rule create_sequencer_outputs_sam_or_bam:
     input:
         cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
-        reference_genome = try_absolute_and_relative_path(config['resources']['reference_genome_fasta']),
+        reference_genome = try_absolute_and_relative_path(config['global']['resources']['reference_genome_fasta']),
     output:
         expand("results/S{{sample}}_L{lane}.{{sequencer_output_filetype}}", lane=lanes),
     params:
@@ -219,7 +225,7 @@ rule create_sequencer_outputs_fastq:
     input:
         cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
-        reference_genome = try_absolute_and_relative_path(config['resources']['reference_genome_fasta']),
+        reference_genome = try_absolute_and_relative_path(config['global']['resources']['reference_genome_fasta']),
     output:
         # NOTE: fastq outputs have both R1 and R2 files to create
         expand("results/S{{sample}}_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),

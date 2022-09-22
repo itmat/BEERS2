@@ -13,10 +13,10 @@ config = snakemake.config
 sample = snakemake.wildcards.sample
 
 flowcell = beers.flowcell.Flowcell(
-        config['flowcell'],
+        config['sequence_pipeline']['flowcell'],
 )
 
-barcodes = {sample: (config['samples'][sample]['barcodes']['i5'] + "+" + config['samples'][sample]['barcodes']['i7'])}
+barcodes = {sample: (config['global']['samples'][sample]['barcodes']['i5'] + "+" + config['global']['samples'][sample]['barcodes']['i7'])}
 
 print(dir(snakemake))
 if filetype in ['sam', 'bam']:

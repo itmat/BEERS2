@@ -1,11 +1,10 @@
 ###### BEERS CONFIGURATION ######
 # The following file configures BEERS 2.
-
-
-# This file is setup to run the example 'baby' data, which is
-# meant as an example and to verify that BEERS2 work properly.
-# The data comes from mouse, with data stripped to several small
-# genomic regions.
+#
+# To set up this config for your BEERS2 run, please go through
+# all items marked with a TODO value. These contain file paths
+# that have to be set to use your data.
+# See also the config/baby.config.yaml file for a complete example.
 
 # The seed value initializes the random number generator
 # so that runs are reproducible. Any integer works.
