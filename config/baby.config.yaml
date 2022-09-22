@@ -11,6 +11,29 @@
 # so that runs are reproducible. Any integer works.
 seed: 100
 
+output:
+    # TODO: configure which output types you wish to have generated
+
+    # Output types, set to True to generate these data.
+    # The results appear in the 'results' directory
+    # FastQ Files are named as S1_L8_R2.fastq for example
+    # for sample 1, lane 8, read 2.
+    # Moreover, an 'unidentified' file is produced for each sample
+    # that contains reads that originated from that sample but whose
+    # demultiplexing step failed due to errors in the barcode reads.
+    output_fastq: true
+
+    # Set to true for sam/bam files containing the true alignments to
+    # the reference genome. Note that such alignments may no longer
+    # be replicable even in theory from just the reads, for exampe if
+    # most or all of the read is a PolyA tail and so cannot be aligned.
+    # This file still indicates where it came from
+    # Output is in the 'results' directory and named like S1_L8.sam
+    # for sample 1, lane 8. Like fastq, also has the potential for
+    # unidentified reads, stored in separate files.
+    output_sam: true
+    output_bam: false
+
 global:
     # global configuration contains configuration values that are available to all
     # steps of the Library Prep and Sequencing Pipeline.
@@ -327,29 +350,6 @@ sequence_pipeline:
     # The Sequence Pipeline takes clusters bound to the flowcell and turns them into
     # final, sequenced results, including fastq files or SAM files with the 'true'
     # alignments of the simulated molecules to the reference genome.
-    output:
-        # TODO: configure which output types you wish to have generated
-
-        # Output types, set to True to generate these data.
-        # The results appear in the 'results' directory
-        # FastQ Files are named as S1_L8_R2.fastq for example
-        # for sample 1, lane 8, read 2.
-        # Moreover, an 'unidentified' file is produced for each sample
-        # that contains reads that originated from that sample but whose
-        # demultiplexing step failed due to errors in the barcode reads.
-        output_fastq: true
-
-        # Set to true for sam files containing the true alignments to
-        # the reference genome. Note that such alignments may no longer
-        # be replicable even in theory from just the reads, for exampe if
-        # most or all of the read is a PolyA tail and so cannot be aligned.
-        # This file still indicates where it came from
-        # Output is in the 'results' directory and named like S1_L8.sam
-        # for sample 1, lane 8. Like fastq, also has the potential for
-        # unidentified reads, stored in separate files.
-        output_sam: true
-        output_bam: false
-
     steps:
     -   step_name: bridge_amplification_step.BridgeAmplificationStep
         # Bridge amplification takes a seed of a cluster and generates
