@@ -74,12 +74,12 @@ rule all:
             "results/S{sample}_L{lane}.sam",
             sample = samples.keys(),
             lane = lanes,
-        ),
+        ) if config['sequence_pipeline']['output'].get('output_sam', True) else [],
         expand(
             "results/S{sample}_L{lane}_R1.fastq",
             sample = samples.keys(),
             lane = lanes,
-        ),
+        ) if config['sequence_pipeline']['output'].get('output_fastq', True) else [],
 
 # Prep directories:
 lib_prep_dir = pathlib.Path("library_prep_pipeline")
