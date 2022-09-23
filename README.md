@@ -12,7 +12,7 @@ https://github.com/itmat/CAMPAREE
 Somewhere under your home directory, clone the develop branch of the BEERS2 repository:
 
 ```bash
-git clone --recurse-submodules git@github.com:itmat/BEERS2.git
+git clone --recursive https://github.com/itmat/BEERS2.git
 ```
 
 Now set up a virtual environment using python 3.10.
