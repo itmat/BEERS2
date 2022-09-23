@@ -12,8 +12,6 @@
 seed: 100
 
 output:
-    # TODO: configure which output types you wish to have generated
-
     # Output types, set to True to generate these data.
     # The results appear in the 'results' directory
     # FastQ Files are named as S1_L8_R2.fastq for example
@@ -41,9 +39,6 @@ global:
     samples:
         # Specify sample-specific information
         # Samples are given identfiers, which are strings like '1' or '2'
-        #
-        # TODO: for each sample you want to generate data from, enter it below
-        #       and provide barcodes for it.
         '1':
             # Sample one configuration
             barcodes:
@@ -90,8 +85,6 @@ global:
         # Reference genome FASTA is used to generate output BAM files, which require chromosome lengths.
         # Use the same FASTA as the BEERS input (such as from CAMPAREE) was
         # generated from.
-        # TODO: this needs to be set to a fasta of the genome you generate data for,
-        #       if generating SAM/BAM files (default)
         reference_genome_fasta: CAMPAREE/resources/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa
 
 library_prep_pipeline:
@@ -114,7 +107,7 @@ library_prep_pipeline:
         #   - sample2:
         #       molecule_file1.txt
         #       molecule_file2.txt
-        directory_path: /path/to/molecule_packetes/ # TODO: set this value
+        directory_path: resources/example_baby_mouse/
 
         # Second, we can provide CAMPAREE sample directories
         # Which instead contain the information to generate new molecules
@@ -122,11 +115,6 @@ library_prep_pipeline:
         from_distribution_data:
             # Specify, for each sample, what molecule data to generate (if any)
             # Samples here should correspond to the 'samples' entry above
-            #
-            # TODO: for each sample specified in the 'samples' section above
-            #       indicate how many packets and molecules to generate for it
-            #       from the CAMPAREE output distributions. If only using
-            #       molecule files as input, set num_packets: 0 for all samples
             '1':
                 # Number of packets to generate.
                 # If 0, don't generate any and just use the provided molecule files
@@ -136,15 +124,15 @@ library_prep_pipeline:
                 # Increasing this number increases the amount of work done per job.
                 # Generally want to keep this under 200000 to not run out of memory.
                 # If memory usage errors occur, reducing this can help.
-                num_molecules_per_packet: 10000
+                num_molecules_per_packet: 200
 
                 # Directory containing CAMPAREE output for the sample
                 # This data is used to generate the resulting molecules
-                sample_data_directory: /path/to/CAMPAREE_output/sample1/ # TODO: set this path
+                sample_data_directory: resources/example_baby_mouse/sample1/
             '2':
-                num_molecules_per_packet: 10000
+                num_molecules_per_packet: 200
                 num_packets: 1
-                sample_data_directory: /path/to/CAMPAREE_output/sample2/ # TODO: set this path
+                sample_data_directory: resources/example_baby_mouse/sample2/
 
     steps:
         # The 'steps' list specifies all the steps that the Library Prep Pipeline

@@ -32,19 +32,20 @@ def input_molecule_files(sample):
     path = config['library_prep_pipeline']['input'].get('directory_path', None)
     if not path:
         return []
+    path = try_absolute_and_relative_path(path)
     input_molecule_file_dir = pathlib.Path(path)/ f"sample{sample}"
-    return sorted(list(input_molecule_file_dir.glob("*")))
+    return sorted(list(input_molecule_file_dir.glob("molecule_*.txt")))
 def try_absolute_and_relative_path(path):
     # Some resources should be allowed to be relative to the pipeline
     # since we need to specify the provided resources in the example config files
     # This function enables that by searching workflow-relative paths too
     if pathlib.Path(path).exists():
         return path
-    rel_path = workflow.source_path(path) # Get workflow-relative path
+    basedir = pathlib.Path(workflow.basedir)
+    rel_path = basedir / path # Get workflow-relative path
     if pathlib.Path(rel_path).exists():
         return rel_path
     raise ValueError(f"No file found at location {path} either as an absolute path or relative to the BEERS2 pipeline")
-
 
 # Count the numbers of packets for each sample
 # by source (distribution or molecule packet) and total
@@ -86,7 +87,7 @@ rule all:
             lane = lanes,
         ) if config['output'].get('output_fastq', True) else [],
 
-# Prep directories:
+# Prep output directories:
 lib_prep_dir = pathlib.Path("library_prep_pipeline")
 lib_prep_dir.mkdir(exist_ok=True)
 seq_dir = pathlib.Path("sequence_pipeline")
@@ -129,7 +130,7 @@ rule run_library_prep_packet_from_molecule_file:
 
 rule run_library_prep_packet_from_distribution:
     input:
-        sample_data_dir = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['sample_data_directory'],
+        sample_data_dir = lambda wildcards: try_absolute_and_relative_path(config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['sample_data_directory']),
     output:
         packet_file ="library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
         quant_file = "library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file",
