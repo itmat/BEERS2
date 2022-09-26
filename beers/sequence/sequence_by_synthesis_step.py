@@ -5,12 +5,7 @@ import scipy.stats
 
 import warnings
 
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    import pyximport
-    pyximport.install(language_level=3, reload_support=True)
-
-    from beers.sequence.sequence_by_synthesis_helper import get_frac_skipped as get_frac_skipped_cython
+from beers.sequence.sequence_by_synthesis_helper import get_frac_skipped as get_frac_skipped_cython
 
 import beers_utils
 import beers_utils.molecule
