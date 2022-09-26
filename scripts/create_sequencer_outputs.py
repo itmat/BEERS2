@@ -14,6 +14,7 @@ sample = snakemake.wildcards.sample
 
 flowcell = beers.flowcell.Flowcell(
         config['sequence_pipeline']['flowcell'],
+        rng = None, # We don't use any of the rng features here, that's only coordinate assignment
 )
 
 barcodes = {sample: (config['global']['samples'][sample]['barcodes']['i5'] + "+" + config['global']['samples'][sample]['barcodes']['i7'])}

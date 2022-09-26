@@ -186,7 +186,8 @@ class PCRAmplificationStep:
                     new_molecule.generate_errors(
                             self.substitution_rate,
                             self.insertion_rate,
-                            self.deletion_rate
+                            self.deletion_rate,
+                            rng,
                     )
 
                     # TODO: copies should be reverse-complemented, right?

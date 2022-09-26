@@ -6,6 +6,8 @@ import resource
 import json
 import pathlib
 
+import numpy as np
+
 from beers_utils.molecule_packet import MoleculePacket
 from beers.flowcell import Flowcell
 
@@ -17,7 +19,10 @@ output_directory.mkdir(exist_ok=True)
 
 molecule_packet_file_paths = snakemake.input#.packet_files_from_molecule_files + snakemake.input.packet_files_from_distribution
 
-flowcell = Flowcell(configuration)
+seed_list = [snakemake.params.seed, snakemake.wildcards.sample, snakemake.wildcards.packet_num, 3]
+rng = np.random.default_rng(seed_list)
+
+flowcell = Flowcell(configuration, rng)
 valid, msg = flowcell.validate()
 if not valid:
     raise (ControllerValidationException(msg))

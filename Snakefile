@@ -161,6 +161,7 @@ rule create_cluster_packet:
     params:
         outdir = "sequence_pipeline/",
         configuration = json.dumps(config['sequence_pipeline']['flowcell']),
+        seed = seed,
     script:
         "scripts/create_cluster_packets.py"
 

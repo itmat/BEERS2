@@ -46,6 +46,7 @@ class Flowcell:
     """
 
     parameters: dict
+    rng: np.random.Generator
     min_coords: dict = field(default_factory = lambda: {"lane": 0, "tile": 0, "x": 0, "y": 0})
     max_coords: dict = field(default_factory = lambda: {"lane": 10_000, "tile": 10_000, "x": 10_000, "y": 10_000})
     available_lanes: list[int] = field(default_factory = list)
@@ -145,9 +146,9 @@ class Flowcell:
         consumed_coordinates = flowcell_lane.consumed_coordinates
         while True:
             ctr += 1
-            x = np.random.randint(self.min_coords['x'], self.max_coords['x'] + 1)
-            y = np.random.randint(self.min_coords['y'], self.max_coords['y'] + 1)
-            tile = np.random.randint(self.min_coords['tile'], self.max_coords['tile'] + 1)
+            x = self.rng.integers(self.min_coords['x'], self.max_coords['x'] + 1)
+            y = self.rng.integers(self.min_coords['y'], self.max_coords['y'] + 1)
+            tile = self.rng.integers(self.min_coords['tile'], self.max_coords['tile'] + 1)
             coord = (tile, x, y)
             if coord not in consumed_coordinates:
                 ctr = 0
@@ -166,9 +167,9 @@ class Flowcell:
         """
         flowcell_lane = self.flowcell_lanes[lane]
         while True:
-            x = np.random.randint(self.min_coords['x'], self.max_coords['x'] + 1)
-            y = np.random.randint(self.min_coords['y'], self.max_coords['y'] + 1)
-            tile = np.random.randint(self.min_coords['tile'], self.max_coords['tile'] + 1)
+            x = self.rng.integers(self.min_coords['x'], self.max_coords['x'] + 1)
+            y = self.rng.integers(self.min_coords['y'], self.max_coords['y'] + 1)
+            tile = self.rng.integers(self.min_coords['tile'], self.max_coords['tile'] + 1)
             coord = (tile, x, y)
             yield coord
 
