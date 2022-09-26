@@ -12,7 +12,7 @@ https://github.com/itmat/CAMPAREE
 Somewhere under your home directory, clone the develop branch of the BEERS2 repository:
 
 ```bash
-git clone --recurse-submodules git@github.com:itmat/BEERS2.git
+git clone --recursive https://github.com/itmat/BEERS2.git
 ```
 
 Now set up a virtual environment using python 3.10.
@@ -42,12 +42,6 @@ pip install .
 cd ..
 ```
 
-### Snakemake Configuration
-
-BEERS2 uses Snakemake to run its pipeline, which allows distribution across multiple cores or across a cluster environment.
-Many computing environments (including LSF, SGE or SLURM) already have configuration available at the [Snakemake-profiles](https://github.com/Snakemake-Profiles/doc) project.
-Choose your environment and follow the instructions there, then use the installed Snakemake profile with the `--profile` option when running BEERS2 (see below).
-
 ## Running BEERS
 
 ### Example Dataset
@@ -59,13 +53,12 @@ snakemake --configfile config/baby.config.yaml --directory output/ --cores 1
 ```
 
 Here BEERS2 will send all output to the `output/` directory, which can be set to where-ever one wishes.
+Very that the run has been successful by examing `output/results/` which should contain output FASTQ and SAM files.
 
 The `--cores 1` option sets to run this on a single-core locally.
 Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the `snakemake` command from.
-Alternatively, if you installed a Snakemake profile for your computing environment above, you can include `--profile myprofilename` (where `myprofilename` is whatever name you chose in the profile creation process).
-This will allow Snakemake to execute BEERS commands on other machines in your cluster and can be configured using `--cores` and `--jobs` options to control the number of cores and jobs to run simultaneously.
 
-If you wish to run BEERS2 in anther location (without `BEERS2/` as the current working directory), you can also supply `--snakefile path/to/BEERS2/Snakefile`.
+If you wish to run BEERS2 in another location (without `BEERS2/` as the current working directory), you can also supply `--snakefile path/to/BEERS2/Snakefile`.
 
 ### Configuring BEERS
 
@@ -77,7 +70,21 @@ Values required to be set are marked with a TODO comment.
 Configuration files are recommended to use absolute file paths to input files.
 Otherwise, paths are interpretted relative to the set `--directory` output directory or relative to the BEERS2 directory.
 
-## Useful Snakemake commands
+### Cluster Execution
+
+BEERS2 uses Snakemake to run its pipeline, which allows distribution across multiple cores or across a cluster environment.
+Many computing environments (including LSF, SGE or SLURM) already have configuration available at the [Snakemake-profiles](https://github.com/Snakemake-Profiles/doc) project.
+Choose your environment and follow the instructions there, then use the installed Snakemake profile with the `--profile` option when running BEERS2 (see below).
+After configuring the Snakemake profile, our example run command could change to:
+
+```bash
+snakemake --configfile config/baby.config.yaml --directory output/ --cores 10 --jobs 10 --profile MYPROFILENAME
+```
+Where `MYPROFILENAME` should be replaced with the name of the profile you chose during profile configuration. This will tell Snakemake to execute BEERS2 commands on other machines in your cluster.
+The `--cores` and `--jobs` options should be changed according to the number of cores and jobs to use simultaneously.
+BEERS2 will use up to one job per packet at a time, so increasing `jobs` above that number will not cause further parallelism.
+
+### Useful Snakemake commands
 
 In addition to the already mentioned `--profile`, `--cores`, `--jobs` and `--directory` values, the following are useful to run BEERS.
 To check that everything is in place, use `--dry-run`, which will report all steps that will be run.
