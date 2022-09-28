@@ -25,6 +25,10 @@ dependencies = [
     #"Cython",
     #"snakemake",
 
+    # These must be updated whenever the submodules are updated
+    "beers_utils @ git+https://github.com/itmat/BEERS_UTILS@88a021358567e8f64a4bc6ad7cbdfdaf30ae6fe8",
+    "camparee @ git+https://github.com/itmat/CAMPAREE@91b4f32083107e7c4191f250317f135c12795916",
+
     "alabaster==0.7.12",
     "appdirs==1.4.4",
     "attrs==22.1.0",
