@@ -9,66 +9,66 @@ https://github.com/itmat/CAMPAREE
 
 ## Installation
 
-Somewhere under your home directory, clone the develop branch of the BEERS2 repository:
+First set up a virtual environment using python 3.10.
 
 ```bash
-git clone --recursive https://github.com/itmat/BEERS2.git
-```
-
-Now set up a virtual environment using python 3.10.
-
-```bash
-cd BEERS2
-python -m venv ./venv
-source ./venv/bin/activate
+python -m venv ./venv_beers
+source ./venv_beers/bin/activate
 ```
 
 You'll know the virtual environment is activated because the virtual environment path with precede
-your terminal prompt.  Now you need to add the python packages/modules upon which BEERS2 depends.  You
-do that by installing the packages/modules listed in the requirements.txt file like so:
+your terminal prompt.
+Now we need to install the BEERS2 package.
+Note that we do not recommend doing this outside of the newly created virtual environment.
 
 ```bash
-pip install -r requirements.txt
-```
-
-Then install BEERS2 and its submodules, BEERS_UTILS and CAMPAREE.
-
-```bash
-pip install .
-cd BEERS_UTILS
-pip install .
-cd ../CAMPAREE
-pip install .
-cd ..
+pip install git+https://github.com/itmat/BEERS2
 ```
 
 ## Running BEERS
 
 ### Example Dataset
 We will run a simplified 'baby' example, with a reduced mouse genome and provided output to test the installation and Snakemake configuration.
-With the activated venv created above and in the BEERS2 directory, run:
+We first download the example data and config file.
 
 ```bash
-snakemake --configfile config/baby.config.yaml --directory output/ --cores 1
+wget -c https://s3.amazonaws.com/itmat.data/BEERS2/examples/baby_mouse_example.tar.gz -O - | tar -xz
+cd baby_mouse_example/
 ```
 
-Here BEERS2 will send all output to the `output/` directory, which can be set to where-ever one wishes.
-Very that the run has been successful by examing `output/results/` which should contain output FASTQ and SAM files.
+Now we are ready to run BEERS2 using this dataset.
 
-The `--cores 1` option sets to run this on a single-core locally.
-Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the `snakemake` command from.
+```bash
+run_beers --configfile config/baby.config.yaml --jobs 1
+```
 
-If you wish to run BEERS2 in another location (without `BEERS2/` as the current working directory), you can also supply `--snakefile path/to/BEERS2/Snakefile`.
+Very that the run has been successful by examing `results/` which should contain output FASTQ and SAM files.
+To confirm that the expected results were produced, compare md5 hashes to this reference:
+
+```bash
+$ md5sum reuslts/*sam
+beaa4988ffa1cc50fda5d14b0dfef7df  results/S1_L1.sam
+6656813664c7b91db480c5dd5a3ab6d0  results/S1_L2.sam
+a5db0b010d9407a76b3da4452073600b  results/S1_unidentified_L1.sam
+ed257189a7d5915046e5327b70afa1d5  results/S1_unidentified_L2.sam
+fd73b1c094e9256713c33e065a287ca6  results/S2_L1.sam
+1f7d6df7bb21161245ced8486d5fb487  results/S2_L2.sam
+2ffa4652a19ab01436408c1da1314398  results/S2_unidentified_L1.sam
+d1124ed6d0149d977e52aafd862a0f6a  results/S2_unidentified_L2.sam
+```
+
+The `--jobs 1` option sets to run this on a single-core locally.
+Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the `run_beers` command from.
 
 ### Configuring BEERS
 
-The command above used the example config file `config/baby.config.yaml`.
-To configure BEERS, setting the input files and parameters for generating the data, please copy the template config from `BEERS2/config/template.config.yaml` and manually edit it.
+The command above used the example config file `baby.config.yaml`.
+To configure BEERS, setting the input files and parameters for generating the data, please copy the template config from [config/template.config.yaml](config/template.config.yaml) and manually edit it.
 This config is commented to guide you through selecting or changing values.
 Values required to be set are marked with a TODO comment.
 
 Configuration files are recommended to use absolute file paths to input files.
-Otherwise, paths are interpretted relative to the set `--directory` output directory or relative to the BEERS2 directory.
+Otherwise, paths are interpreted relative to the set `--directory` output directory or relative to the BEERS2 directory.
 
 ### Cluster Execution
 
@@ -78,15 +78,16 @@ Choose your environment and follow the instructions there, then use the installe
 After configuring the Snakemake profile, our example run command could change to:
 
 ```bash
-snakemake --configfile config/baby.config.yaml --directory output/ --cores 10 --jobs 10 --profile MYPROFILENAME
+run_beers --configfile config/baby.config.yaml --jobs 4 --profile MYPROFILENAME
 ```
 Where `MYPROFILENAME` should be replaced with the name of the profile you chose during profile configuration. This will tell Snakemake to execute BEERS2 commands on other machines in your cluster.
-The `--cores` and `--jobs` options should be changed according to the number of cores and jobs to use simultaneously.
+The `--jobs` options should be changed according to the number of jobs to use simultaneously; at most one per molecule packet provided as input will be used (4 for the example we ran).
 BEERS2 will use up to one job per packet at a time, so increasing `jobs` above that number will not cause further parallelism.
 
 ### Useful Snakemake commands
 
-In addition to the already mentioned `--profile`, `--cores`, `--jobs` and `--directory` values, the following are useful to run BEERS.
+The `run_beers` command is a thin wrapper around `snakemake` command, pointing it to the correct `Snakefile` to run, so any commands passed to `run_beers` will be given to `snakemake`.
+In addition to the already mentioned `--profile`, `--jobs` and `--directory` values, the following are useful to run BEERS.
 To check that everything is in place, use `--dry-run`, which will report all steps that will be run.
 To re-run a portion of the pipeline, use `--force-rerun {rule name or output file}` where `rule name` could be any of the names of rules in `Snakefile`, for example `run_library_prep_packet_from_molecule_file`,
 or you can pass any file produced by BEERS2 and the last rule used to create it will be rerun (as well as any downstream rules).
@@ -132,7 +133,7 @@ An example below is annotated:
 Read numbers are either 1 or 2 to denote forward or reverse reads if paired end.
 Here the additional fields are added by most steps of the pipeline when producing a new molecule, so that they can be distinguished from other molecules.
 For example, the 'cdna' markers are added by the FirstStrandSynthesisStep and SecondStrandSynthesisStep steps.
-The final number (7 in the example), is added by PCR amplitifcation, meaning that one can identify all PCR duplicates by looking for ids that differ only in that final number.
+The final number (7 in the example), is added by PCR amplification, meaning that one can identify all PCR duplicates by looking for ids that differ only in that final number.
 If using input from CAMPAREE, the transcript name will have a `_1` or `_2`  at the end, indicating which allele it derived from.
 
 ## Funding
