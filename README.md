@@ -39,10 +39,10 @@ cd baby_mouse_example/
 Now we are ready to run BEERS2 using this dataset.
 
 ```bash
-run_beers --configfile config/baby.config.yaml --jobs 1
+run_beers --configfile baby.config.yaml --jobs 1
 ```
 
-Very that the run has been successful by examing `results/` which should contain output FASTQ and SAM files.
+Verify that the run has been successful by examing `results/` which should contain output FASTQ and SAM files.
 To confirm that the expected results were produced, compare md5 hashes to this reference:
 
 ```bash
@@ -78,7 +78,7 @@ Choose your environment and follow the instructions there, then use the installe
 After configuring the Snakemake profile, our example run command could change to:
 
 ```bash
-run_beers --configfile config/baby.config.yaml --jobs 4 --profile MYPROFILENAME
+run_beers --configfile baby.config.yaml --jobs 4 --profile MYPROFILENAME
 ```
 Where `MYPROFILENAME` should be replaced with the name of the profile you chose during profile configuration. This will tell Snakemake to execute BEERS2 commands on other machines in your cluster.
 The `--jobs` options should be changed according to the number of jobs to use simultaneously; at most one per molecule packet provided as input will be used (4 for the example we ran).
