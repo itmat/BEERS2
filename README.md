@@ -136,6 +136,36 @@ For example, the 'cdna' markers are added by the FirstStrandSynthesisStep and Se
 The final number (7 in the example), is added by PCR amplification, meaning that one can identify all PCR duplicates by looking for ids that differ only in that final number.
 If using input from CAMPAREE, the transcript name will have a `_1` or `_2`  at the end, indicating which allele it derived from.
 
+## Development
+
+To contribute to or modify BEERS2, we recommend the following setup. First, clone the git repository including the submodules:
+
+```bash
+git clone --recurse-submodules git@github.com:itmat/BEERS2.git
+```
+
+Then create and activate a virtual environment for BEERS2 development using Python 3.10:
+
+```bash
+cd BEERS2
+python -m venv ./venv_beers
+source ./venv_beers/bin/activate
+```
+
+Install BEERS for local editing with development requirements:
+
+```bash
+pip install -e .[dev]
+cd BEERS_UTILS
+pip install -e .
+cd ../CAMPAREE
+pip install -e .
+cd ..
+```
+
+Now any edits made to BEERS2 will be reflected when running it.
+Also, we can now run some useful development commands: `pytest tests` to run the unit tests, `mypy src` to check typing errors, and `make html` in the `doc` directory to build the documentation.
+
 ## Funding
 
 Work on the BEERS2 project is supported by R21-LM012763-01A1: “The Next Generation of RNA-Seq Simulators for Benchmarking Analyses” (PI: Gregory R. Grant).
