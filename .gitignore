@@ -12,6 +12,7 @@ Log.out
 output/
 summary/
 .snakemake
+build
 
 *.swp
 doc/_build/
