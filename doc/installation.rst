@@ -1,7 +1,7 @@
 Installation
 ============
 
-First set up a virtual environment using Python 3.10.::
+First set up a virtual environment using Python 3.10::
 
     python -m venv ./venv_beers
     source ./venv_beers/bin/activate
@@ -9,7 +9,7 @@ First set up a virtual environment using Python 3.10.::
 You'll know the virtual environment is activated because the virtual environment path with precede
 your terminal prompt.
 Now we need to install the BEERS2 package.
-Note that we do not recommend doing this outside of the newly created virtual environment.::
+Note that we do not recommend doing this outside of the newly created virtual environment::
 
     pip install git+https://github.com/itmat/BEERS2
 
@@ -21,17 +21,17 @@ Example Dataset
 ===============
 
 We will run a simplified 'baby' example, with a reduced mouse genome and provided output to test the installation and Snakemake configuration.
-We first download the example data and config file.::
+We first download the example data and config file::
 
     wget -c https://s3.amazonaws.com/itmat.data/BEERS2/examples/baby_mouse_example.tar.gz -O - | tar -xz
     cd baby_mouse_example/
 
-Now we are ready to run BEERS2 using this dataset.::
+Now we are ready to run BEERS2 using this dataset::
 
     run_beers --configfile baby.config.yaml --jobs 1
 
-Verify that the run has been successful by examing `results/` which should contain output FASTQ and SAM files.
-To confirm that the expected results were produced, compare md5 hashes to this reference:::
+Verify that the run has been successful by examing :code:`results/` which should contain output FASTQ and SAM files.
+To confirm that the expected results were produced, compare md5 hashes to this reference::
 
     $ md5sum reuslts/*sam
     beaa4988ffa1cc50fda5d14b0dfef7df  results/S1_L1.sam
@@ -43,5 +43,5 @@ To confirm that the expected results were produced, compare md5 hashes to this r
     2ffa4652a19ab01436408c1da1314398  results/S2_unidentified_L1.sam
     d1124ed6d0149d977e52aafd862a0f6a  results/S2_unidentified_L2.sam
 
-The `--jobs 1` option sets to run this on a single-core locally.
-Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the `run_beers` command from.
+The :code:`--jobs 1` option sets to run this on a single-core locally.
+Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the :code:`run_beers` command from.

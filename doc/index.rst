@@ -16,8 +16,7 @@ User Guide
    :maxdepth: 2
 
    introduction
-   license
-   quick_start
+   using_beers
    installation
 
 The API Reference
