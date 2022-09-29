@@ -1,130 +1,47 @@
 Installation
 ============
 
-Installation on PMACS Cluster for Developers
---------------------------------------------
+First set up a virtual environment using Python 3.10.::
 
-Somewhere under your home directory, clone the develop branch of the BEERS2.0 respository::
-
-    git clone -b develop git@github.com:itmat/BEERS2.0.git
-
-Now set up a virtual environment using *python 3.6*.  I use conda on laptops but on PMACS I stick
-with python's *venv* module and I place the virtual environment inside my project::
-
-    cd BEERS2.0
-    python3 -m venv ./venv_beers
-
-I put ``venv*`` in ``.gitignore`` so you can use any name you want if you start it with venv and not have
-to worry about accidentally committing it.
-
-Now activate the environment thus::
-
+    python -m venv ./venv_beers
     source ./venv_beers/bin/activate
 
-You'll know the virtual environment is activated because the virtual environment path will precede
-your terminal prompt.  Now you need to add the python packages/modules upon which BEERS depends.  You
-do that by installing the packages/modules listed in the ``requirements_dev.txt`` file like so::
+You'll know the virtual environment is activated because the virtual environment path with precede
+your terminal prompt.
+Now we need to install the BEERS2 package.
+Note that we do not recommend doing this outside of the newly created virtual environment.::
 
-    pip install -r requirements_dev.txt
-
-The ``requirements_dev.txt`` file is supposed to be a superset of the ``requirements.txt`` file and in fact,
-pulls in the ``requirements.txt`` file.  Any packages/modules needed exclusively for development should
-be listed in the ``requirements_dev.txt`` file.  Requirements needed for a user to run the code should
-live in the ``requirements.txt`` file.
-
-Next, we need to put the beers package where python can find it.  And this is where the ``setup.py``
-file on the top level comes in.  From the top level directory once again, do the following::
-
-    pip install -e .
-
-This takes the current directory, packages it and creates a link to the packaged version in
-``<virtualenv>/lib/python3.6/site-packages``.  The file name is ``beers.egg-link``.  This allows python
-to find the beer package and subpackages while we can continue to edit them in place.
-
-Next go to the ``configuration`` directory and ``cp config.json`` to a personal config file
-(*e.g.*, ``my_config.json``).  You can put it anywhere you like.  You will have to reference it
-when running beers.  Open your version and modify all the absolute pathnames to conform to your
-directory structure.  Modify any parameters you wish to alter and save it.
-
-There is 1 command that you can find in the ``bin`` directory under the top level, called ``run_beers.py``.
-Calling help on it will show you what is currently possible with it::
-
-    ./run_beers.py -h
-    usage: run_beers.py [-h] -c CONFIG [-r RUN_ID] [-d]
-                        {expression_pipeline,library_prep_pipeline,sequence_pipeline}
-                        ...
-
-    BEERS Simulator, Version 2.0
-
-    positional arguments:
-    {expression_pipeline,library_prep_pipeline,sequence_pipeline}
-                            pipeline subcommand
-        expression_pipeline
-                            Run the expression pipeline only
-        library_prep_pipeline
-                            Run the library prep pipeline only
-        sequence_pipeline   Run the sequence pipeline only
-
-    optional arguments:
-     -h, --help            show this help message and exit
-
-    required named arguments:
-    -c CONFIG, --config CONFIG
-                            Full path to configuration file.
-
-    optional named arguments - these override configuration file arguments.:
-    -r RUN_ID, --run_id RUN_ID
-                            Integer used to specify run id.
-    -d, --debug           Indicates whether additional diagnostics are printed.
+    pip install git+https://github.com/itmat/BEERS2
 
 
-Of the three subcommands, expression_pipeline, library_prep_pipeline, and sequence_pipeline, the
-library_prep_pipeline is probably the easiest to run currently.  You would run it from the ``bin``
-directory thus::
+Now BEERS2 should be installed.
+We can verify correct installation by running an example dataset.
 
-    ./run_beers -r123 -d -c ../config/my_config.json library_prep_pipeline
+Example Dataset
+===============
 
-The run id and the path to the configuration file are both required.  The ``-d`` is a debug switch.
-Without it, exception tracebacks will not appear.  The library_prep_pipeline currently accepts just
-one molecule packet which it locates via the configuration file.  For example::
+We will run a simplified 'baby' example, with a reduced mouse genome and provided output to test the installation and Snakemake configuration.
+We first download the example data and config file.::
 
-     "input": {
-        "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep",
-        "molecule_packet_filename": "molecule_packet_plus_source.pickle"
-     }
+    wget -c https://s3.amazonaws.com/itmat.data/BEERS2/examples/baby_mouse_example.tar.gz -O - | tar -xz
+    cd baby_mouse_example/
 
-We only have the one packet so it is kind of precious right now.  A copy of
-``molecule_packet_plus_source.pickle`` is available under ``/projects/itmatlab/for_cris``.  Feel free to
-grab it.  It has 10K molecules (all polyadenylated) derived from ``Test_data.1002_baseline.sorted.bam``.
+Now we are ready to run BEERS2 using this dataset.::
 
-I have been using 100 as a seed to get reproducible results, I would suggest others use other
-seeds to avoid us getting tunnel vision.
+    run_beers --configfile baby.config.yaml --jobs 1
 
-One can use the molecule_packet output from the library prep pipeline as input for the sequence
-pipeline but again, you will need to tell the sequence pipeline where to find it via the
-configuration file,  For example::
+Verify that the run has been successful by examing `results/` which should contain output FASTQ and SAM files.
+To confirm that the expected results were produced, compare md5 hashes to this reference:::
 
-    "input": {
-        "directory_path": "/home/crislawrence/Documents/beers_project/BEERS2.0/data/library_prep/output",
-        "molecule_packet_filename": "final_output.pickle"
-    }
+    $ md5sum reuslts/*sam
+    beaa4988ffa1cc50fda5d14b0dfef7df  results/S1_L1.sam
+    6656813664c7b91db480c5dd5a3ab6d0  results/S1_L2.sam
+    a5db0b010d9407a76b3da4452073600b  results/S1_unidentified_L1.sam
+    ed257189a7d5915046e5327b70afa1d5  results/S1_unidentified_L2.sam
+    fd73b1c094e9256713c33e065a287ca6  results/S2_L1.sam
+    1f7d6df7bb21161245ced8486d5fb487  results/S2_L2.sam
+    2ffa4652a19ab01436408c1da1314398  results/S2_unidentified_L1.sam
+    d1124ed6d0149d977e52aafd862a0f6a  results/S2_unidentified_L2.sam
 
-Running the pipeline one stage at a time is a bit inconvenient presently.  We have yet to write
-the stages together into a complete pipeline.
-
-The expression pipeline is more difficult to use as it requires the reference genome and the pair
-of alignment files presently (bam and bai) and really only runs the variants finder portion of
-the pipeline.  I threw in a BeagleStep that will eventually call the Beagle process.  For now, I
-put my own Java program as a parameter to that step so I'd have something to run.  You can
-add your own external process as a placemarker for now, if you like.
-
-Requirements for Users
-----------------------
-
-If the user chooses to supply his/her own reference genome, it should be edited so that a
-sequence contains no line breaks.
-
-If the user declines to provide gender for each sample, the sample will not have X,Y, MT
-data.  If the user neglects to provide gender for just some of the samples, X,Y,MT data
-will be generated for those samples that have gender and a warning will be issued to
-the user.
+The `--jobs 1` option sets to run this on a single-core locally.
+Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the `run_beers` command from.
