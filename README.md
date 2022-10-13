@@ -136,6 +136,27 @@ For example, the 'cdna' markers are added by the FirstStrandSynthesisStep and Se
 The final number (7 in the example), is added by PCR amplification, meaning that one can identify all PCR duplicates by looking for ids that differ only in that final number.
 If using input from CAMPAREE, the transcript name will have a `_1` or `_2`  at the end, indicating which allele it derived from.
 
+### Quantifications
+
+In addition to providing the alignments, BEERS2 generates quantification counts of both the input molecules and the output molecules as `.quant_file` files.
+The format for each of these is a tab-separated file with two columns, labelled `transcript_id` and `counts`.
+The `transcript_id` is whatever ID was provided to the BEERS in the input molecule packet or distribution (see above).
+
+The output sequenced fragment counts are available in the `library_prep_pipeline/sample*/from_distribution/` and `library_prep_pipeline/sample*/from_molecule_file/` directories and the input quant files are available in the `input_quants` subdirectories of those directories.
+One quant file is produced for each molecule packet.
+To obtain quantifications for a sample, sum all quant files from all packets (from both `from_distribution` and `from_molecule_file`).
+
+Input quant files quantify the transcript counts that were in the original sequence and are therefore useful for computing TPM values.
+The output quant files count the number of fragments sequenced and therefore are useful for computing FPKM values.
+Since one input transcript may generate zero, one, or many sequenced fragments, the input and output quantifications can differ substantially depending upon the transcript sequence and the configuration of BEERS.
+The output of the library prep pipeline exactly corresponds one-to-one with the sequenced fragments, so there are no additional quantification files provided for the sequencing pipeline (just use the library prep output quants).
+
+### Logs
+
+Logs store partially-completed information about the BEERS2 run and may be useful for diagnosing where in the pipeline various sequencing artefacts arise.
+For example, the `library_prep_pipeline/sample1/logs/FragmentStep` directory contains one log per molecule packet that was processed by the Fragment Step (which simulates fragmentation of transcripts).
+The log files contain the output molecules from the step, sometimes with additional 'notes' on the molecule about what happened in the step, in a tab-separated file.
+
 ## Development
 
 To contribute to or modify BEERS2, we recommend the following setup. First, clone the git repository including the submodules:
