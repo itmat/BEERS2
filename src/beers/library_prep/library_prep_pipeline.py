@@ -101,7 +101,9 @@ class LibraryPrepPipeline():
         packet_num = input_molecule_packet.molecule_packet_id
         output_packet_path = pathlib.Path(output_directory) / f"library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
         output_quant_path = pathlib.Path(output_directory) / f"library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file"
-        input_quant_file_path = pathlib.Path(log_directory) / f"library_prep_pipeline_molecule_pkt{packet_num}.quant_file"
+        input_quant_dir = pathlib.Path(output_directory) / "input_quants"
+        input_quant_dir.mkdir(exist_ok=True)
+        input_quant_file_path = input_quant_dir / f"library_prep_pipeline_molecule_pkt{packet_num}.quant_file"
 
         # Initialize steps prior to executing them below.
         pipeline_steps = []
