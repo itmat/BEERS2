@@ -9,6 +9,7 @@ from beers.library_prep.fragment_step import FragmentStep
 from beers.library_prep.sizing_step import SizingStep
 from beers.library_prep.adapter_ligation_step import AdapterLigationStep
 from beers.library_prep.pcr_amplification_step import PCRAmplificationStep
+from beers.logger import Logger
 import numpy
 
 def make_molecule_packet(count, length, rng):
@@ -48,8 +49,8 @@ def test_PolyA(tmp_path):
         molecule.source_cigar = molecule.source_cigar + "500S"
     original_molecules = molecule_packet.molecules
 
+    log = Logger(tmp_path / "log.txt")
     step = PolyAStep(
-        step_log_file_path = tmp_path / "log.txt",
         parameters = {
             'breakpoint_prob_per_base': 0.01,
             'max_retention_prob': 1.0,
@@ -61,7 +62,7 @@ def test_PolyA(tmp_path):
     )
 
     # Run the step
-    output = step.execute(molecule_packet, rng)
+    output = step.execute(molecule_packet, rng, log)
 
     # Exactly 5 had PolyA tails
     assert len(output.molecules) == 5
@@ -77,8 +78,8 @@ def test_FirstStrandSynthesis(tmp_path):
     molecule_packet = make_molecule_packet(count = 10, length= 3_000, rng = rng)
     original_molecules = molecule_packet.molecules
 
+    log = Logger(tmp_path / "log.txt")
     step = FirstStrandSynthesisStep(
-        log_file = tmp_path / "log.txt",
         parameters = {
             "perfect_priming": False,
             "position_probability_matrix": {
@@ -93,7 +94,7 @@ def test_FirstStrandSynthesis(tmp_path):
     )
 
     # Run the step
-    output = step.execute(molecule_packet, rng)
+    output = step.execute(molecule_packet, rng, log)
 
     # Retain all molecules
     assert len(output.molecules) == 10
@@ -111,8 +112,8 @@ def test_SecondStrandSynthesis(tmp_path):
     molecule_packet = make_molecule_packet(count = 10, length= 3_000, rng = rng)
     original_molecules = molecule_packet.molecules
 
+    log = Logger(tmp_path / "log.txt")
     step = SecondStrandSynthesisStep(
-        log_file = tmp_path / "log.txt",
         parameters = {
             "perfect_priming": False,
             "position_probability_matrix": {
@@ -127,7 +128,7 @@ def test_SecondStrandSynthesis(tmp_path):
     )
 
     # Run the step
-    output = step.execute(molecule_packet, rng)
+    output = step.execute(molecule_packet, rng, log)
 
     # Retain all molecules
     assert len(output.molecules) == 10
@@ -145,8 +146,8 @@ def test_FragmentStep(tmp_path):
     molecule_packet = make_molecule_packet(count = 10, length= 3_000, rng = rng)
     original_molecules = molecule_packet.molecules
 
+    log = Logger(tmp_path / "log.txt")
     step = FragmentStep(
-        logfile = tmp_path / "log.txt",
         parameters = {
             "method": "uniform",
             "lambda": 0.005,
@@ -157,7 +158,7 @@ def test_FragmentStep(tmp_path):
     )
 
     # Run the step
-    output = step.execute(molecule_packet, rng)
+    output = step.execute(molecule_packet, rng, log)
 
     for molecule in output.molecules:
         # Original molecules were length 3_000
@@ -184,8 +185,8 @@ def test_SizingStep(tmp_path):
         molecule_packet_id = 5
     )
 
+    log = Logger(tmp_path / "log.txt")
     step = SizingStep(
-        step_log_file_path = tmp_path / "log.txt",
         parameters = {
             "min_length": 100,
             "max_length": 400,
@@ -196,7 +197,7 @@ def test_SizingStep(tmp_path):
     )
 
     # Run the step
-    output = step.execute(molecule_packet, rng)
+    output = step.execute(molecule_packet, rng, log)
 
     # Retain exactly the medium length ones
     assert set(output.molecules) == set(medium.molecules)
@@ -208,8 +209,8 @@ def test_AdapterLigationStep(tmp_path):
     molecule_packet = make_molecule_packet(count = 10, length= 300, rng = rng)
     original_molecules = molecule_packet.molecules
 
+    log = Logger(tmp_path / "log.txt")
     step = AdapterLigationStep(
-        step_log_file_path = tmp_path / "log.txt",
         parameters = {
         },
         global_config = {
@@ -227,7 +228,7 @@ def test_AdapterLigationStep(tmp_path):
     )
 
     # Run the step
-    output = step.execute(molecule_packet, rng)
+    output = step.execute(molecule_packet, rng, log)
 
     assert len(output.molecules) == len(original_molecules)
     for molecule, original in zip(output.molecules, original_molecules):
@@ -244,8 +245,8 @@ def test_PCRAmplificationStep(tmp_path):
     molecule_packet = make_molecule_packet(count = 10, length= 300, rng = rng)
     original_molecules = molecule_packet.molecules
 
+    log = Logger(tmp_path / "log.txt")
     step = PCRAmplificationStep(
-        step_log_file_path = tmp_path / "log.txt",
         parameters = {
             "number_cycles": 10,
             "retention_percentage": 0.08,
@@ -261,7 +262,7 @@ def test_PCRAmplificationStep(tmp_path):
     )
 
     # Run the step
-    output = step.execute(molecule_packet, rng)
+    output = step.execute(molecule_packet, rng, log)
 
     # TODO: not sure what to verify other than that it ran
     #       PCR can change sequence, lengths, and either increase or decrease

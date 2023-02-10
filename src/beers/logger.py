@@ -2,7 +2,7 @@ import gzip
 from beers_utils.molecule import Molecule
 
 class Logger:
-    def __init__(self, log_file, compression, full_logs):
+    def __init__(self, log_file, compression=None, full_logs=True):
         '''
         Logger for BEERS steps.
 
@@ -17,8 +17,6 @@ class Logger:
         self.log_filename = log_file
         self.compression = compression
         self.full_logs = full_logs
-
-    def __enter__(self):
         if self.compression is None:
             self.log_file = open(self.log_filename, "wt+")
         elif self.compression == 'gzip':
@@ -26,6 +24,8 @@ class Logger:
         else:
             raise NotImplementedError(f"Unknown compression {repr(compression)} for log file {self.log_file}")
         self.log_file.write(Molecule.header)
+
+    def __enter__(self):
         return self
 
     def __exit__(self, type, value, traceback):
