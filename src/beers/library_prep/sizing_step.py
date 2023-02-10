@@ -48,8 +48,7 @@ class SizingStep:
 
     name = "Sizing Step"
 
-    def __init__(self, step_log_file_path, parameters, global_config):
-        self.log_filename = step_log_file_path
+    def __init__(self, parameters, global_config):
         self.min_length = parameters["min_length"]
         self.max_length = parameters["max_length"]
         self.select_all_start_length = parameters.get("select_all_start_length", self.min_length)
@@ -57,30 +56,28 @@ class SizingStep:
         self.global_config = global_config
         print("Sizing step instantiated")
 
-    def execute(self, molecule_packet, rng):
+    def execute(self, molecule_packet, rng, log):
         print("Sizing step starting")
         retained_molecules = []
-        with open(self.log_filename, "w+") as log_file:
-            log_file.write(Molecule.header)
-            for molecule in molecule_packet.molecules:
-                seq_length = len(molecule.sequence)
-                if (seq_length < self.min_length or seq_length > self.max_length):
-                    retained = False
-                elif (seq_length >= self.select_all_start_length) and (seq_length <= self.select_all_end_length):
-                    retained = True
+        for molecule in molecule_packet.molecules:
+            seq_length = len(molecule.sequence)
+            if (seq_length < self.min_length or seq_length > self.max_length):
+                retained = False
+            elif (seq_length >= self.select_all_start_length) and (seq_length <= self.select_all_end_length):
+                retained = True
+            else:
+                if seq_length < self.select_all_start_length:
+                    retention_prob = (seq_length - self.min_length) / (self.select_all_start_length - self.min_length)
                 else:
-                    if seq_length < self.select_all_start_length:
-                        retention_prob = (seq_length - self.min_length) / (self.select_all_start_length - self.min_length)
-                    else:
-                        retention_prob = (self.max_length - seq_length) / (self.max_length - self.select_all_end_length)
-                    retained = (rng.random() < retention_prob)
-                note = ''
-                if retained:
-                    retained_molecules.append(molecule)
-                    note += 'retained'
-                else:
-                    note += 'removed'
-                log_file.write(molecule.log_entry(note))
+                    retention_prob = (self.max_length - seq_length) / (self.max_length - self.select_all_end_length)
+                retained = (rng.random() < retention_prob)
+            note = ''
+            if retained:
+                retained_molecules.append(molecule)
+                note += 'retained'
+            else:
+                note += 'removed'
+            log.write(molecule)
         print("Sizing step complete")
         molecule_packet.molecules = retained_molecules
         return molecule_packet

@@ -102,9 +102,8 @@ class FragmentStep:
 
     name = "Fragment Step"
 
-    def __init__(self, logfile, parameters, global_config):
+    def __init__(self, parameters, global_config):
         self.global_config = global_config
-        self.history_filename = logfile
         self.method = parameters["method"]
         self.lambda_ = parameters["lambda"]
         self.runtime = parameters["runtime"]
@@ -119,7 +118,7 @@ class FragmentStep:
             self.beta_B = parameters["beta_B"]
             self.beta_N = parameters["beta_N"]
 
-    def execute(self, molecule_packet, rng):
+    def execute(self, molecule_packet, rng, log):
         print("Fragment Step acting on sample")
         sample = molecule_packet.molecules
         if self.method == "uniform":
@@ -132,11 +131,8 @@ class FragmentStep:
         result = [sample[k].make_fragment(start+1,end) for (start, end, k) in fragment_locations
                     if end - start >= self.min_frag_size]
 
-        # Output all the molecules to log
-        with open(self.history_filename, "w+") as log_file:
-            log_file.write(Molecule.header)
-            for molecule in result:
-                log_file.write(molecule.log_entry())
+        for molecule in result:
+            log.write(molecule)
 
         molecule_packet.molecules = result
         return molecule_packet

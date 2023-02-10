@@ -19,6 +19,8 @@ from beers_utils.general_utils import GeneralUtils
 
 from camparee.molecule_maker import MoleculeMakerStep
 
+from beers.logger import Logger
+
 class LibraryPrepPipeline():
     """
     The class runs all the steps in the library_prep pipeline as described and wired together in the configuration
@@ -74,6 +76,7 @@ class LibraryPrepPipeline():
             log_directory: str,
             input_molecule_packet: MoleculePacket,
             rng: np.random.Generator,
+            full_logs: bool,
         ):
         """
         Performs the Sequence Pipeline on a MoleculePacket.
@@ -93,6 +96,8 @@ class LibraryPrepPipeline():
             the molecule packet to run through this pipeline stage
         rng:
             random number generator to use
+        full_logs:
+            whether to output molecule logs at intermediate steps
         """
 
         original_ids = set(str(m.molecule_id) for m in input_molecule_packet.molecules)
@@ -107,26 +112,30 @@ class LibraryPrepPipeline():
 
         # Initialize steps prior to executing them below.
         pipeline_steps = []
+        step_names = []
         for step in configuration['steps']:
             module_name, step_name = step["step_name"].rsplit(".")
-            step_log_filename = f"molecule_pkt{input_molecule_packet.molecule_packet_id}.log"
-            step_log_dir = pathlib.Path(log_directory) / step_name
-            step_log_dir.mkdir(exist_ok=True)
-            step_log_file_path = step_log_dir / step_log_filename
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=LibraryPrepPipeline.package)
             step_class = getattr(module, step_name)
-            pipeline_steps.append(step_class(step_log_file_path, parameters, global_config))
+            pipeline_steps.append(step_class(parameters, global_config))
+            step_names.append(step_name)
 
         pipeline_start = time.time()
 
         molecule_packet = input_molecule_packet
         molecule_packet.write_quantification_file(input_quant_file_path)
 
-        for step in pipeline_steps:
+        for step, step_name in zip(pipeline_steps, step_names):
+            step_log_filename = f"molecule_pkt{input_molecule_packet.molecule_packet_id}.log"
+            step_log_dir = pathlib.Path(log_directory) / step_name
+            step_log_dir.mkdir(exist_ok=True)
+            step_log_file_path = step_log_dir / step_log_filename
+            print(f"Opening {step_log_file_path}")
             step_name = step.__class__.name if hasattr(step.__class__, 'name') else step.__class__.__name__
             step_start = time.time()
-            molecule_packet = step.execute(molecule_packet, rng)
+            with Logger(step_log_file_path, compression = None, full_logs = full_logs) as log:
+                molecule_packet = step.execute(molecule_packet, rng, log)
             elapsed_time = time.time() - step_start
 
             self.print_summary(original_ids, molecule_packet.molecules, elapsed_time)
@@ -178,6 +187,7 @@ class LibraryPrepPipeline():
             sample_id: str,
             distribution_directory: str = None,
             molecules_per_packet_from_distribution: int = 10000,
+            full_logs: bool = False,
             ):
         """
         This method would be called by a command line script in the bin directory.  It sets a random seed, loads a
@@ -210,6 +220,9 @@ class LibraryPrepPipeline():
             (default None, must supply molecule_packet_filename instead)
         molecules_per_packet_from_distribution:
             packet size to generate if using distributions
+        full_logs:
+            whether to output all logs for intermediate steps
+            If True, output may be very large
         """
 
         config = json.loads(configuration)
@@ -253,7 +266,7 @@ class LibraryPrepPipeline():
         else:
             raise BeersLibraryPrepValidationException("Neither molecule packet filename nor distribution directory provided")
         library_prep_pipeline = LibraryPrepPipeline()
-        library_prep_pipeline.execute(config, global_config, output_directory, log_directory, molecule_packet, rng)
+        library_prep_pipeline.execute(config, global_config, output_directory, log_directory, molecule_packet, rng, full_logs)
 
 class BeersLibraryPrepValidationException(Exception):
     pass

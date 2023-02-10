@@ -30,8 +30,7 @@ class PolyAStep:
 
     name = "PolyA Selection Step"
 
-    def __init__(self, step_log_file_path, parameters, global_config):
-        self.log_filename = step_log_file_path
+    def __init__(self, parameters, global_config):
         self.min_polya_tail_length = parameters.get("min_polya_tail_length", 40)
         self.min_retention_prob = parameters.get("min_retention_prob", 0.0)
         self.max_retention_prob = parameters.get("max_retention_prob", 1.0)
@@ -40,27 +39,24 @@ class PolyAStep:
         self.global_config = global_config
         print("Poly A selection step instantiated")
 
-    def execute(self, molecule_packet, rng):
+    def execute(self, molecule_packet, rng, log):
         print("Poly A selection step starting")
         retained_molecules = []
-        with open(self.log_filename, "w+") as log_file:
-            log_file.write(Molecule.header)
-            for molecule in molecule_packet.molecules:
-
-                # Weighted distribution based on tail length
-                tail_length = molecule.poly_a_tail_length()
-                tail_length = tail_length if tail_length > self.min_polya_tail_length else 0
-                retention_odds = min(self.min_retention_prob + self.length_retention_prob * tail_length,
-                                     self.max_retention_prob)
-                retained = rng.random() <= retention_odds
-                note = ''
-                if retained:
-                    retained_molecules.append(molecule)
-                    note += 'retained'
-                    note = self.apply_three_prime_bias(molecule, tail_length, note, rng)
-                else:
-                    note += 'removed'
-                log_file.write(molecule.log_entry(note))
+        for molecule in molecule_packet.molecules:
+            # Weighted distribution based on tail length
+            tail_length = molecule.poly_a_tail_length()
+            tail_length = tail_length if tail_length > self.min_polya_tail_length else 0
+            retention_odds = min(self.min_retention_prob + self.length_retention_prob * tail_length,
+                                 self.max_retention_prob)
+            retained = rng.random() <= retention_odds
+            note = ''
+            if retained:
+                retained_molecules.append(molecule)
+                note += 'retained'
+                note = self.apply_three_prime_bias(molecule, tail_length, note, rng)
+            else:
+                note += 'removed'
+            log.write(molecule, note)
         print("Poly A selection step complete")
         molecule_packet.molecules = retained_molecules
         return molecule_packet

@@ -26,6 +26,7 @@ if not config:
 samples = config['global']['samples']
 lanes =  config['sequence_pipeline']['flowcell']['lanes_to_use']
 seed = config['seed']
+full_logs = config['output'].get('full_logs', False)
 
 @functools.cache
 def input_molecule_files(sample):
@@ -111,6 +112,7 @@ rule run_library_prep_packet_from_molecule_file:
         config = json.dumps(config['library_prep_pipeline']),
         global_config = json.dumps(config['global']),
         seed = seed,
+        full_logs = full_logs,
     resources:
         mem_mb = 12_000
     script:
@@ -129,6 +131,7 @@ rule run_library_prep_packet_from_distribution:
         config = json.dumps(config['library_prep_pipeline']),
         global_config = json.dumps(config['global']),
         seed = seed,
+        full_logs = full_logs,
     resources:
         mem_mb = 12_000
     script:
@@ -191,6 +194,7 @@ rule sequence_cluster_packet:
         config = json.dumps(config['sequence_pipeline']),
         global_config = json.dumps(config['global']),
         logdir = "sequence_pipeline/sample{sample}/logs/",
+        full_logs = full_logs,
     resources:
         mem_mb = 12_000
     script:

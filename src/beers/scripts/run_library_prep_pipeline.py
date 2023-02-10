@@ -10,6 +10,7 @@ if 'molecule_file' in snakemake.input.keys():
             snakemake.input.molecule_file,
             snakemake.wildcards.packet_num,
             sample_id = snakemake.wildcards.sample,
+            full_logs = snakemake.params.full_logs,
     )
 else:
     # From distribution
@@ -24,4 +25,5 @@ else:
             sample_id = snakemake.wildcards.sample,
             distribution_directory = snakemake.input.sample_data_dir,
             molecules_per_packet_from_distribution = snakemake.params.num_molecules_per_packet,
+            full_logs = snakemake.params.full_logs,
     )

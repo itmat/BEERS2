@@ -52,13 +52,12 @@ class AdapterLigationStep:
 
     name = "Adapter Ligation Step"
 
-    def __init__(self, step_log_file_path, parameters, global_config):
-        self.log_filename = step_log_file_path
+    def __init__(self, parameters, global_config):
         self.parameters = parameters
         self.global_config = global_config
         print(f"{self.name} instantiated")
 
-    def execute(self, molecule_packet, rng):
+    def execute(self, molecule_packet, rng, log):
         print(f"{self.name} starting")
         sample = molecule_packet.sample
         # Adapters combine a fixed sequence (specified in 'resources' config)
@@ -71,21 +70,19 @@ class AdapterLigationStep:
         adapter_3_prime = "A" + self.global_config['resources']['pre_i7_adapter'] + i7_barcode + self.global_config['resources']['post_i7_adapter']
 
         # Ligate the adapters onto each molecule
-        with open(self.log_filename, "w+") as log_file:
-            log_file.write(Molecule.header)
-            for molecule in molecule_packet.molecules:
-                sequence = molecule.sequence
-                molecule.sequence = adapter_5_prime + sequence + adapter_3_prime
-                molecule.start = 1
-                molecule.cigar = f"{len(adapter_5_prime)}S{len(sequence)}M{len(adapter_3_prime)}S"
-                new_source_start, new_source_cigar, new_source_strand = beers_utils.cigar.chain(
-                        molecule.start, molecule.cigar, "+",
-                        molecule.source_start, molecule.source_cigar, molecule.source_strand
-                )
-                molecule.source_start = new_source_start
-                molecule.source_cigar = new_source_cigar
-                molecule.source_strand = new_source_strand
-                log_file.write(molecule.log_entry())
+        for molecule in molecule_packet.molecules:
+            sequence = molecule.sequence
+            molecule.sequence = adapter_5_prime + sequence + adapter_3_prime
+            molecule.start = 1
+            molecule.cigar = f"{len(adapter_5_prime)}S{len(sequence)}M{len(adapter_3_prime)}S"
+            new_source_start, new_source_cigar, new_source_strand = beers_utils.cigar.chain(
+                    molecule.start, molecule.cigar, "+",
+                    molecule.source_start, molecule.source_cigar, molecule.source_strand
+            )
+            molecule.source_start = new_source_start
+            molecule.source_cigar = new_source_cigar
+            molecule.source_strand = new_source_strand
+            log.write(molecule)
         return molecule_packet
 
     @staticmethod
