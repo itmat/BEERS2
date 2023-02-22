@@ -28,7 +28,6 @@ class LibraryPrepPipeline():
     """
 
     stage_name = "library_prep_pipeline"
-    pipeline_log_subdirectory_name = "Pipeline"
     package = "beers.library_prep"
 
     def __init__(self):
@@ -132,7 +131,6 @@ class LibraryPrepPipeline():
             step_log_dir.mkdir(exist_ok=True)
             step_log_file_path = step_log_dir / step_log_filename
             print(f"Opening {step_log_file_path}")
-            step_name = step.__class__.name if hasattr(step.__class__, 'name') else step.__class__.__name__
             step_start = time.time()
             with Logger(step_log_file_path, compression = None, full_logs = full_logs) as log:
                 molecule_packet = step.execute(molecule_packet, rng, log)
@@ -207,8 +205,6 @@ class LibraryPrepPipeline():
             path to directory where we will output molecule files and quant files
         log_directory:
             path to log directories
-        directory_structure:
-            instructions for creating the scaffolding needed to house the pipeline data and logs
         molecule_packet_filename:
             the file from which to unmarshall the molecule packet
         packet_id:

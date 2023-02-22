@@ -173,23 +173,6 @@ class Flowcell:
             coord = (tile, x, y)
             yield coord
 
-    @staticmethod
-    def generate_coordinates_from_alignment_file(input_file_path):
-        """
-        This generator depends on a sorted alignment file for coordinate retrieval and is not currently being
-        used.
-        :return: flowcell coordinates
-        """
-        input_file = pysam.AlignmentFile(input_file_path, "rb")
-        for line in input_file.fetch():
-            if line.is_unmapped or not line.is_read1 or line.get_tag(tag="NH") != 1:
-                continue
-            coords_match = re.match(coords_match_pattern, line.qname)
-            if coords_match:
-                (flowcell, lane, tile, x, y) = coords_match.groups()
-                coordinates = (tile, x, y)
-                yield coordinates
-
     def set_flowcell_coordinate_ranges(self):
         """
         Determines the minimum and maximum range for each flowcell coordinate, including the lane.  If the ranges are
@@ -201,35 +184,3 @@ class Flowcell:
                            "x": geometry['min_x'], "y": geometry['min_y']}
         self.max_coords = {"lane": geometry['max_lane'], "tile": geometry['max_tile'],
                            "x": geometry['max_x'], "y": geometry['max_y']}
-
-    def get_coordinate_ranges(self, fastq_file_paths):
-        """
-        Applied when the flowcell's coordinate ranges are determined by the FASTQ input files.  The coordinates for
-        every entry in every file are compared with existing minimums and maximums (which are originally set in the
-        flowcell constructor) and those coordinates replace those existing minimums and maximums if appropriate.
-        After all entries are read the dictionaries representing the discovered ranges are set.
-        :param fastq_file_paths: list of the full paths of every fastq file serving as expression pipeline input.
-        """
-        min_coords = self.min_coords
-        max_coords = self.max_coords
-        for fastq_file_path in fastq_file_paths:
-            with gzip.open(fastq_file_path, 'rb') as fastq_file:
-                for counter, (byte_header, content, toss, scores) in enumerate(
-                        itertools.zip_longest(*[fastq_file] * 4)):
-                    if (counter + 1) % 1_000_000 == 0:
-                        print(f"{counter + 1} reads")
-                    header = byte_header.decode()
-                    sequence_identifier = header.split(" ")[0]
-                    coords_match = re.match(coords_match_pattern, sequence_identifier)
-                    if coords_match:
-                        (flowcell, lane, tile, x, y) = coords_match.groups()
-                        lane, tile, x, y = int(lane), int(tile), int(x), int(y)
-                        min_coords['x'] = min(x, min_coords['x'])
-                        max_coords['x'] = max(x, max_coords['x'])
-                        min_coords['y'] = min(y, min_coords['y'])
-                        max_coords['y'] = max(y, max_coords['y'])
-                        min_coords['tile'] = min(tile, min_coords['tile'])
-                        max_coords['tile'] = max(tile, max_coords['tile'])
-                        min_coords['lane'] = min(lane, min_coords['lane'])
-                        max_coords['lane'] = max(lane, max_coords['lane'])
-        self.min_coords, self.max_coords = min_coords, max_coords

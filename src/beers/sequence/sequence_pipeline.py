@@ -140,11 +140,6 @@ class SequencePipeline():
             directory path to output logs to
         """
 
-        # Normally the cluster_packet_id should be derived from the serialized cluster_packet in the file.  But if
-        # the file cannot be found, we still need an id to report back to the auditor if at all possible.  So we
-        # extract it from the file name just in case.
-        cluster_packet = None
-
         cluster_packet = ClusterPacket.deserialize(input_packet_path)
         sample_id = cluster_packet.sample.sample_id
         packet_id = cluster_packet.cluster_packet_id
