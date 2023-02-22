@@ -10,7 +10,7 @@ from beers_utils.molecule import Molecule
 
 
 class SizingStep:
-    """
+    r"""
     This step simulates filtering molecules by size.
 
     Molecules are selected with probability that ranges piecewise linearly from 0
