@@ -5,7 +5,6 @@ import pickle
 
 import numpy as np
 
-from beers.utilities.library_prep_utils import Utils
 from beers_utils.molecule import Molecule
 from beers.utilities.gc_content import gc_content
 

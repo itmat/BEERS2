@@ -4,7 +4,6 @@ from scipy.stats import norm
 import numpy as np
 #import pylab as pl
 import pickle
-from beers.utilities.library_prep_utils import Utils
 
 from beers_utils.molecule import Molecule
 
