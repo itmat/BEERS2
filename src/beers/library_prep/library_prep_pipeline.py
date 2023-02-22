@@ -8,6 +8,7 @@ import sys
 import resource
 import json
 import math
+from typing import Optional
 
 import numpy as np
 
@@ -147,7 +148,7 @@ class LibraryPrepPipeline():
         molecule_packet.write_quantification_file(output_quant_path)
         print(f"Output final sample quantification to {output_quant_path}")
 
-    def print_summary(self, original_ids: set[str], sample: list[Molecule], elapsed_time:float=None):
+    def print_summary(self, original_ids: set[str], sample: list[Molecule], elapsed_time:Optional[float]=None):
         """Output a summary of the sample (number of molecules, time taken, etc.).
 
         original_ids:
@@ -180,10 +181,10 @@ class LibraryPrepPipeline():
             global_configuration: str,
             output_directory: str,
             log_directory: str,
-            molecule_packet_filename: str,
+            molecule_packet_filename: Optional[str],
             packet_id: str,
             sample_id: str,
-            distribution_directory: str = None,
+            distribution_directory: Optional[str] = None,
             molecules_per_packet_from_distribution: int = 10000,
             full_logs: bool = False,
             ):
