@@ -26,7 +26,7 @@ class RiboZeroStep:
         self.match_degrade_chance = parameters["match_degrade_chance"]
         self.degrade_entire_molecule = parameters["degrade_entire_molecule"]
         self.global_config = global_config
-        print("Poly A selection step instantiated")
+        print("RiboZero selection step instantiated")
 
         # The regular expression that matches to any of the oligos
         # in the oligo library. Looks for exact matches only
@@ -51,8 +51,10 @@ class RiboZeroStep:
                     start, end = match.span()
                     mol1 = molecule.make_fragment(1, start)
                     mol2 = molecule.make_fragment(end+1, len(molecule.sequence))
-                    retained_molecules.append(mol1)
-                    retained_molecules.append(mol2)
+                    if len(mol1.sequence) > 0:
+                        retained_molecules.append(mol1)
+                    if len(mol2.sequence) > 0:
+                        retained_molecules.append(mol2)
                 else:
                     # Molecule is being entirely degraded, nothing to do
                     pass
