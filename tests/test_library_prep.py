@@ -3,6 +3,7 @@ from beers_utils.sample import Sample
 from beers_utils.molecule_packet import MoleculePacket
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.library_prep.polya_step import PolyAStep
+from beers.library_prep.ribozero_step import RiboZeroStep
 from beers.library_prep.first_strand_synthesis_step import FirstStrandSynthesisStep
 from beers.library_prep.second_strand_synthesis_step import SecondStrandSynthesisStep
 from beers.library_prep.fragment_step import FragmentStep
@@ -70,6 +71,33 @@ def test_PolyA(tmp_path):
         # And all should be a subset of the earlier molecule
         assert len(molecule.sequence) <= len(original.sequence)
         assert molecule.sequence in original.sequence
+
+def test_RiboZero(tmp_path):
+    # Setup
+    rng = numpy.random.default_rng(0)
+
+    molecule_packet = make_molecule_packet(count = 10, length= 3_000, rng = rng)
+    for molecule in molecule_packet.molecules[:5]:
+        # Add one of the oligos to the molecule
+        oligo = "ATTTCACTGGTTAAAAGTAAGAGACAGCTGAACCCTCGTGGAGCCATTCA"
+        molecule.sequence = molecule.sequence[:50] + oligo + molecule.sequence[50:]
+        molecule.source_cigar = f"{len(molecule.sequence)}M"
+    original_molecules = molecule_packet.molecules
+
+    log = Logger(tmp_path / "log.txt")
+    step = RiboZeroStep(
+        parameters = {
+            'match_degrade_chance': 1.0,
+            'degrade_entire_molecule': True,
+        },
+        global_config = {}
+    )
+
+    # Run the step
+    output = step.execute(molecule_packet, rng, log)
+
+    # Exactly 5 had no Ribosomal-matching oligo content
+    assert len(output.molecules) == 5
 
 def test_FirstStrandSynthesis(tmp_path):
     # Setup
