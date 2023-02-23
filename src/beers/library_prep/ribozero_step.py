@@ -37,31 +37,39 @@ class RiboZeroStep:
         retained_molecules = []
         for molecule in molecule_packet.molecules:
             # Check if any of the oligo sequences are present in the molecule
-            match = self.oligo_match_re.search(molecule.sequence)
-            if match:
-                degraded = rng.random() <= self.match_degrade_chance
-            else:
-                degraded = False
+            matches = self.oligo_match_re.finditer(molecule.sequence)
+            times_degraded = 0
+            remaining_molecule = molecule
+            last_end = 1
+            for match in matches:
+                degraded = (rng.random() <= self.match_degrade_chance)
 
-            note = ''
-            if degraded:
+                if not degraded:
+                    continue
+                times_degraded += 1
+
+                if self.degrade_entire_molecule:
+                    # Don't retain any of the molecule
+                    continue
+
+                # Retain the piece between the end of the last fragment and this oligo match
+                start, end = match.span()
+                new_mol = molecule.make_fragment(last_end, start)
+                if len(new_mol.sequence) > 0:
+                    retained_molecules.append(new_mol)
+
+                last_end = end + 1
+            if times_degraded > 0:
+                note = f'degraded {times_degraded} times'
+
                 if not self.degrade_entire_molecule:
-                    # Take out the part that matches the oligo
-                    #TODO: this only removes that *first* oligo match! There could be more
-                    start, end = match.span()
-                    mol1 = molecule.make_fragment(1, start)
-                    mol2 = molecule.make_fragment(end+1, len(molecule.sequence))
-                    if len(mol1.sequence) > 0:
-                        retained_molecules.append(mol1)
-                    if len(mol2.sequence) > 0:
-                        retained_molecules.append(mol2)
-                else:
-                    # Molecule is being entirely degraded, nothing to do
-                    pass
-                note += 'degraded'
+                    # Take the piece after the last oligo match
+                    new_mol = molecule.make_fragment(last_end, len(molecule.sequence))
+                    if len(new_mol.sequence) > 0:
+                        retained_molecules.append(new_mol)
             else:
                 retained_molecules.append(molecule)
-                note += 'retained'
+                note = 'retained'
             log.write(molecule, note)
         print("RiboZero selection step complete")
         molecule_packet.molecules = retained_molecules

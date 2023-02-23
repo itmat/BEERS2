@@ -76,12 +76,17 @@ def test_RiboZero(tmp_path):
     # Setup
     rng = numpy.random.default_rng(0)
 
+    oligo = "ATTTCACTGGTTAAAAGTAAGAGACAGCTGAACCCTCGTGGAGCCATTCA"
+    def add_oligo(mol, at = 50):
+        mol.sequence = mol.sequence[:at] + oligo + mol.sequence[at:]
+        mol.source_cigar = f"{len(mol.sequence)}M"
+
     molecule_packet = make_molecule_packet(count = 10, length= 3_000, rng = rng)
     for molecule in molecule_packet.molecules[:5]:
-        # Add one of the oligos to the molecule
-        oligo = "ATTTCACTGGTTAAAAGTAAGAGACAGCTGAACCCTCGTGGAGCCATTCA"
-        molecule.sequence = molecule.sequence[:50] + oligo + molecule.sequence[50:]
-        molecule.source_cigar = f"{len(molecule.sequence)}M"
+        # Add an oligo sequence into the first five molecules
+        add_oligo(molecule)
+    # And add a second oligo to the first molecule
+    add_oligo(molecule_packet.molecules[0], at = 200)
     original_molecules = molecule_packet.molecules
 
     log = Logger(tmp_path / "log.txt")
@@ -113,7 +118,8 @@ def test_RiboZero(tmp_path):
 
     # Our five molecules that contained matching sequences
     # have now been degraded into two molecules
-    assert len(output.molecules) == 15
+    # and the first split into three
+    assert len(output.molecules) == 16
     for molecule in output.molecules:
         # All of our degraded molecules are subsets of its parent molecule
         assert any(molecule.sequence in mol2.sequence for mol2 in original_molecules)
