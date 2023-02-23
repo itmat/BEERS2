@@ -9,6 +9,11 @@ class RiboZeroStep:
     This step simulates the RiboZero procedure, which uses a library of oligos to deplete the ribosomal rRNA
     content of the sample.
 
+    The library of oligos is sourced from:
+        Adiconis, X., Borges-Rivera, D., Satija, R. et al.
+        Comparative analysis of RNA sequencing methods for degraded or low-input samples.
+        Nat Methods 10, 623-629 (2013). https://doi.org/10.1038/nmeth.2483
+
     Configuration Example::
 
         # Chance to degrade a molecule that matches one of the oligos
@@ -288,5 +293,4 @@ CTTGCATGTGTAATCTTACTAAGAGCTAATAGAAAGGCTAGGACCAAACC
 AAAGCCTACAGCACCCGGTATTCCCAGGCGGTCTCCCATCCAAGTACTAA
 CCAGGCCCGACCCTGCTTAGCTTCCGAGATCAGACGAGATCGGGCGCGTT
 TTCCGAGATCAGACGAGATCGGGCGCGTTCAGGGTGGTATGGCCGTAGAC
-oligo_library
 """.strip().split()
