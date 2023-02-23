@@ -99,6 +99,26 @@ def test_RiboZero(tmp_path):
     # Exactly 5 had no Ribosomal-matching oligo content
     assert len(output.molecules) == 5
 
+    # Now test again with partial degradation
+    molecule_packet.molecules = original_molecules
+    log = Logger(tmp_path / "log.txt")
+    step = RiboZeroStep(
+        parameters = {
+            'match_degrade_chance': 1.0,
+            'degrade_entire_molecule': False,
+        },
+        global_config = {}
+    )
+    output = step.execute(molecule_packet, rng, log)
+
+    # Our five molecules that contained matching sequences
+    # have now been degraded into two molecules
+    assert len(output.molecules) == 15
+    for molecule in output.molecules:
+        # All of our degraded molecules are subsets of its parent molecule
+        assert any(molecule.sequence in mol2.sequence for mol2 in original_molecules)
+
+
 def test_FirstStrandSynthesis(tmp_path):
     # Setup
     rng = numpy.random.default_rng(0)
