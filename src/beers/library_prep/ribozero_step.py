@@ -18,19 +18,25 @@ class RiboZeroStep:
     Configuration Example::
 
         # Maximum chance to degrade a molecule that matches one of the oligos
+        # (Molecules with multiple matching sites will still exceed this limit)
         max_degrade_chance: 0.99
 
         # Exponent to raise the score to to determine the chance of degradation
         # Exponent of 1 means that a 50% match has a 50% probability of degraded
-        # exponent of 2 means a 50% match has a 25% probability of degrade, etc.
-        # Note that 50% matches happen somewhat regularly and 25% match happens ubiquitously
+        # exponent of 2 means a 50% match has a 25% probability to degrade, etc.
+        # Note that 50% matches happen regularly and a 25% match happens ubiquitously
         # and this probability is per-base, so the exponent should not be low
-        degrade_exponent: 6
+        # E.g., a random length 2000 bp transcript will degrade at about 2.5 sites
+        # at degrade_exponent=8. If degrade_entire_molecule=True, then the exponent
+        # must be even higher (such as 15) to prevent losing most molecules since
+        # any degradation event will remove the entire molecule.
+        degrade_exponent: 8
 
 
         # If true, degrade/remove the entire molecule if any part matches
         # otherwise, fragments the molecule around the match and removes
-        # the matching segment.
+        # the matching segment. Note that if this is True, then you must set the
+        # degrade_exponent variable to be higher to prevent the loss of most molecules.
         degrade_entire_molecule: False
     """
 
@@ -104,10 +110,10 @@ class RiboZeroStep:
 
         if "degrade_exponent" in parameters:
             degrade_exponent = parameters["degrade_exponent"]
-            if degrade_exponent < 0 or min_retention_prob > 1:
-                errors.append("The match degradation chance (degrade_exponent) must be between 0 and 1")
+            if degrade_exponent > 0:
+                errors.append("The match degradation chance (degrade_exponent) must be greater than 0")
         else:
-            errors.append("Must specify degrade_exponent (between 0 and 1)")
+            errors.append("Must specify degrade_exponent (a positive number)")
 
         if "degrade_entire_molecule" in parameters:
             degrade_entire_molecule = parameters["degrade_entire_molecule"]
