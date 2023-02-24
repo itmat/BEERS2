@@ -105,15 +105,15 @@ class RiboZeroStep:
         errors = []
         if "max_degrade_chance" in parameters:
             max_degrade_chance = parameters["max_degrade_chance"]
-            if max_degrade_chance < 0 or min_retention_prob > 1:
+            if max_degrade_chance < 0 or max_degrade_chance > 1:
                 errors.append("The match degradation chance (max_degrade_chance) must be between 0 and 1")
         else:
             errors.append("Must specify max_degrade_chance (between 0 and 1)")
 
         if "degrade_exponent" in parameters:
             degrade_exponent = parameters["degrade_exponent"]
-            if degrade_exponent > 0:
-                errors.append("The match degradation chance (degrade_exponent) must be greater than 0")
+            if not (degrade_exponent > 0):
+                errors.append("The degradation exponent (degrade_exponent) must be greater than 0")
         else:
             errors.append("Must specify degrade_exponent (a positive number)")
 
