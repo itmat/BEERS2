@@ -2,6 +2,7 @@ import sys
 import re
 from timeit import default_timer as timer
 import numpy as np
+import scipy.signal
 from beers_utils.molecule import Molecule
 
 class RiboZeroStep:
@@ -16,8 +17,16 @@ class RiboZeroStep:
 
     Configuration Example::
 
-        # Chance to degrade a molecule that matches one of the oligos
-        match_degrade_chance: 0.99
+        # Maximum chance to degrade a molecule that matches one of the oligos
+        max_degrade_chance: 0.99
+
+        # Exponent to raise the score to to determine the chance of degradation
+        # Exponent of 1 means that a 50% match has a 50% probability of degraded
+        # exponent of 2 means a 50% match has a 25% probability of degrade, etc.
+        # Note that 50% matches happen somewhat regularly and 25% match happens ubiquitously
+        # and this probability is per-base, so the exponent should not be low
+        degrade_exponent: 6
+
 
         # If true, degrade/remove the entire molecule if any part matches
         # otherwise, fragments the molecule around the match and removes
@@ -28,7 +37,8 @@ class RiboZeroStep:
     name = "RiboZero Step"
 
     def __init__(self, parameters, global_config):
-        self.match_degrade_chance = parameters["match_degrade_chance"]
+        self.max_degrade_chance = parameters["max_degrade_chance"]
+        self.degrade_exponent = parameters["degrade_exponent"]
         self.degrade_entire_molecule = parameters["degrade_entire_molecule"]
         self.global_config = global_config
         print("RiboZero selection step instantiated")
@@ -42,15 +52,18 @@ class RiboZeroStep:
         retained_molecules = []
         for molecule in molecule_packet.molecules:
             # Check if any of the oligo sequences are present in the molecule
-            matches = self.oligo_match_re.finditer(molecule.sequence)
+            scores = ungapped_alignment_scores(ENCODED_OLIGO_LIBRARY, molecule.sequence)
+            degrade_probability = self.max_degrade_chance * (scores / OLIGO_LENGTH) ** self.degrade_exponent
+            to_degrade = rng.random(size=degrade_probability.shape) <= degrade_probability
+            degrade_sites, = np.where(to_degrade)
+
             times_degraded = 0
             remaining_molecule = molecule
             last_end = 1
-            for match in matches:
-                degraded = (rng.random() <= self.match_degrade_chance)
-
-                if not degraded:
+            for site in degrade_sites:
+                if site < last_end:
                     continue
+
                 times_degraded += 1
 
                 if self.degrade_entire_molecule:
@@ -58,12 +71,11 @@ class RiboZeroStep:
                     continue
 
                 # Retain the piece between the end of the last fragment and this oligo match
-                start, end = match.span()
-                new_mol = molecule.make_fragment(last_end, start)
+                new_mol = molecule.make_fragment(last_end, site)
                 if len(new_mol.sequence) > 0:
                     retained_molecules.append(new_mol)
 
-                last_end = end + 1
+                last_end = site + OLIGO_LENGTH
             if times_degraded > 0:
                 note = f'degraded {times_degraded} times'
 
@@ -83,19 +95,74 @@ class RiboZeroStep:
     @staticmethod
     def validate(parameters, global_config):
         errors = []
-        if "match_degrade_chance" in parameters:
-            match_degrade_chance = parameters["match_degrade_chance"]
-            if match_degrade_chance < 0 or min_retention_prob > 1:
-                errors.append("The match degradation chance (match_degrade_chance) must be between 0 and 1")
+        if "max_degrade_chance" in parameters:
+            max_degrade_chance = parameters["max_degrade_chance"]
+            if max_degrade_chance < 0 or min_retention_prob > 1:
+                errors.append("The match degradation chance (max_degrade_chance) must be between 0 and 1")
         else:
-            errors.append("Must specify match_degrade_chance (between 0 and 1)")
+            errors.append("Must specify max_degrade_chance (between 0 and 1)")
+
+        if "degrade_exponent" in parameters:
+            degrade_exponent = parameters["degrade_exponent"]
+            if degrade_exponent < 0 or min_retention_prob > 1:
+                errors.append("The match degradation chance (degrade_exponent) must be between 0 and 1")
+        else:
+            errors.append("Must specify degrade_exponent (between 0 and 1)")
+
         if "degrade_entire_molecule" in parameters:
             degrade_entire_molecule = parameters["degrade_entire_molecule"]
             if degrade_entire_molecule not in [True, False]:
                 errors.append("degrade_entire_molecule must be a boolean value")
         else:
             errors.append("Must specify degrade_entire_molecule (boolean)")
+
         return errors
+
+ACGT = np.array([ord(x) for x in "ACGT"])
+def encode(sequence):
+    ''' Maps a sequence (as a string) to a numpy array of shape (4,n)
+    which one-hot encodes the A/C/G/T value '''
+    encoded = np.frombuffer(sequence.encode("ascii"), dtype='uint8')
+    return (ACGT[:,None] == encoded[None,:]).astype(int)
+def padded_encode(sequence, length):
+    ''' Same as encode(sequence) but if sequence is less than given length
+    it is padded with 1/1/1/1 values for ACGT to indicate it matches anything'''
+    encoded = encode(sequence)
+    return np.concatenate((
+            encoded,
+            np.full(shape=(4,max(0, length - len(sequence))), fill_value = 1),
+        ),
+        axis = 1,
+    )
+
+#def ungapped_alignment_scores(queries, ref):
+#    ''' Returns the scores at each position of the best ungaped alignment
+#    of any of the query seqs against the reference sequence '''
+#
+#    oligo_count, _, oligo_length = queries.shape
+#    ref = encode(ref)
+#    windowed_ref = np.lib.stride_tricks.sliding_window_view(
+#        ref,
+#        oligo_length,
+#        axis = 1,
+#    )
+#    scores = (windowed_ref[None, :, :, :] * queries[:, :, None, :]).sum(axis=(1,3))
+#    return scores.max(axis=0)
+
+def ungapped_alignment_scores(queries, ref):
+    ''' Returns the scores at each position of the best ungaped alignment
+    of any of the query seqs against the reference sequence '''
+
+    ref = encode(ref)
+    # NOTE: sadly scipy.signal.convolve is not vectorized
+    # since it will just sum over any additional axes
+    scores = np.array([scipy.signal.convolve(
+        ref,
+        query[::-1, ::-1], # Reversed since convolution will reverse it again
+        mode = "valid",
+    ) for query in queries])
+    return scores.max(axis=(0,1))
+
 
 OLIGO_LIBRARY = """
 TAATGATCCTTCCGCAGGTTCACCTACGGAAACCTTGTTACGACTTTTAC
@@ -294,3 +361,5 @@ AAAGCCTACAGCACCCGGTATTCCCAGGCGGTCTCCCATCCAAGTACTAA
 CCAGGCCCGACCCTGCTTAGCTTCCGAGATCAGACGAGATCGGGCGCGTT
 TTCCGAGATCAGACGAGATCGGGCGCGTTCAGGGTGGTATGGCCGTAGAC
 """.strip().split()
+OLIGO_LENGTH = max(len(oligo) for oligo in OLIGO_LIBRARY)
+ENCODED_OLIGO_LIBRARY = np.array([padded_encode(oligo, OLIGO_LENGTH) for oligo in OLIGO_LIBRARY])

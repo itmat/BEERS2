@@ -92,7 +92,8 @@ def test_RiboZero(tmp_path):
     log = Logger(tmp_path / "log.txt")
     step = RiboZeroStep(
         parameters = {
-            'match_degrade_chance': 1.0,
+            'max_degrade_chance': 1.0,
+            'degrade_exponent': 100.,
             'degrade_entire_molecule': True,
         },
         global_config = {}
@@ -109,7 +110,8 @@ def test_RiboZero(tmp_path):
     log = Logger(tmp_path / "log.txt")
     step = RiboZeroStep(
         parameters = {
-            'match_degrade_chance': 1.0,
+            'max_degrade_chance': 1.0,
+            'degrade_exponent': 100.,
             'degrade_entire_molecule': False,
         },
         global_config = {}
