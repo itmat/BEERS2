@@ -162,7 +162,7 @@ The log files contain the output molecules from the step, sometimes with additio
 To contribute to or modify BEERS2, we recommend the following setup. First, clone the git repository including the submodules:
 
 ```bash
-git clone --recurse-submodules git@github.com:itmat/BEERS2.git
+git clone --recurse-submodules https://github.com/itmat/BEERS2.git
 ```
 
 Then create and activate a virtual environment for BEERS2 development using Python 3.10:
