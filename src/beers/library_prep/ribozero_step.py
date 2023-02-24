@@ -3,7 +3,6 @@ import re
 import functools
 from timeit import default_timer as timer
 import numpy as np
-import scipy.signal
 import scipy.fft
 from beers_utils.molecule import Molecule
 from beers_utils.general_utils import GeneralUtils
@@ -51,10 +50,6 @@ class RiboZeroStep:
         self.degrade_entire_molecule = parameters["degrade_entire_molecule"]
         self.global_config = global_config
         print("RiboZero selection step instantiated")
-
-        # The regular expression that matches to any of the oligos
-        # in the oligo library. Looks for exact matches only
-        self.oligo_match_re = re.compile("|".join(OLIGO_LIBRARY))
 
     def execute(self, molecule_packet, rng, log):
         print("RiboZero selection step starting")
