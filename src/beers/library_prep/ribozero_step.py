@@ -135,20 +135,6 @@ def padded_encode(sequence, length):
         axis = 1,
     )
 
-#def ungapped_alignment_scores(queries, ref):
-#    ''' Returns the scores at each position of the best ungaped alignment
-#    of any of the query seqs against the reference sequence '''
-#
-#    oligo_count, _, oligo_length = queries.shape
-#    ref = encode(ref)
-#    windowed_ref = np.lib.stride_tricks.sliding_window_view(
-#        ref,
-#        oligo_length,
-#        axis = 1,
-#    )
-#    scores = (windowed_ref[None, :, :, :] * queries[:, :, None, :]).sum(axis=(1,3))
-#    return scores.max(axis=0)
-
 def ungapped_alignment_scores(queries, ref):
     ''' Returns the scores at each position of the best ungaped alignment
     of any of the query seqs against the reference sequence '''
