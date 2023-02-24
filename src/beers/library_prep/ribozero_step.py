@@ -1,8 +1,10 @@
 import sys
 import re
+import functools
 from timeit import default_timer as timer
 import numpy as np
 import scipy.signal
+import scipy.fft
 from beers_utils.molecule import Molecule
 
 class RiboZeroStep:
@@ -58,7 +60,7 @@ class RiboZeroStep:
         retained_molecules = []
         for molecule in molecule_packet.molecules:
             # Check if any of the oligo sequences are present in the molecule
-            scores = ungapped_alignment_scores(ENCODED_OLIGO_LIBRARY, molecule.sequence)
+            scores = ungapped_alignment_scores(ENCODED_OLIGO_LIBRARY, LIBRRAY_INDEX, molecule.sequence)
             degrade_probability = self.max_degrade_chance * (scores / OLIGO_LENGTH) ** self.degrade_exponent
             to_degrade = rng.random(size=degrade_probability.shape) <= degrade_probability
             degrade_sites, = np.where(to_degrade)
@@ -141,19 +143,64 @@ def padded_encode(sequence, length):
         axis = 1,
     )
 
-def ungapped_alignment_scores(queries, ref):
+def ungapped_alignment_scores(queries, query_index, ref):
     ''' Returns the scores at each position of the best ungaped alignment
     of any of the query seqs against the reference sequence '''
 
     ref = encode(ref)
-    # NOTE: sadly scipy.signal.convolve is not vectorized
-    # since it will just sum over any additional axes
-    scores = np.array([scipy.signal.convolve(
-        ref,
-        query[::-1, ::-1], # Reversed since convolution will reverse it again
-        mode = "valid",
-    ) for query in queries])
+    scores = indexed_convolve(ref, queries, query_index)
     return scores.max(axis=(0,1))
+
+def indexed_convolve(ref, library, index):
+    '''
+    Takes a library of queries and convolves them with ref
+
+    The indexed library means an array of the fft's of
+    all the library query values.
+    The output is the (n, len(ref)-query_size) values of convolving
+    each of the queries with the reference
+    '''
+    shape = [s1 + s2 - 1 for s1, s2 in zip(ref.shape, library.shape[1:])]
+    shape_valid = [s1 - s2 + 1 for s1, s2 in zip(ref.shape, library.shape[1:])]
+
+    # Get the index for the nearest 'fast' shape for the FFT
+    # Using these shapes also reduces the number of precomputations
+    # we have to do to form the library index since we use fewer different shapes
+    fastshape = tuple(scipy.fft.next_fast_len(s) for s in shape)
+    lib_index = index(fastshape)
+
+    # Actually compute the convolution by multiplication in frequency space
+    conv = scipy.fft.irfftn(
+            scipy.fft.rfftn(ref, fastshape)[None, :, :] * lib_index,
+            fastshape
+    )
+
+    # Cut out the part that we actually care about
+    # End result will have the same shape as if you used method='valid'
+    # in scipy.signal.convolve
+    shape_slice = tuple(slice(sz) for sz in shape)
+    ret = conv[(slice(None), *shape_slice)]
+    return _centered(ret, (library.shape[0], *shape_valid))
+
+def build_library_index(library):
+    ''' For use with indexed_convolve.
+
+    Computes fft of all the entires in a encoded sequence library
+    '''
+    @functools.cache
+    def get_library_index(shape):
+        return scipy.fft.rfftn(library[:, ::-1,::-1], shape, axes=(1,2))
+    return get_library_index
+
+def _centered(arr, newshape):
+    # From scipy: https://github.com/scipy/scipy/blob/v1.10.1/scipy/signal/_signaltools.py#L1298-L1433
+    # Return the center newshape portion of the array.
+    newshape = np.asarray(newshape)
+    currshape = np.array(arr.shape)
+    startind = (currshape - newshape) // 2
+    endind = startind + newshape
+    myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
+    return arr[tuple(myslice)]
 
 
 OLIGO_LIBRARY = """
@@ -355,3 +402,4 @@ TTCCGAGATCAGACGAGATCGGGCGCGTTCAGGGTGGTATGGCCGTAGAC
 """.strip().split()
 OLIGO_LENGTH = max(len(oligo) for oligo in OLIGO_LIBRARY)
 ENCODED_OLIGO_LIBRARY = np.array([padded_encode(oligo, OLIGO_LENGTH) for oligo in OLIGO_LIBRARY])
+LIBRRAY_INDEX = build_library_index(ENCODED_OLIGO_LIBRARY)
