@@ -6,6 +6,7 @@ import numpy as np
 import scipy.signal
 import scipy.fft
 from beers_utils.molecule import Molecule
+from beers_utils.general_utils import GeneralUtils
 
 class RiboZeroStep:
     """
@@ -401,5 +402,7 @@ CCAGGCCCGACCCTGCTTAGCTTCCGAGATCAGACGAGATCGGGCGCGTT
 TTCCGAGATCAGACGAGATCGGGCGCGTTCAGGGTGGTATGGCCGTAGAC
 """.strip().split()
 OLIGO_LENGTH = max(len(oligo) for oligo in OLIGO_LIBRARY)
-ENCODED_OLIGO_LIBRARY = np.array([padded_encode(oligo, OLIGO_LENGTH) for oligo in OLIGO_LIBRARY])
+REVERSE_OLIGO_LIBRARY = [GeneralUtils.create_complement_strand(oligo) for oligo in OLIGO_LIBRARY]
+# We want to search for the reverse complement of the oligos in the molecules
+ENCODED_OLIGO_LIBRARY = np.array([padded_encode(oligo, OLIGO_LENGTH) for oligo in REVERSE_OLIGO_LIBRARY])
 LIBRRAY_INDEX = build_library_index(ENCODED_OLIGO_LIBRARY)

@@ -76,7 +76,7 @@ def test_RiboZero(tmp_path):
     # Setup
     rng = numpy.random.default_rng(0)
 
-    oligo = "ATTTCACTGGTTAAAAGTAAGAGACAGCTGAACCCTCGTGGAGCCATTCA"
+    oligo = 'AAATCTTACCCCGCCTGTTTACCAAAAACATCACCTCTAGCATCACCAGT' # rev. complement of one oligo
     def add_oligo(mol, at = 50):
         mol.sequence = mol.sequence[:at] + oligo + mol.sequence[at:]
         mol.source_cigar = f"{len(mol.sequence)}M"
