@@ -4,7 +4,7 @@
 # To set up this config for your BEERS2 run, please go through
 # all items marked with a TODO value. These contain file paths
 # that have to be set to use your data.
-# See also the config/baby.config.yaml file for a complete example.
+# See also the config/baby.config.yaml file for a runnable example.
 
 # The seed value initializes the random number generator
 # so that runs are reproducible. Any integer works.
@@ -32,6 +32,11 @@ output:
     # unidentified reads, stored in separate files.
     output_sam: true
     output_bam: false
+
+    # Set to true to receive full logs of intermediate steps
+    # These can be very large for a full-sized BEERS run (100s of GB)
+    # since they document every intermediate molecule throughout library prep
+    full_logs: false
 
 global:
     # global configuration contains configuration values that are available to all
@@ -91,7 +96,7 @@ global:
         # generated from.
         # TODO: this needs to be set to a fasta of the genome you generate data for,
         #       if generating SAM/BAM files (default)
-        reference_genome_fasta: CAMPAREE/resources/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa
+        reference_genome_fasta: /path/to/reference/genome.fa
 
 library_prep_pipeline:
     # The library prep pipeline takes input molecules and walks them through a library prep

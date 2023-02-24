@@ -7,6 +7,10 @@
 # The data comes from mouse, with data stripped to several small
 # genomic regions.
 
+# For the data files necesary to use this file, please run:
+# wget -c https://s3.amazonaws.com/itmat.data/BEERS2/examples/baby_mouse_example.tar.gz -O - | tar -xz
+# cd baby_mouse_example/
+
 # The seed value initializes the random number generator
 # so that runs are reproducible. Any integer works.
 seed: 100
@@ -31,6 +35,11 @@ output:
     # unidentified reads, stored in separate files.
     output_sam: true
     output_bam: false
+
+    # Set to true to receive full logs of intermediate steps
+    # These can be very large for a full-sized BEERS run (100s of GB)
+    # since they document every intermediate molecule throughout library prep
+    full_logs: false
 
 global:
     # global configuration contains configuration values that are available to all
@@ -85,7 +94,7 @@ global:
         # Reference genome FASTA is used to generate output BAM files, which require chromosome lengths.
         # Use the same FASTA as the BEERS input (such as from CAMPAREE) was
         # generated from.
-        reference_genome_fasta: CAMPAREE/resources/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa
+        reference_genome_fasta: input_data/baby_genome.mm10/baby_genome.mm10.oneline_seqs.fa
 
 library_prep_pipeline:
     # The library prep pipeline takes input molecules and walks them through a library prep
@@ -107,7 +116,7 @@ library_prep_pipeline:
         #   - sample2:
         #       molecule_file1.txt
         #       molecule_file2.txt
-        directory_path: resources/example_baby_mouse/
+        directory_path: input_data/
 
         # Second, we can provide CAMPAREE sample directories
         # Which instead contain the information to generate new molecules
@@ -128,11 +137,11 @@ library_prep_pipeline:
 
                 # Directory containing CAMPAREE output for the sample
                 # This data is used to generate the resulting molecules
-                sample_data_directory: resources/example_baby_mouse/sample1/
+                sample_data_directory: input_data/sample1/
             '2':
                 num_molecules_per_packet: 200
                 num_packets: 1
-                sample_data_directory: resources/example_baby_mouse/sample2/
+                sample_data_directory: input_data/sample2/
 
     steps:
         # The 'steps' list specifies all the steps that the Library Prep Pipeline
