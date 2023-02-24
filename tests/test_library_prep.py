@@ -3,6 +3,7 @@ from beers_utils.sample import Sample
 from beers_utils.molecule_packet import MoleculePacket
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.library_prep.polya_step import PolyAStep
+from beers.library_prep.ribozero_step import RiboZeroStep
 from beers.library_prep.first_strand_synthesis_step import FirstStrandSynthesisStep
 from beers.library_prep.second_strand_synthesis_step import SecondStrandSynthesisStep
 from beers.library_prep.fragment_step import FragmentStep
@@ -70,6 +71,61 @@ def test_PolyA(tmp_path):
         # And all should be a subset of the earlier molecule
         assert len(molecule.sequence) <= len(original.sequence)
         assert molecule.sequence in original.sequence
+
+def test_RiboZero(tmp_path):
+    # Setup
+    rng = numpy.random.default_rng(0)
+
+    oligo = "ATTTCACTGGTTAAAAGTAAGAGACAGCTGAACCCTCGTGGAGCCATTCA"
+    def add_oligo(mol, at = 50):
+        mol.sequence = mol.sequence[:at] + oligo + mol.sequence[at:]
+        mol.source_cigar = f"{len(mol.sequence)}M"
+
+    molecule_packet = make_molecule_packet(count = 10, length= 3_000, rng = rng)
+    for molecule in molecule_packet.molecules[:5]:
+        # Add an oligo sequence into the first five molecules
+        add_oligo(molecule)
+    # And add a second oligo to the first molecule
+    add_oligo(molecule_packet.molecules[0], at = 200)
+    original_molecules = molecule_packet.molecules
+
+    log = Logger(tmp_path / "log.txt")
+    step = RiboZeroStep(
+        parameters = {
+            'max_degrade_chance': 1.0,
+            'degrade_exponent': 100.,
+            'degrade_entire_molecule': True,
+        },
+        global_config = {}
+    )
+
+    # Run the step
+    output = step.execute(molecule_packet, rng, log)
+
+    # Exactly 5 had no Ribosomal-matching oligo content
+    assert len(output.molecules) == 5
+
+    # Now test again with partial degradation
+    molecule_packet.molecules = original_molecules
+    log = Logger(tmp_path / "log.txt")
+    step = RiboZeroStep(
+        parameters = {
+            'max_degrade_chance': 1.0,
+            'degrade_exponent': 100.,
+            'degrade_entire_molecule': False,
+        },
+        global_config = {}
+    )
+    output = step.execute(molecule_packet, rng, log)
+
+    # Our five molecules that contained matching sequences
+    # have now been degraded into two molecules
+    # and the first split into three
+    assert len(output.molecules) == 16
+    for molecule in output.molecules:
+        # All of our degraded molecules are subsets of its parent molecule
+        assert any(molecule.sequence in mol2.sequence for mol2 in original_molecules)
+
 
 def test_FirstStrandSynthesis(tmp_path):
     # Setup
