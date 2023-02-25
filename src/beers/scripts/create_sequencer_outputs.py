@@ -19,7 +19,6 @@ flowcell = beers.flowcell.Flowcell(
 
 barcodes = {sample: (config['global']['samples'][sample]['barcodes']['i5'] + "+" + config['global']['samples'][sample]['barcodes']['i7'])}
 
-print(dir(snakemake))
 if filetype in ['sam', 'bam']:
     SAM = beers.sam.SAM(
         flowcell = flowcell,
