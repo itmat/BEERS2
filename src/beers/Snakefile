@@ -118,13 +118,31 @@ rule run_library_prep_packet_from_molecule_file:
     script:
         "scripts/run_library_prep_pipeline.py"
 
+def get_sample_distribution_files(sample):
+    ''' input files needed to generate a sample from distribution '''
+    directory = pathlib.Path(config['library_prep_pipeline']['input']['from_distribution_data'][sample]['sample_data_directory'])
+    necessary_files = [
+        "custom_genome_1.fa",
+        "custom_genome_2.fa",
+        "custom_genome_indels_1.txt",
+        "custom_genome_indels_2.txt",
+        "updated_annotation_1.txt",
+        "updated_annotation_2.txt",
+        "intron_quantifications.txt",
+        "gene_quantifications.txt",
+        "isoform_psi_value_quantifications.txt",
+        "allelic_imbalance_quantifications.txt",
+    ]
+    return  [directory / filename for filename in necessary_files]
+    
 rule run_library_prep_packet_from_distribution:
     input:
-        sample_data_dir = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['sample_data_directory'],
+        sample_data_files = lambda wildcards: get_sample_distribution_files(wildcards.sample),
     output:
         packet_file ="library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
         quant_file = "library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file",
     params:
+        sample_data_dir = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['sample_data_directory'],
         outdir = "library_prep_pipeline/sample{sample}/from_distribution/",
         logdir = "library_prep_pipeline/sample{sample}/logs/",
         num_molecules_per_packet = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['num_molecules_per_packet'],
