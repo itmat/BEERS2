@@ -148,7 +148,6 @@ rule run_library_prep_packet_from_distribution:
         input_quant_file = "library_prep_pipeline/sample{sample}/from_distribution/input_quants/library_prep_pipeline_molecule_pkt{packet_num}.quant_file",
         log_paths = lib_prep_logpaths,
     params:
-        sample_data_dir = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['sample_data_directory'],
         num_molecules_per_packet = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['num_molecules_per_packet'],
         config = json.dumps(config['library_prep_pipeline']),
         global_config = json.dumps(config['global']),

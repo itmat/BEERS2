@@ -249,7 +249,7 @@ class LibraryPrepPipeline():
                 fastq_file_paths = [],
                 pooled = False,
             )
-            # TODO: move MoleculeMaker to accept its output filepath rather than taking a directory
+            # TODO: move MoleculeMaker to accept its log filepath rather than taking a directory
             # that contains all the MoleculeMaker log files
             mm_log_dir = pathlib.Path(log_paths[0]).parent.parent
             molecule_maker = MoleculeMakerStep(
