@@ -172,7 +172,6 @@ rule create_cluster_packet:
     output:
         "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip",
     params:
-        outdir = "sequence_pipeline/",
         configuration = json.dumps(config['sequence_pipeline']['flowcell']),
         seed = seed,
     script:
