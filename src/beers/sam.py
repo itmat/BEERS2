@@ -19,10 +19,8 @@ class SAM:
     def __init__(
             self,
             flowcell: Flowcell,
-            cluster_packet_directory: str,
-            sam_output_directory: str,
             sample_id: str,
-            sample_barcodes: dict[str, tuple[str, str]],
+            sample_barcode: str,
         ):
         """
         The SAM object requires the flowcell, the top level directory housing the cluster packets that have
@@ -34,22 +32,16 @@ class SAM:
         ----------
         flowcell:
             The flowcell to which this SAM object applies.
-        cluster_packet_directory:
-            The location of the cluster packet files coming from the sequence pipeline.
-        sam_output_directory:
-            The location where the FASTQ reports are filed.
         sample_id:
             id of the sample whose SAM files we generate
-        sample_barcodes:
-            dict mapping sample ids to barcodes as tuple (i5, i7). Demultiplexing is done off these
+        sample_barcode:
+            barcodes as a string of the format '{i5}+{i7}'. Demultiplexing is done off these
         """
         self.flowcell = flowcell
-        self.cluster_packet_directory = cluster_packet_directory
-        self.sam_output_directory = sam_output_directory
         self.sample_id = sample_id
-        self.sample_barcodes = sample_barcodes
+        self.sample_barcode = sample_barcode
 
-    def generate_report(self, reference_seqs, BAM=False, sort_by_coordinates=False):
+    def generate_report(self, cluster_packet_paths, output_file_paths, bad_barcode_file_paths, reference_seqs, BAM=False, sort_by_coordinates=False):
         """
         The principal method of this object generates one or two reports depending upon whether paired end reads are
         called for.  All the information needed to create the SAM files is found in the cluster packets themselves.
@@ -60,6 +52,12 @@ class SAM:
 
         Parameters
         ----------
+        cluster_packet_paths:
+            list of cluster packet file paths to a generate report from
+        output_file_paths:
+            list of sam/bam file to output to for each lane, in the same order as config.flowcell.lanes_to_use
+        bad_barcode_file_paths:
+            list of sam/bam files to output to for each lane, in the same order as config.flowcell.lanes_to_use
         reference_seqs:
             dictionary mapping reference names to reference sequences, used for SAM header
         BAM:
@@ -76,13 +74,11 @@ class SAM:
         }
         chrom_list = [sq['SN'] for sq in sam_header['SQ']]
 
-        cluster_packet_file_paths = glob.glob(f'{self.cluster_packet_directory}{os.sep}**{os.sep}*.gzip',
-                                              recursive=True)
-        print("Loading from", cluster_packet_file_paths)
+        print("Loading from", cluster_packet_paths)
         def cluster_generator():
             def inner_cluster_generator():
-                for cluster_packet_file_path in cluster_packet_file_paths:
-                    cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
+                for cluster_packet_path in cluster_packet_paths:
+                    cluster_packet = ClusterPacket.deserialize(cluster_packet_path, skip_base_counts=True)
                     yield from cluster_packet.clusters
 
             if sort_by_coordinates:
@@ -92,21 +88,16 @@ class SAM:
 
         with contextlib.ExitStack() as stack:
             # Open all the files
-            bad_barcode_file_path = {lane: os.path.join(self.sam_output_directory, f"S{self.sample_id}_unidentified_L{lane}.{'bam' if BAM else 'sam'}")
-                                                    for lane in self.flowcell.lanes_to_use}
-            sam_output_file_path = {lane: {barcode: os.path.join(self.sam_output_directory, f"S{sample}_L{lane}.{'bam' if BAM else 'sam'}")}
-                                            for sample, barcode in self.sample_barcodes.items()
-                                            for lane in  self.flowcell.lanes_to_use}
+            sam_output_file_path = {lane: path for lane, path in zip(self.flowcell.lanes_to_use, output_file_paths)}
+            bad_barcode_file_path = {lane: path for lane, path in zip(self.flowcell.lanes_to_use, bad_barcode_file_paths)}
             print(f"Writing out demultiplexed sam files to:")
-            for lane in sam_output_file_path.values():
-                for sam in lane.values():
-                    print(sam)
+            for sam_path in sam_output_file_path.values():
+                print(sam_path)
 
             bad_barcode_files = {lane: stack.enter_context(pysam.AlignmentFile(bad_barcode_file_path[lane], ('wb' if BAM else 'w'), header=sam_header))
                                                 for lane in self.flowcell.lanes_to_use}
             def sam_by_barcode(lane):
-                sam_files = {barcode: stack.enter_context(pysam.AlignmentFile(file_path, ('wb' if BAM else 'w'), header=sam_header))
-                                for barcode, file_path in sam_output_file_path[lane].items()}
+                sam_files = {self.sample_barcode: stack.enter_context(pysam.AlignmentFile(sam_output_file_path[lane], ('wb' if BAM else 'w'), header=sam_header))}
                 return collections.defaultdict(
                     lambda : bad_barcode_files[lane],
                     **sam_files

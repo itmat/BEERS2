@@ -231,10 +231,9 @@ rule create_sequencer_outputs_sam_or_bam:
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
         reference_genome = config['global']['resources']['reference_genome_fasta'],
     output:
-        expand("results/S{{sample}}_L{lane}.{{sequencer_output_filetype}}", lane=lanes),
-    params:
-        cluster_packet_dir = "sequence_pipeline/sample{sample}/output_cluster_packets",
-        outdir = "results/",
+        sam_file_paths = expand("results/S{{sample}}_L{lane}.{{sequencer_output_filetype}}", lane=lanes),
+        # For demultiplexing failures:
+        bad_file_paths = expand("results/S{{sample}}_unidentifiedL{lane}.{{sequencer_output_filetype}}", lane=lanes),
     resources:
         mem_mb = 6_000
     script:
@@ -247,11 +246,11 @@ rule create_sequencer_outputs_fastq:
         reference_genome = config['global']['resources']['reference_genome_fasta'],
     output:
         # NOTE: fastq outputs have both R1 and R2 files to create
-        expand("results/S{{sample}}_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
-        expand("results/S{{sample}}_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
-    params:
-        cluster_packet_dir = "sequence_pipeline/sample{sample}/output_cluster_packets",
-        outdir = "results/",
+        output_file_paths_R1 = expand("results/S{{sample}}_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
+        output_file_paths_R2 = expand("results/S{{sample}}_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
+        # For demultiplexing failures:
+        bad_file_paths_R1 = expand("results/S{{sample}}_unidentified_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
+        bad_file_paths_R2 = expand("results/S{{sample}}_unidentified_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
     resources:
         mem_mb = 6_000
     script:

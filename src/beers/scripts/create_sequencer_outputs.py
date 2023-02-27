@@ -17,18 +17,19 @@ flowcell = beers.flowcell.Flowcell(
         rng = None, # We don't use any of the rng features here, that's only coordinate assignment
 )
 
-barcodes = {sample: (config['global']['samples'][sample]['barcodes']['i5'] + "+" + config['global']['samples'][sample]['barcodes']['i7'])}
+barcode = (config['global']['samples'][sample]['barcodes']['i5'] + "+" + config['global']['samples'][sample]['barcodes']['i7'])
 
 if filetype in ['sam', 'bam']:
     SAM = beers.sam.SAM(
         flowcell = flowcell,
-        cluster_packet_directory = snakemake.params.cluster_packet_dir,
-        sam_output_directory = snakemake.params.outdir,
         sample_id = sample,
-        sample_barcodes = barcodes,
+        sample_barcode = barcode,
     )
     reference_genome_file = snakemake.input.reference_genome
     SAM.generate_report(
+        cluster_packet_paths = snakemake.input.cluster_packets,
+        output_file_paths = snakemake.output.sam_file_paths,
+        bad_barcode_file_paths = snakemake.output.bad_file_paths,
         reference_seqs = read_fasta(reference_genome_file),
         BAM = (filetype == 'bam'),
         sort_by_coordinates = False, # TODO: allow configuring sorted sam/bam files
@@ -36,12 +37,13 @@ if filetype in ['sam', 'bam']:
 elif filetype == 'fastq':
     FastQ = beers.fast_q.FastQ(
         flowcell = flowcell,
-        cluster_packet_directory = snakemake.params.cluster_packet_dir,
-        fastq_output_directory = snakemake.params.outdir,
         sample_id = sample,
-        sample_barcodes = barcodes,
+        sample_barcode = barcode,
     )
     FastQ.generate_report(
+        cluster_packet_paths = snakemake.input.cluster_packets,
+        output_file_paths = [snakemake.output.output_file_paths_R1, snakemake.output.output_file_paths_R2],
+        bad_barcode_file_paths = [snakemake.output.bad_file_paths_R1, snakemake.output.bad_file_paths_R2],
         sort_by_coordinates = False, # TODO: allow sorting fastq?
     )
 else:
