@@ -76,7 +76,7 @@ class FastQ:
             def inner_cluster_generator():
                 for cluster_packet_file_path in cluster_packet_file_paths:
                     cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
-                    yield cluster_packet.clusters
+                    yield from cluster_packet.clusters
 
             if sort_by_coordinates:
                 yield from sorted(inner_cluster_generator(), key=lambda cluster: cluster.coordinates)
@@ -115,16 +115,12 @@ class FastQ:
                                 for direction in CONSTANTS.DIRECTION_CONVENTION}
 
             # Iterate through all the cluster packets
-            for clusters in cluster_generator():
+            for cluster in cluster_generator():
                 for direction_num in CONSTANTS.DIRECTION_CONVENTION:
-                    for lane_num in self.flowcell.lanes_to_use:
-                        lane_clusters = [cluster for cluster in clusters if cluster.lane == lane_num]
-
-                        for cluster in lane_clusters:
-                            cluster.generate_fasta_header(direction_num)
-                            barcode = cluster.called_barcode
-                            fastq_file = demuxes[direction_num][lane_num](barcode)
-                            fastq_file.write(cluster.header + "\n")
-                            fastq_file.write(cluster.called_sequences[direction_num - 1] + "\n")
-                            fastq_file.write("+\n")
-                            fastq_file.write(cluster.quality_scores[direction_num - 1] + "\n")
+                    cluster.generate_fasta_header(direction_num)
+                    barcode = cluster.called_barcode
+                    fastq_file = demuxes[direction_num][cluster.lane](barcode)
+                    fastq_file.write(cluster.header + "\n")
+                    fastq_file.write(cluster.called_sequences[direction_num - 1] + "\n")
+                    fastq_file.write("+\n")
+                    fastq_file.write(cluster.quality_scores[direction_num - 1] + "\n")

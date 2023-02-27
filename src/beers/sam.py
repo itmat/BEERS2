@@ -83,7 +83,7 @@ class SAM:
             def inner_cluster_generator():
                 for cluster_packet_file_path in cluster_packet_file_paths:
                     cluster_packet = ClusterPacket.deserialize(cluster_packet_file_path, skip_base_counts=True)
-                    yield cluster_packet.clusters
+                    yield from cluster_packet.clusters
 
             if sort_by_coordinates:
                 yield from sorted(inner_cluster_generator(), key=lambda cluster: cluster.coordinates)
@@ -114,23 +114,18 @@ class SAM:
             sam_output_files = {lane: sam_by_barcode(lane) for lane in self.flowcell.lanes_to_use}
             demuxes = {lane: demultiplexer(output_files) for lane, output_files in sam_output_files.items()}
 
-            #[cluster.generate_fasta_header(direction) for cluster in clusters] TODO: need this?
-            for clusters in cluster_generator():
-                for lane in self.flowcell.lanes_to_use:
-                    lane_clusters = [cluster for cluster in clusters if cluster.lane == lane]
-
-                    for cluster in lane_clusters:
-                        paired = len(cluster.called_sequences) == 2
-                        sam = demuxes[lane](cluster.called_barcode)
-                        for direction, (seq, qual, start, cigar) in enumerate(zip(cluster.called_sequences, cluster.quality_scores, cluster.read_starts, cluster.read_cigars)):
-                            a = pysam.AlignedSegment()
-                            a.query_name = cluster.encode_sequence_identifier()
-                            rev_strand = ((cluster.molecule.source_strand == '-' and direction == 0) or (cluster.molecule.source_strand == '+' and direction == 1))
-                            a.flag = (0x01*paired) + 0x02 + (0x40 if (direction == 0) else 0x80) + (0x10 if rev_strand else 0x20)
-                            a.query_sequence = seq if not rev_strand else GeneralUtils.create_complement_strand(seq)
-                            a.reference_id = chrom_list.index(cluster.molecule.source_chrom)
-                            a.reference_start = start - 1 # pysam uses 0-based index, we use 1-based
-                            a.mapping_quality = 255
-                            a.cigarstring = cigar
-                            a.query_qualities = pysam.qualitystring_to_array(qual)
-                            sam.write(a)
+            for cluster in cluster_generator():
+                paired = len(cluster.called_sequences) == 2
+                sam = demuxes[cluster.lane](cluster.called_barcode)
+                for direction, (seq, qual, start, cigar) in enumerate(zip(cluster.called_sequences, cluster.quality_scores, cluster.read_starts, cluster.read_cigars)):
+                    a = pysam.AlignedSegment()
+                    a.query_name = cluster.encode_sequence_identifier()
+                    rev_strand = ((cluster.molecule.source_strand == '-' and direction == 0) or (cluster.molecule.source_strand == '+' and direction == 1))
+                    a.flag = (0x01*paired) + 0x02 + (0x40 if (direction == 0) else 0x80) + (0x10 if rev_strand else 0x20)
+                    a.query_sequence = seq if not rev_strand else GeneralUtils.create_complement_strand(seq)
+                    a.reference_id = chrom_list.index(cluster.molecule.source_chrom)
+                    a.reference_start = start - 1 # pysam uses 0-based index, we use 1-based
+                    a.mapping_quality = 255
+                    a.cigarstring = cigar
+                    a.query_qualities = pysam.qualitystring_to_array(qual)
+                    sam.write(a)
