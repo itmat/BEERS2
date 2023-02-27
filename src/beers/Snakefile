@@ -205,16 +205,20 @@ rule create_cluster_packet:
 #    script:
 #        "scripts/create_cluster_packets.py"
 
+# Compute the log paths for the sequencing pipeline
+seq_step_names = [step['step_name'].rsplit('.')[1] for step in config['sequence_pipeline']['steps']]
+seq_logpaths = [f"sequence_pipeline/sample{{sample}}/logs/{step}/sequence_pipeline_cluster_pkt{{packet_num}}.log" for step in seq_step_names]
+
 rule sequence_cluster_packet:
     input:
         cluster_packet = "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
     output:
-        cluster_packet = "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
+        cluster_packet = "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip",
+        log_paths = seq_logpaths,
     params:
         seed = seed,
         config = json.dumps(config['sequence_pipeline']),
         global_config = json.dumps(config['global']),
-        logdir = "sequence_pipeline/sample{sample}/logs/",
         full_logs = full_logs,
     resources:
         mem_mb = 12_000

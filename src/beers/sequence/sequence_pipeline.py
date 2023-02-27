@@ -59,7 +59,7 @@ class SequencePipeline():
             global_config: dict,
             input_cluster_packet: ClusterPacket,
             output_packet_path: str,
-            log_directory: str,
+            log_paths: str,
             rng: np.random.Generator,
         ):
         """
@@ -75,42 +75,34 @@ class SequencePipeline():
             the cluster packet to run through this pipeline stage
         output_packet_path:
             the path to serialize the results to
-        log_directory:
-            directory to output logs to
+        log_paths:
+            list of paths to write out the logs to, in the same order as each the steps
+            appear in the config file
         rng:
             random number generator to use
         """
 
-        log_dir = pathlib.Path(log_directory)
-        log_file_path = log_dir / f"sequence_pipeline_cluster_pkt{input_cluster_packet.cluster_packet_id}.log"
-
         # Load and instantiate all steps listed in configuration prior to executing them below.
         steps = []
-        for step in configuration['steps']:
+        for step, log_path in zip(configuration['steps'], log_paths):
             module_name, step_name = step["step_name"].rsplit(".")
-            step_log_filename = f"{step_name}_cluster_pkt{input_cluster_packet.cluster_packet_id}.log"
-            step_log_dir = log_dir / step_name
-            step_log_dir.mkdir(exist_ok=True)
-            step_log_file_path = step_log_dir / step_log_filename
             parameters = step["parameters"]
             module = importlib.import_module(f'.{module_name}', package=SequencePipeline.package)
             step_class = getattr(module, step_name)
-            steps.append(step_class(step_log_file_path, parameters, global_config))
+            steps.append(step_class(log_path, parameters, global_config))
 
         print(f"Execution of the {SequencePipeline.stage_name} Started...")
-        with open(log_file_path, 'w') as log_file:
-            pipeline_start = time.time()
-            cluster_packet = input_cluster_packet
-            for step in steps:
-                cluster_packet = step.execute(cluster_packet, rng)
+        pipeline_start = time.time()
+        cluster_packet = input_cluster_packet
+        for step in steps:
+            cluster_packet = step.execute(cluster_packet, rng)
 
-            pipeline_elapsed_time = time.time() - pipeline_start
-            print(f"Finished sequence pipeline in {pipeline_elapsed_time:.1f} seconds")
+        pipeline_elapsed_time = time.time() - pipeline_start
+        print(f"Finished sequence pipeline in {pipeline_elapsed_time:.1f} seconds")
 
-            # Write final sample to a gzip file for inspection
-            cluster_packet.serialize(output_packet_path)
-            print(f"Output final sample to {output_packet_path}")
-            log_file.write("Sequencing pipeline completed successfully\n")
+        # Write final sample to a gzip file for inspection
+        cluster_packet.serialize(output_packet_path)
+        print(f"Output final sample to {output_packet_path}")
 
     @staticmethod
     def main(
@@ -119,7 +111,7 @@ class SequencePipeline():
             global_configuration: dict,
             input_packet_path: str,
             output_packet_path: str,
-            log_directory: str
+            log_paths: str
         ):
         """
         Prepares the pipeline, loads the cluster packet, and then executes() the sequence pipeline.
@@ -136,8 +128,9 @@ class SequencePipeline():
             the file path to the cluster packet to read in
         output_packet_path:
             the file path to output the packet to
-        log_directory:
-            directory path to output logs to
+        log_paths:
+            list of paths to write out the logs to, in the same order as each the steps
+            appear in the config file
         """
 
         cluster_packet = ClusterPacket.deserialize(input_packet_path)
@@ -152,7 +145,7 @@ class SequencePipeline():
         rng = np.random.default_rng(seed_list)
 
         sequence_pipeline = SequencePipeline()
-        sequence_pipeline.execute(configuration, global_configuration, cluster_packet, output_packet_path, log_directory, rng)
+        sequence_pipeline.execute(configuration, global_configuration, cluster_packet, output_packet_path, log_paths, rng)
 
 
 class BeersSequenceValidationException(Exception):

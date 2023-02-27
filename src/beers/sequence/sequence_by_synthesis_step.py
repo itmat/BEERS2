@@ -87,7 +87,7 @@ class SequenceBySynthesisStep:
         global_config:
             json-like object general parameters, for the overall BEERS run
         """
-        self.log_filename = step_log_file_path
+        self.log_filepath = step_log_file_path
         self.read_length = parameters['read_length']
         self.forward_is_5_prime = parameters.get('forward_is_5_prime', True)
         if self.forward_is_5_prime != True:
@@ -142,63 +142,65 @@ class SequenceBySynthesisStep:
         """
         print(f"Starting {self.name}")
 
-        # make an 'estimated' cross-talk matrix TODO: should be estimated from an entire tile
-        cross_talk_est = self.CROSS_TALK + rng.normal(size=self.CROSS_TALK.shape)* 0.01
-        cross_talk_inv_est = np.linalg.inv(cross_talk_est)
-        # Assume epsilon (flourescence imaging noise) is perfectly known)
-        #TODO: epsilon should be estimated from data and can be cycle number dependent
-        epsilon_est = self.EPSILON
+        with open(self.log_filepath, "wt") as log:
 
-        for cluster in cluster_packet.clusters:
-            # TODO: use self.forward_is_5_prime to know which direction is 'forward'?
-            # Perform sequence-by-synthesis and get 'flourescence images'
-            forward_flourescence, fwd_start, fwd_cigar, fwd_strand = self.read_flourescence(
-                    cluster,
-                    self.forward_read_start,
-                    self.forward_read_end,
-                    direction = "+",
-                    rng = rng,
-            )
-            forward_bases, forward_quality = self.call_bases(forward_flourescence, epsilon_est, cross_talk_inv_est)
+            # make an 'estimated' cross-talk matrix TODO: should be estimated from an entire tile
+            cross_talk_est = self.CROSS_TALK + rng.normal(size=self.CROSS_TALK.shape)* 0.01
+            cross_talk_inv_est = np.linalg.inv(cross_talk_est)
+            # Assume epsilon (flourescence imaging noise) is perfectly known)
+            #TODO: epsilon should be estimated from data and can be cycle number dependent
+            epsilon_est = self.EPSILON
 
-            reverse_flourescence, rev_start, rev_cigar, rev_strand = self.read_flourescence(
-                    cluster,
-                    self.reverse_read_start,
-                    self.reverse_read_end,
-                    direction = "-",
-                    rng = rng,
-            )
-            reverse_bases, reverse_quality = self.call_bases(reverse_flourescence, epsilon_est, cross_talk_inv_est)
+            for cluster in cluster_packet.clusters:
+                # TODO: use self.forward_is_5_prime to know which direction is 'forward'?
+                # Perform sequence-by-synthesis and get 'flourescence images'
+                forward_flourescence, fwd_start, fwd_cigar, fwd_strand = self.read_flourescence(
+                        cluster,
+                        self.forward_read_start,
+                        self.forward_read_end,
+                        direction = "+",
+                        rng = rng,
+                )
+                forward_bases, forward_quality = self.call_bases(forward_flourescence, epsilon_est, cross_talk_inv_est)
 
-            #Extract barcodes and read sequences
-            forward_barcode = forward_bases[:self.i5_length]
-            forward_read = forward_bases[self.i5_length + self.post_i5_length:]
-            forward_quality = forward_quality[self.i5_length + self.post_i5_length:]
+                reverse_flourescence, rev_start, rev_cigar, rev_strand = self.read_flourescence(
+                        cluster,
+                        self.reverse_read_start,
+                        self.reverse_read_end,
+                        direction = "-",
+                        rng = rng,
+                )
+                reverse_bases, reverse_quality = self.call_bases(reverse_flourescence, epsilon_est, cross_talk_inv_est)
 
-            reverse_barcode = GeneralUtils.create_complement_strand(reverse_bases[:self.i7_length])
-            reverse_read = reverse_bases[self.i7_length + self.post_i7_length:]
-            reverse_quality = reverse_quality[self.i7_length + self.post_i7_length:]
+                #Extract barcodes and read sequences
+                forward_barcode = forward_bases[:self.i5_length]
+                forward_read = forward_bases[self.i5_length + self.post_i5_length:]
+                forward_quality = forward_quality[self.i5_length + self.post_i5_length:]
 
-            cluster.called_sequences = [forward_read, reverse_read]
-            cluster.called_barcode = f"{forward_barcode}+{reverse_barcode}"
-            cluster.quality_scores = [forward_quality, reverse_quality]
+                reverse_barcode = GeneralUtils.create_complement_strand(reverse_bases[:self.i7_length])
+                reverse_read = reverse_bases[self.i7_length + self.post_i7_length:]
+                reverse_quality = reverse_quality[self.i7_length + self.post_i7_length:]
 
-            # Get alignment of read sequences, not including barcodes
-            fwd_start, fwd_cigar, fwd_strand = beers_utils.cigar.chain(
-                self.i5_length + self.post_i5_length + 1, # 1-based starts
-                f"{self.read_length}M",
-                "+",
-                fwd_start, fwd_cigar, fwd_strand
-            )
-            rev_start, rev_cigar, rev_strand = beers_utils.cigar.chain(
-                self.i7_length + self.post_i7_length, # 1-based starts
-                f"{self.read_length}M",
-                "+",
-                rev_start, rev_cigar, rev_strand
-            )
-            cluster.read_starts = [fwd_start, rev_start]
-            cluster.read_cigars = [fwd_cigar, rev_cigar]
-            cluster.read_strands = [fwd_strand, rev_strand]
+                cluster.called_sequences = [forward_read, reverse_read]
+                cluster.called_barcode = f"{forward_barcode}+{reverse_barcode}"
+                cluster.quality_scores = [forward_quality, reverse_quality]
+
+                # Get alignment of read sequences, not including barcodes
+                fwd_start, fwd_cigar, fwd_strand = beers_utils.cigar.chain(
+                    self.i5_length + self.post_i5_length + 1, # 1-based starts
+                    f"{self.read_length}M",
+                    "+",
+                    fwd_start, fwd_cigar, fwd_strand
+                )
+                rev_start, rev_cigar, rev_strand = beers_utils.cigar.chain(
+                    self.i7_length + self.post_i7_length, # 1-based starts
+                    f"{self.read_length}M",
+                    "+",
+                    rev_start, rev_cigar, rev_strand
+                )
+                cluster.read_starts = [fwd_start, rev_start]
+                cluster.read_cigars = [fwd_cigar, rev_cigar]
+                cluster.read_strands = [fwd_strand, rev_strand]
 
         cluster_packet.clusters = sorted(cluster_packet.clusters, key=lambda cluster: cluster.coordinates)
         return cluster_packet

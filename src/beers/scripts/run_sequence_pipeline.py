@@ -10,5 +10,5 @@ SequencePipeline.main(
         global_config,
         snakemake.input.cluster_packet,
         snakemake.output.cluster_packet,
-        snakemake.params.logdir,
+        snakemake.output.log_paths,
 )
