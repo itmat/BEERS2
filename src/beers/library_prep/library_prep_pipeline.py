@@ -72,8 +72,10 @@ class LibraryPrepPipeline():
     def execute(self,
             configuration: dict,
             global_config: dict,
-            output_directory: str,
-            log_directory: str,
+            packet_file: str,
+            output_quant_file: str,
+            input_quant_file: str,
+            log_paths: str,
             input_molecule_packet: MoleculePacket,
             rng: np.random.Generator,
             full_logs: bool,
@@ -87,11 +89,15 @@ class LibraryPrepPipeline():
             json-like object of the configuration data relevant to this pipeline stage.
         global_config:
             json-like object of the full configuration data
-        output_directory:
-            the folder to serialize the results to as 'library_prep_pipeline_results_molecule_pkt###.txt'
-            as well as the .quant_file for both results and inputs.
-        log_directory:
-            directory to output logs to
+        packet_file:
+            path to write out the packet file to
+        output_quant_file:
+            path to write out the quantified counts of the lib prep output
+        input_quant_file:
+            path to write out the quantified counts file to
+        log_paths:
+            list of paths to output the pipeline step logs to, in the same
+            order as the steps appear in the config file
         input_molecule_packet:
             the molecule packet to run through this pipeline stage
         rng:
@@ -104,11 +110,6 @@ class LibraryPrepPipeline():
         self.print_summary(original_ids, input_molecule_packet.molecules)
 
         packet_num = input_molecule_packet.molecule_packet_id
-        output_packet_path = pathlib.Path(output_directory) / f"library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
-        output_quant_path = pathlib.Path(output_directory) / f"library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file"
-        input_quant_dir = pathlib.Path(output_directory) / "input_quants"
-        input_quant_dir.mkdir(exist_ok=True)
-        input_quant_file_path = input_quant_dir / f"library_prep_pipeline_molecule_pkt{packet_num}.quant_file"
 
         # Initialize steps prior to executing them below.
         pipeline_steps = []
@@ -124,16 +125,12 @@ class LibraryPrepPipeline():
         pipeline_start = time.time()
 
         molecule_packet = input_molecule_packet
-        molecule_packet.write_quantification_file(input_quant_file_path)
+        molecule_packet.write_quantification_file(input_quant_file)
 
-        for step, step_name in zip(pipeline_steps, step_names):
-            step_log_filename = f"molecule_pkt{input_molecule_packet.molecule_packet_id}.log"
-            step_log_dir = pathlib.Path(log_directory) / step_name
-            step_log_dir.mkdir(exist_ok=True)
-            step_log_file_path = step_log_dir / step_log_filename
-            print(f"Opening {step_log_file_path}")
+        for step, step_name, step_logpath in zip(pipeline_steps, step_names, log_paths):
+            print(f"Opening {step_logpath}")
             step_start = time.time()
-            with Logger(step_log_file_path, compression = None, full_logs = full_logs) as log:
+            with Logger(step_logpath, compression = None, full_logs = full_logs) as log:
                 molecule_packet = step.execute(molecule_packet, rng, log)
             elapsed_time = time.time() - step_start
 
@@ -143,10 +140,10 @@ class LibraryPrepPipeline():
         print(f"Finished {LibraryPrepPipeline.stage_name} in {pipeline_elapsed_time:.1f} seconds")
 
         # Write final sample to a gzip file for inspection
-        molecule_packet.serialize(output_packet_path)
-        print(f"Output final sample to {output_packet_path}")
-        molecule_packet.write_quantification_file(output_quant_path)
-        print(f"Output final sample quantification to {output_quant_path}")
+        molecule_packet.serialize(packet_file)
+        print(f"Output final sample to {packet_file}")
+        molecule_packet.write_quantification_file(output_quant_file)
+        print(f"Output final sample quantification to {output_quant_file}")
 
     def print_summary(self, original_ids: set[str], sample: list[Molecule], elapsed_time:Optional[float]=None):
         """Output a summary of the sample (number of molecules, time taken, etc.).
@@ -179,8 +176,10 @@ class LibraryPrepPipeline():
             seed: str,
             configuration: str,
             global_configuration: str,
-            output_directory: str,
-            log_directory: str,
+            packet_file: str,
+            output_quant_file: str,
+            input_quant_file: str,
+            log_paths: str,
             molecule_packet_filename: Optional[str],
             packet_id: str,
             sample_id: str,
@@ -202,10 +201,15 @@ class LibraryPrepPipeline():
             the json string containing the configration data specific to the library prep pipeline
         global_configuration:
             json string containing the configuration data for the whole run
-        output_directory:
-            path to directory where we will output molecule files and quant files
-        log_directory:
-            path to log directories
+        packet_file:
+            path to write out the packet file to
+        output_quant_file:
+            path to write out the quantified counts of the lib prep output
+        input_quant_file:
+            path to write out the quantified counts file to
+        log_paths:
+            list of paths to output the pipeline step logs to, in the same
+            order as the steps appear in the config file
         molecule_packet_filename:
             the file from which to unmarshall the molecule packet
         packet_id:
@@ -245,8 +249,11 @@ class LibraryPrepPipeline():
                 fastq_file_paths = [],
                 pooled = False,
             )
+            # TODO: move MoleculeMaker to accept its output filepath rather than taking a directory
+            # that contains all the MoleculeMaker log files
+            mm_log_dir = pathlib.Path(log_paths[0]).parent.parent
             molecule_maker = MoleculeMakerStep(
-                    log_directory_path = log_directory,
+                    log_directory_path = mm_log_dir,
                     parameters = molecule_maker_parameters,
             )
             molecule_packets = list(molecule_maker.execute(
@@ -263,7 +270,17 @@ class LibraryPrepPipeline():
         else:
             raise BeersLibraryPrepValidationException("Neither molecule packet filename nor distribution directory provided")
         library_prep_pipeline = LibraryPrepPipeline()
-        library_prep_pipeline.execute(config, global_config, output_directory, log_directory, molecule_packet, rng, full_logs)
+        library_prep_pipeline.execute(
+            config,
+            global_config,
+            packet_file,
+            output_quant_file,
+            input_quant_file,
+            log_paths,
+            molecule_packet,
+            rng,
+            full_logs
+        )
 
 class BeersLibraryPrepValidationException(Exception):
     pass
