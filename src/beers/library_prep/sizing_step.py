@@ -76,7 +76,7 @@ class SizingStep:
                 note += 'retained'
             else:
                 note += 'removed'
-            log.write(molecule)
+            log.write(molecule, note)
         print("Sizing step complete")
         molecule_packet.molecules = retained_molecules
         return molecule_packet
