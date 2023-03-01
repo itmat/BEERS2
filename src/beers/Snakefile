@@ -76,22 +76,6 @@ rule all:
             lane = lanes,
         ) if config['output'].get('output_fastq', True) else [],
 
-# Prep output directories:
-lib_prep_dir = pathlib.Path("library_prep_pipeline")
-lib_prep_dir.mkdir(exist_ok=True)
-seq_dir = pathlib.Path("sequence_pipeline")
-seq_dir.mkdir(exist_ok=True)
-for sample in samples.keys():
-    sample_dir = lib_prep_dir / f"sample{sample}"
-    sample_dir.mkdir(exist_ok=True)
-    (sample_dir / "from_molecule_files").mkdir(exist_ok=True)
-    (sample_dir / "from_distribution").mkdir(exist_ok=True)
-    (sample_dir / "logs").mkdir(exist_ok=True)
-
-    sample_dir = seq_dir / f"sample{sample}"
-    sample_dir.mkdir(exist_ok=True)
-    (sample_dir / "logs").mkdir(exist_ok=True)
-
 # Perform validation of configuration
 # These functions will throw exception if not validated properly
 # and print to standard error the reasons
