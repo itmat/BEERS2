@@ -66,6 +66,13 @@ class LibraryPrepPipeline():
                 for error in errors:
                     print('\t' + error, file=sys.stderr)
 
+        # Check that the input samples match those in global config
+        input_samples = set(configuration['input']['from_distribution_data'].keys())
+        global_samples = set(global_config['samples'].keys())
+        missing_samples = input_samples.difference(global_samples)
+        if len(missing_samples) > 0:
+            print(f"Every sample in library_prep_input.from_distribution_data must also be specified in global.samples but missing {missing_samples}", file=sys.stderr)
+
         if not validation_okay:
             raise BeersLibraryPrepValidationException("Validation error: see stderr for details.")
 
