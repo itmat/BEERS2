@@ -88,9 +88,9 @@ class AdapterLigationStep:
     @staticmethod
     def validate(parameters, global_config):
         errors = []
-        for sample in global_config['samples'].values():
+        for sample_id, sample in global_config['samples'].items():
             if not 'i5' in sample['barcodes'] or not 'i7' in sample['barcodes']:
-                errors.append(f"In sample {sample.sample_id}, expected to find i5 and i7 adpters in config.")
+                errors.append(f"In sample {sample_id}, expected to find i5 and i7 adpters in config.")
 
         adapters = ['pre_i5_adapter', 'pre_i7_adapter', 'post_i5_adapter', 'post_i7_adapter']
         if not all(adapter in global_config['resources'] for adapter in adapters):
