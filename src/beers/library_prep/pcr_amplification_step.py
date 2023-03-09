@@ -12,7 +12,7 @@ from beers.utilities.gc_content import gc_content
 def hypergeometric(ngood: int, nbad: int, nsamp: np.ndarray, rng: np.random.Generator):
     '''
     Sample from the hypergeometric distribution
-    
+
     See np.random.hypergeometric but allows nsamp to have zeros
     '''
 
@@ -45,17 +45,20 @@ class PCRAmplificationStep:
             # Compute the PCR duplication rate using the UMI tags.
             # Let N be the number of PCR steps. Assuming that each molecule generates 2^N
             # PCR descendants, if all were sequenced, we would expect all molecules to be duped
-            # 2^N times. Instead, choose retention_percentage with the following:
+            # 2^N times. Instead, choose retention_percentage with the following strategy:
             #
             # '''
             # import scipy.stats
-            # pcr_rate = scipy.stats.binom(p=retention_percentage / 100, n=2^N).sf(1)
-            # # Choose retention_percentage so that pcr_rate is approximately the observed PCR rate
+            # at_least_two = scipy.stats.binom(p=retention_percentage / 100, n=2**N).sf(1)
+            # at_least_one = scipy.stats.binom(p=retention_percentage / 100, n=2**N).sf(0)
+            # dupe_rate = at_least_two / at_least_one
+            # # Choose retention_percentage so that dupe_rate is approximately the observed PCR dupe rate
             # '''
             #
             # For example, retention_percentage = 0.08 and number_cycles=10 gives dupe rate
-            # of about 20%, which is pretty typical. If number_cycles changes, this should
-            # be modified too to maintain dupe rate.
+            # of about 35%, which is pretty typical. Note that we are defining dupe rate as
+            # the fraction of all reads after deduping that had at least one duplicate.
+            # If number_cycles changes, this should be modified too to maintain dupe rate.
             retention_percentage: 0.08
 
             # Induce a GC bias by discarding some PCR duplicates
