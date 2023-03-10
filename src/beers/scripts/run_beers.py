@@ -15,7 +15,7 @@ def main():
     import beers
     import importlib.resources
     # Find the Snakefile relative to the beers module
-    snakemake_file = importlib.resources.path(beers, "Snakefile")
+    snakemake_file = importlib.resources.files(beers) / "Snakefile"
 
     # Start the snakemake
     cmd = [
