@@ -6,7 +6,7 @@ setup(
     name='beers',
     version='2.0',
     packages=find_packages("src"),
-    python_requires=">=3.10",
+    python_requires=">=3.11",
     package_dir={"": "src"},
     entry_points={
         'console_scripts': [
