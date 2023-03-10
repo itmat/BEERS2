@@ -16,11 +16,16 @@ Output is divided into three main parts: library prep, sequencing, and result ge
 The outputs of those are divided likewise into library_prep, sequence, and results directories.
 """
 
-import pathlib
 import functools
 import json
 
-from beers.configuration import Configuration
+from os.path import normpath
+from beers.configuration import Configuration, PREFIX
+from cloudpathlib import S3Path
+from pathlib import Path
+
+STORAGE_TYPE = os.environ.get("STORAGE_TYPE", "FILE")
+
 if not config:
     raise Exception("No config provided - must pass `--configfile path/to/config.yaml` to snakemake to run pipeline")
 
@@ -35,11 +40,33 @@ full_logs = config['output'].get('full_logs', False)
 
 @functools.cache
 def input_molecule_files(sample):
-    path = config['library_prep_pipeline']['input'].get('directory_path', None)
-    if not path:
+    directory = config["library_prep_pipeline"]["input"].get("directory_path", None)
+
+    if directory is None:
         return []
-    input_molecule_file_dir = pathlib.Path(path)/ f"sample{sample}"
-    return sorted(list(input_molecule_file_dir.glob("molecule_*.txt")))
+
+    molecule_files_directory = Path(directory) / f"sample{sample}"
+
+    if STORAGE_TYPE == "FILE":
+        paths = molecule_files_directory.glob("molecule_*.txt")
+    
+    elif STORAGE_TYPE == "OBJECT":
+        BUCKET = S3Path("s3://") / os.environ["BUCKET_NAME"]
+        molecule_files_directory = BUCKET / molecule_files_directory.relative_to("/")
+    
+        paths = (
+            path.relative_to(BUCKET)
+            for path in molecule_files_directory.glob("molecule_*.txt")
+        )
+        
+    else:
+        raise NotImplementedError("Invalid storage type:", STORAGE_TYPE)
+
+    paths = sorted(map(str, paths))
+
+    print(f"Molecule files for sample {sample}:", paths)
+    return paths
+    
 
 # Count the numbers of packets for each sample
 # by source (distribution or molecule packet) and total
@@ -66,17 +93,17 @@ rule all:
     # All dependencies of them will be generated as well.
     input:
         expand(
-            "results/S{sample}_L{lane}.sam",
+            PREFIX + "results/S{sample}_L{lane}.sam",
             sample = samples.keys(),
             lane = lanes,
         ) if config['output'].get('output_sam', True) else [],
         expand(
-            "results/S{sample}_L{lane}.bam",
+            PREFIX + "results/S{sample}_L{lane}.bam",
             sample = samples.keys(),
             lane = lanes,
         ) if config['output'].get('output_bam', False) else [],
         expand(
-            "results/S{sample}_L{lane}_R1.fastq",
+            PREFIX + "results/S{sample}_L{lane}_R1.fastq",
             sample = samples.keys(),
             lane = lanes,
         ) if config['output'].get('output_fastq', True) else [],
@@ -91,15 +118,15 @@ SequencePipeline.validate(config['sequence_pipeline'], config['global_config'])
 
 # Compute the log paths for the library prep steps
 lib_prep_step_names = [step['step_name'].rsplit('.')[1] for step in config['library_prep_pipeline']['steps']]
-lib_prep_logpaths = [f"library_prep_pipeline/sample{{sample}}/logs/{step}/molecule_pkt{{packet_num}}.log" for step in lib_prep_step_names]
+lib_prep_logpaths = [PREFIX + f"library_prep_pipeline/sample{{sample}}/logs/{step}/molecule_pkt{{packet_num}}.log" for step in lib_prep_step_names]
 
 rule run_library_prep_packet_from_molecule_file:
     input:
         molecule_file = lambda wildcards: input_molecule_files(wildcards.sample)[int(wildcards.packet_num)]
     output:
-        packet_file = "library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
-        output_quant_file = "library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file",
-        input_quant_file = "library_prep_pipeline/sample{sample}/from_distribution/input_quants/library_prep_pipeline_molecule_pkt{packet_num}.quant_file",
+        packet_file = PREFIX + "library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
+        output_quant_file = PREFIX + "library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file",
+        input_quant_file = PREFIX + "library_prep_pipeline/sample{sample}/from_distribution/input_quants/library_prep_pipeline_molecule_pkt{packet_num}.quant_file",
         log_paths = lib_prep_logpaths,
     params:
         config = json.dumps(config['library_prep_pipeline']),
@@ -113,7 +140,7 @@ rule run_library_prep_packet_from_molecule_file:
 
 def get_sample_distribution_files(sample):
     ''' input files needed to generate a sample from distribution '''
-    directory = pathlib.Path(config['library_prep_pipeline']['input']['from_distribution_data'][sample]['sample_data_directory'])
+    directory = Path(config['library_prep_pipeline']['input']['from_distribution_data'][sample]['sample_data_directory'])
     necessary_files = [
         "custom_genome_1.fa",
         "custom_genome_2.fa",
@@ -132,9 +159,9 @@ rule run_library_prep_packet_from_distribution:
     input:
         sample_data_files = lambda wildcards: get_sample_distribution_files(wildcards.sample),
     output:
-        packet_file ="library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
-        output_quant_file = "library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file",
-        input_quant_file = "library_prep_pipeline/sample{sample}/from_distribution/input_quants/library_prep_pipeline_molecule_pkt{packet_num}.quant_file",
+        packet_file = PREFIX + "library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt",
+        output_quant_file = PREFIX + "library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.quant_file",
+        input_quant_file = PREFIX + "library_prep_pipeline/sample{sample}/from_distribution/input_quants/library_prep_pipeline_molecule_pkt{packet_num}.quant_file",
         log_paths = lib_prep_logpaths,
     params:
         num_molecules_per_packet = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['num_molecules_per_packet'],
@@ -150,15 +177,15 @@ rule run_library_prep_packet_from_distribution:
 def get_lib_prep_result_packet_path(sample, packet_num):
     from_molecule_files = num_packets_from_molecule_file_for_sample[sample]
     if int(packet_num) < from_molecule_files:
-        return f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+        return PREFIX + f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
     else:
-        return f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+        return PREFIX + f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
 
 rule create_cluster_packet:
     input:
         packet = lambda wildcards: get_lib_prep_result_packet_path(wildcards.sample, wildcards.packet_num)
     output:
-        "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip",
+        PREFIX + "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip",
     params:
         configuration = json.dumps(config['sequence_pipeline']['flowcell']),
         seed = seed,
@@ -172,17 +199,17 @@ rule create_cluster_packet:
 # them based off the config settings
 #rule create_cluster_packets_distinct_coords:
 #    input:
-#        packet_files_from_molecule_files = [f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+#        packet_files_from_molecule_files = [PREFIX + f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
 #            for sample in samples.keys()
 #            for packet_num in range(num_packets_from_molecule_file_for_sample[sample])
 #        ],
-#        packet_files_from_distribution = [f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
+#        packet_files_from_distribution = [PREFIX + f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt"
 #            for sample in samples.keys()
 #            # numbered starting where the molecule file ones left off - no repeated sample numbers
 #            for packet_num in range(num_packets_from_molecule_file_for_sample[sample], num_total_packets_for_sample[sample])
 #        ],
 #    output:
-#        cluster_packets = [f"sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
+#        cluster_packets = [PREFIX + f"sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
 #                                for sample in samples.keys()
 #                                for packet_num in range(num_total_packets_for_sample[sample])]
 #    resources:
@@ -195,13 +222,13 @@ rule create_cluster_packet:
 
 # Compute the log paths for the sequencing pipeline
 seq_step_names = [step['step_name'].rsplit('.')[1] for step in config['sequence_pipeline']['steps']]
-seq_logpaths = [f"sequence_pipeline/sample{{sample}}/logs/{step}/sequence_pipeline_cluster_pkt{{packet_num}}.log" for step in seq_step_names]
+seq_logpaths = [PREFIX + f"sequence_pipeline/sample{{sample}}/logs/{step}/sequence_pipeline_cluster_pkt{{packet_num}}.log" for step in seq_step_names]
 
 rule sequence_cluster_packet:
     input:
-        cluster_packet = "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
+        cluster_packet = PREFIX + "sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip"
     output:
-        cluster_packet = "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip",
+        cluster_packet = PREFIX + "sequence_pipeline/sample{sample}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip",
         log_paths = seq_logpaths,
     params:
         seed = seed,
@@ -215,13 +242,13 @@ rule sequence_cluster_packet:
 
 rule create_sequencer_outputs_sam_or_bam:
     input:
-        cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
+        cluster_packets = lambda wildcards: [PREFIX + f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
         reference_genome = config['global_config']['resources']['reference_genome_fasta'],
     output:
-        sam_file_paths = expand("results/S{{sample}}_L{lane}.{{sequencer_output_filetype}}", lane=lanes),
+        sam_file_paths = expand(PREFIX + "results/S{{sample}}_L{lane}.{{sequencer_output_filetype}}", lane=lanes),
         # For demultiplexing failures:
-        bad_file_paths = expand("results/S{{sample}}_unidentifiedL{lane}.{{sequencer_output_filetype}}", lane=lanes),
+        bad_file_paths = expand(PREFIX + "results/S{{sample}}_unidentifiedL{lane}.{{sequencer_output_filetype}}", lane=lanes),
     resources:
         mem_mb = 6_000
     script:
@@ -229,16 +256,16 @@ rule create_sequencer_outputs_sam_or_bam:
 
 rule create_sequencer_outputs_fastq:
     input:
-        cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
+        cluster_packets = lambda wildcards: [PREFIX + f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
         reference_genome = config['global_config']['resources']['reference_genome_fasta'],
     output:
         # NOTE: fastq outputs have both R1 and R2 files to create
-        output_file_paths_R1 = expand("results/S{{sample}}_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
-        output_file_paths_R2 = expand("results/S{{sample}}_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
+        output_file_paths_R1 = expand(PREFIX + "results/S{{sample}}_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
+        output_file_paths_R2 = expand(PREFIX + "results/S{{sample}}_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
         # For demultiplexing failures:
-        bad_file_paths_R1 = expand("results/S{{sample}}_unidentified_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
-        bad_file_paths_R2 = expand("results/S{{sample}}_unidentified_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
+        bad_file_paths_R1 = expand(PREFIX + "results/S{{sample}}_unidentified_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),
+        bad_file_paths_R2 = expand(PREFIX + "results/S{{sample}}_unidentified_L{lane}_R2.{{sequencer_output_filetype}}", lane=lanes),
     resources:
         mem_mb = 6_000
     script:

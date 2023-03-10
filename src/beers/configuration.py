@@ -2,8 +2,55 @@ import json
 import numpy as np
 import os
 
+from os.path import isabs, normpath
 from typing import Annotated, Literal, Union
 from pydantic import BaseModel, Field, conint, confloat, constr, validator
+
+ARGUMENTS = json.loads(os.environ.get("ARGUMENTS", "{}"))
+STORAGE_TYPE: Literal["FILE", "OBJECT"] = os.environ.get("STORAGE_TYPE", "FILE")
+
+###########
+#  Paths  #
+###########
+
+# When running in the cloud, paths provided in the configuration file refer to objects stored in the bucket.
+# Paths containing parent directories can have unclear interpretation in this context. To pin this down,
+# we will interpret the root of absolute paths as the storage bucket itself. Paths will also be normalized
+# to remove parent directories, double slashes etc., after which the non-root part is interpreted as
+# the key of an object in the bucket. Relative paths are prefixed with PREFIX before normalization.
+# PREFIX is always interpreted as being absolute, rooted at the bucket. Default PREFIX is the bucket.
+
+# Note that object keys containing double slashes, parent directories, etc. may be misinterpreted.
+
+PREFIX = ARGUMENTS.get("prefix", "/")
+PREFIX = normpath(f"/{PREFIX}").strip("/")
+
+if PREFIX:
+    PREFIX = PREFIX + "/"  # easier to concatenate
+
+
+class Path(BaseModel):
+    __root__: str
+
+    @validator("__root__")
+    def normalize(cls, path):
+        assert path is not None, "ensure location is provided"
+
+        if STORAGE_TYPE == "FILE":
+            return normpath(path)
+
+        elif STORAGE_TYPE == "OBJECT":
+            # Root directory corresponds to the bucket
+            if isabs(path):
+                return normpath(path)
+            else:
+                if not PREFIX:
+                    return normpath(f"/{path}")
+                else:
+                    return normpath(f"/{PREFIX}/{path}")
+        else:
+            raise NotImplementedError("Invalid storage type:", STORAGE_TYPE)
+
 
 ########################
 #  General parameters  #
