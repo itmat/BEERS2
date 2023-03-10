@@ -105,7 +105,7 @@ class FragmentStep:
     def __init__(self, parameters, global_config):
         self.global_config = global_config
         self.method = parameters["method"]
-        self.lambda_ = parameters["lambda"]
+        self.rate = parameters["rate"]
         self.runtime = parameters["runtime"]
         # Reject fragments that are below this size. This limits computation and memory significantly
         # and tiny fragments fail priming and/or size selection later regardless. Most generated fragments
@@ -122,9 +122,9 @@ class FragmentStep:
         print("Fragment Step acting on sample")
         sample = molecule_packet.molecules
         if self.method == "uniform":
-            fragment_locations =  _compute_fragment_locations_uniform(sample, self.lambda_, self.runtime, rng)
+            fragment_locations =  _compute_fragment_locations_uniform(sample, self.rate, self.runtime, rng)
         elif self.method == "beta":
-            fragment_locations = _compute_fragment_locations_beta(sample, self.lambda_, self.beta_N, self.beta_A, self.beta_B, self.runtime, rng)
+            fragment_locations = _compute_fragment_locations_beta(sample, self.rate, self.beta_N, self.beta_A, self.beta_B, self.runtime, rng)
         else:
             raise NotImplementedError(f"Unknown fragmentation method {self.method}")
 
@@ -159,9 +159,9 @@ class FragmentStep:
                                 or (beta_param < 0))
                                 for beta_param in [beta_A, beta_B, beta_N]):
                         errors.append("All of 'beta_A', 'beta_B', and 'beta_N' must be positive numbers")
-        if "lambda" not in parameters:
-            errors.append("Must specify 'lambda' value")
-        elif (not isinstance(parameters['lambda'], (int, float)) or parameters['lambda'] <= 0):
+        if "rate" not in parameters:
+            errors.append("Must specify 'rate' value")
+        elif (not isinstance(parameters['rate'], (int, float)) or parameters['rate'] <= 0):
             errors.append("Rate of fragmentation must be positive number")
 
         if "runtime" not in parameters:
@@ -192,7 +192,7 @@ def _sample_without_replacement(n, k, rng):
     # Sort it since list(set) will give a sort-of arbitrary but not random order
     return numpy.array(sorted(sample), dtype=int)
 
-def _compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
+def _compute_fragment_locations_uniform(molecules, rate, runtime, rng):
     """
     uniform fragmentation with a rate lambda_ parameter
     All bonds between adjacent bases are equally likely to break (they're iid)
@@ -205,14 +205,14 @@ def _compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
     each fragment being k'th molecule from positions start to end (zero-based, non-inclusive of end)
     """
     assert runtime > 0
-    assert lambda_ > 0
+    assert rate > 0
 
     # Breaking occurs with probability `lambda_` per unit time
     # so the time to break a bond is exponentially distributed.
     # We convert that to the chance that this time-to-break
     # is at most equal to the runtime.
     # With runtime = 1, this is very nearly just `lambda_`
-    probability_of_base_breaking = scipy.stats.expon(scale=1/lambda_).cdf(runtime)
+    probability_of_base_breaking = scipy.stats.expon(scale=1/rate).cdf(runtime)
 
     output = collections.deque()
     for k, molecule in enumerate(molecules):
@@ -236,7 +236,7 @@ def _compute_fragment_locations_uniform(molecules, lambda_, runtime, rng):
 # A = B = 5 gives reasonable values
 # NOTE: there is no theoretical justification for why this should be an appropriate model
 #       but it gives a reasonable looking length distribution while the uniform methods do not
-def _compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime, rng):
+def _compute_fragment_locations_beta(molecules, rate, N, A,B, runtime, rng):
     """
     fragment molecules with varying lambas
 
@@ -256,7 +256,7 @@ def _compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime, rng):
     assert runtime > 0
     assert A > 0
     assert B > 0
-    assert lambda_ > 0
+    assert rate > 0
 
     todo = collections.deque()
     todo.extend(((0, len(molecule)), runtime, k) for k, molecule in enumerate(molecules))
@@ -271,7 +271,7 @@ def _compute_fragment_locations_beta(molecules, lambda_, N, A,B, runtime, rng):
 
 
         num_bonds = end - start - 1
-        break_rate = lambda_ * num_bonds**N / TYPICAL_MOLECULE_SIZE**(N-1)
+        break_rate = rate * num_bonds**N / TYPICAL_MOLECULE_SIZE**(N-1)
         time_until_break = rng.exponential(scale = 1/break_rate)
 
         if time_until_break < time_left:

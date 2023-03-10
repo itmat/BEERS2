@@ -23,7 +23,7 @@ import json
 if not config:
     raise Exception("No config provided - must pass `--configfile path/to/config.yaml` to snakemake to run pipeline")
 
-samples = config['global']['samples']
+samples = config['global_config']['samples']
 lanes =  config['sequence_pipeline']['flowcell']['lanes_to_use']
 seed = config['seed']
 full_logs = config['output'].get('full_logs', False)
@@ -81,8 +81,8 @@ rule all:
 # and print to standard error the reasons
 from beers.library_prep.library_prep_pipeline import LibraryPrepPipeline
 from beers.sequence.sequence_pipeline import SequencePipeline
-LibraryPrepPipeline.validate(config['library_prep_pipeline'], config['global'])
-SequencePipeline.validate(config['sequence_pipeline'], config['global'])
+LibraryPrepPipeline.validate(config['library_prep_pipeline'], config['global_config'])
+SequencePipeline.validate(config['sequence_pipeline'], config['global_config'])
 
 # Compute the log paths for the library prep steps
 lib_prep_step_names = [step['step_name'].rsplit('.')[1] for step in config['library_prep_pipeline']['steps']]
@@ -98,7 +98,7 @@ rule run_library_prep_packet_from_molecule_file:
         log_paths = lib_prep_logpaths,
     params:
         config = json.dumps(config['library_prep_pipeline']),
-        global_config = json.dumps(config['global']),
+        global_config = json.dumps(config['global_config']),
         seed = seed,
         full_logs = full_logs,
     resources:
@@ -134,7 +134,7 @@ rule run_library_prep_packet_from_distribution:
     params:
         num_molecules_per_packet = lambda wildcards: config['library_prep_pipeline']['input']['from_distribution_data'][wildcards.sample]['num_molecules_per_packet'],
         config = json.dumps(config['library_prep_pipeline']),
-        global_config = json.dumps(config['global']),
+        global_config = json.dumps(config['global_config']),
         seed = seed,
         full_logs = full_logs,
     resources:
@@ -201,7 +201,7 @@ rule sequence_cluster_packet:
     params:
         seed = seed,
         config = json.dumps(config['sequence_pipeline']),
-        global_config = json.dumps(config['global']),
+        global_config = json.dumps(config['global_config']),
         full_logs = full_logs,
     resources:
         mem_mb = 12_000
@@ -212,7 +212,7 @@ rule create_sequencer_outputs_sam_or_bam:
     input:
         cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
-        reference_genome = config['global']['resources']['reference_genome_fasta'],
+        reference_genome = config['global_config']['resources']['reference_genome_fasta'],
     output:
         sam_file_paths = expand("results/S{{sample}}_L{lane}.{{sequencer_output_filetype}}", lane=lanes),
         # For demultiplexing failures:
@@ -226,7 +226,7 @@ rule create_sequencer_outputs_fastq:
     input:
         cluster_packets = lambda wildcards: [f"sequence_pipeline/sample{{sample}}/output_cluster_packets/sequence_cluster_packet{packet_num}.gzip"
                                                 for packet_num in range(num_total_packets_for_sample[wildcards.sample])],
-        reference_genome = config['global']['resources']['reference_genome_fasta'],
+        reference_genome = config['global_config']['resources']['reference_genome_fasta'],
     output:
         # NOTE: fastq outputs have both R1 and R2 files to create
         output_file_paths_R1 = expand("results/S{{sample}}_L{lane}_R1.{{sequencer_output_filetype}}", lane=lanes),

@@ -41,7 +41,7 @@ output:
     # since they document every intermediate molecule throughout library prep
     full_logs: false
 
-global:
+global_config:
     # global configuration contains configuration values that are available to all
     # steps of the Library Prep and Sequencing Pipeline.
 
@@ -179,7 +179,7 @@ library_prep_pipeline:
             # which determines the time it takes until a molecule to fragments.
             # Molecules which would take longer then 'runtime' to fragment, do not fragment.
             # Molecules may also fragment multiple times if lambda is high enough.
-            lambda: 0.005
+            rate: 0.005
             runtime: 1
             # Since fragmentation generates many very small fragments that will
             # be quickly lost in the following steps, we have the option to
