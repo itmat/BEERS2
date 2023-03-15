@@ -2,12 +2,25 @@ import json
 import numpy as np
 import os
 
-from os.path import isabs, normpath
+from cloudpathlib import S3Path
+from pathlib import PosixPath
+from pydantic import (
+    BaseModel,
+    Field,
+    conint,
+    confloat,
+    constr,
+    root_validator,
+    validator,
+)
 from typing import Annotated, Literal, Union
-from pydantic import BaseModel, Field, conint, confloat, constr, validator
 
 ARGUMENTS = json.loads(os.environ.get("ARGUMENTS", "{}"))
+
 STORAGE_TYPE: Literal["FILE", "OBJECT"] = os.environ.get("STORAGE_TYPE", "FILE")
+STORAGE_BUCKET: str | None = os.environ.get("BUCKET_NAME", None)
+STORAGE_DIRECTORY: str = ARGUMENTS.get("directory", ".")
+
 
 ###########
 #  Paths  #
@@ -17,37 +30,48 @@ STORAGE_TYPE: Literal["FILE", "OBJECT"] = os.environ.get("STORAGE_TYPE", "FILE")
 # Paths containing parent directories can have unclear interpretation in this context. To pin this down,
 # we will interpret the root of absolute paths as the storage bucket itself. Paths will also be normalized
 # to remove parent directories, double slashes etc., after which the non-root part is interpreted as
-# the key of an object in the bucket. Relative paths are prefixed with PREFIX before normalization.
-# PREFIX is always interpreted as being absolute, rooted at the bucket. Default PREFIX is the bucket.
+# the key of an object in the bucket. Relative paths are prefixed with directory argument before normalization.
+# Directory argument is always interpreted as being absolute, rooted at the bucket. Default directory is the bucket.
 
 # Note that object keys containing double slashes, parent directories, etc. may be misinterpreted.
 
-PREFIX = ARGUMENTS.get("prefix", "/")
-PREFIX = normpath(f"/{PREFIX}").strip("/")
 
-if PREFIX:
-    PREFIX = PREFIX + "/"  # easier to concatenate
+def normpath(path):
+    match STORAGE_TYPE:
+        case "FILE":
+            return path
+        case "OBJECT":
+            if os.path.isabs(path):
+                return "/" + os.path.normpath(f"/{path}").strip("/")
+            else:
+                return "/" + os.path.normpath(f"/{STORAGE_DIRECTORY}/{path}").strip("/")
+        case _:
+            raise NotImplementedError("Invalid storage type:", STORAGE_TYPE)
 
 
-class Path(BaseModel):
-    __root__: str
+class Path(str):
+    def __new__(cls, path):
+        return str.__new__(cls, normpath(path))
 
-    @validator("__root__")
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.normalize
+
+    @classmethod
     def normalize(cls, path):
         assert path is not None, "ensure location is provided"
+        return normpath(path)
 
+    def glob(self, pattern: str):
         if STORAGE_TYPE == "FILE":
-            return normpath(path)
+            return (Path(path) for path in PosixPath(self).glob(pattern))
 
         elif STORAGE_TYPE == "OBJECT":
-            # Root directory corresponds to the bucket
-            if isabs(path):
-                return normpath(path)
-            else:
-                if not PREFIX:
-                    return normpath(f"/{path}")
-                else:
-                    return normpath(f"/{PREFIX}/{path}")
+            return (
+                Path(f"/{path.relative_to(S3Path('s3://' + STORAGE_BUCKET))}")
+                for path in S3Path("s3://" + STORAGE_BUCKET + self).glob(pattern)
+            )
+
         else:
             raise NotImplementedError("Invalid storage type:", STORAGE_TYPE)
 
