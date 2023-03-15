@@ -402,17 +402,19 @@ class Configuration(BaseModel):
     sequence_pipeline: SequencePipelineConfiguration
     global_config: GlobalConfiguration
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.check_all_samples_are_specified()
+    @root_validator()
+    def check_all_samples_specified_in_global_configuration(cls, values):
+        for configuration in ("global_config", "library_prep_pipeline"):
+            assert configuration in values, f"ensure {configuration} is correctly specified"
 
-    def check_all_samples_are_specified(self):
-        samples = self.global_config.samples.keys()
+        samples = values["global_config"].samples
         missing_samples = set(
-            self.library_prep_pipeline.input.from_distribution_data.keys()
+            values["library_prep_pipeline"].input.from_distribution_data
         ) - set(samples)
 
-        if missing_samples:
-            location = "library_prep_pipeline -> input -> from_distribution_data"
-            message = f"  ensure all samples listed are also specified in global_config - sample {missing_samples.pop()} missing in global_config"
-            raise AssertionError(location + "\n" + message)
+        location = "library_prep_pipeline -> input -> from_distribution_data"
+        assert (
+            not missing_samples
+        ), f"{location}\nensure all samples listed are also specified in global_config - sample {missing_samples.pop()} missing in global_config"
+        return values
+
