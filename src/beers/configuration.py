@@ -39,7 +39,7 @@ STORAGE_DIRECTORY: str = ARGUMENTS.get("directory", ".")
 def normpath(path):
     match STORAGE_TYPE:
         case "FILE":
-            return path
+            return os.path.normpath(path)
         case "OBJECT":
             if os.path.isabs(path):
                 return "/" + os.path.normpath(f"/{path}").strip("/")
@@ -429,7 +429,9 @@ class Configuration(BaseModel):
     @root_validator()
     def check_all_samples_specified_in_global_configuration(cls, values):
         for configuration in ("global_config", "library_prep_pipeline"):
-            assert configuration in values, f"ensure {configuration} is correctly specified"
+            assert (
+                configuration in values
+            ), f"ensure {configuration} is correctly specified"
 
         samples = values["global_config"].samples
         missing_samples = set(
