@@ -28,7 +28,6 @@ if not config:
 
 # Parse and validate the configuration
 configuration = Configuration(**config)
-print("Configuration:", configuration.json(indent=2))
 
 config.clear()
 config.update(configuration.dict())
