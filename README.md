@@ -1,6 +1,6 @@
 # BEERS2
 
-**BEERS2** is an RNA-seq simulator that combines a flexible and highly configurable design with detailed simulation of the entire library preparation and sequencing pipeline.
+**BEERS2** is an RNA-seq simulator that combines a flexible and [highly configurable](#development) design with detailed simulation of the entire library preparation and sequencing pipeline.
 
 ## Installation
 
@@ -118,8 +118,8 @@ Analogous input JSON example for cloud execution:
 
 ```json
 {
-    "configfile": "...",
-    "set-resources": "sequence_cluster_packet:mem_mb=32000"
+  "configfile": "...",
+  "set-resources": "sequence_cluster_packet:mem_mb=32000"
 }
 ```
 
@@ -201,33 +201,17 @@ The log files contain the output molecules from the step, sometimes with additio
 
 ## Development
 
-To contribute to or modify BEERS2, we recommend the following setup. First, clone the git repository including the submodules:
+BEERS2 has a modular and highly configurable design which allows addition of new steps to the simulation pipeline. If you wish to add new steps, or otherwise modify the code, you need to setup BEERS2 in a slightly different way than described previously. First, clone the desired branch, including the submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/itmat/BEERS2.git
+git clone --branch ... --recurse-submodule https://github.com/itmat/BEERS2.git
 ```
 
-Then create and activate a virtual environment for BEERS2 development using Python 3.11:
+If you have [Visual Studio Code](https://code.visualstudio.com/) with [remote development extension pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack), use it to open the cloned BEERS2 directory. A prompt will ask you if you wish to reopen the directory to develop in a container. Click to affirm. This will install all necessary development tools and requirements.
 
-```bash
-cd BEERS2
-python -m venv ./venv_beers
-source ./venv_beers/bin/activate
-```
+Alternatively, you can execute the first three lines of the [setup script](.devcontainer/setup.sh) inside the BEERS2 directory, after creating and activating virtual environment as described [previously](#local-and-cluster-installation).
 
-Install BEERS for local editing with development requirements:
-
-```bash
-pip install -e .[dev]
-cd BEERS_UTILS
-pip install -e .
-cd ../CAMPAREE
-pip install -e .
-cd ..
-```
-
-Now any edits made to BEERS2 will be reflected when running it.
-Also, we can now run some useful development commands: `pytest tests` to run the unit tests, `mypy src` to check typing errors, and `make html` in the `doc` directory to build the documentation.
+With this setup, any edits made to BEERS2 will be reflected when running it. If you wish to deploy your changes in the cloud, please follow the instructions [here](https://github.com/itmat/cask).
 
 ## Funding
 
