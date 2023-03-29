@@ -1,25 +1,8 @@
-"""
-Snakemake file that governs the BEERS2 pipeline.
-
-Snakemake is a system for running pipelines.
-The 'all' rule below defines the default output that BEERS will create.
-This can be overridden by passing Snakemake the name of a rule or the output
-file you wish it to create. Most uses can use the default outputs (sam + fastq files),
-unless only one wants to only run one part of the pipeline.
-
-Configuration is required and must be supplied via the `--configfile` option to Snakemake.
-An example config is provided in config/baby.config.yaml - modify this to suit your needs.
-
-Output will be put in the directory that snakemake is run, unless the `--directory /path/to/output`
-option is provided to Snakemake.
-Output is divided into three main parts: library prep, sequencing, and result generation.
-The outputs of those are divided likewise into library_prep, sequence, and results directories.
-"""
+# BEERS2 pipeline specification
 
 import functools
 import json
 
-from os.path import normpath
 from beers.configuration import Configuration, Path
 from snakemake.utils import update_config
 
@@ -174,34 +157,6 @@ rule create_cluster_packet:
         seed = seed,
     script:
         "scripts/create_cluster_packets.py"
-
-# TODO: this has been commented out for now but this is to to perform an aggregation
-# of all the packets to distribute all the flowcell coordinates so that they are unique
-# However this considerably slows down execution as its a big bottleneck that is not
-# parallelizable. We should later allow both this and the rule above to operate, choosing
-# them based off the config settings
-#rule create_cluster_packets_distinct_coords:
-#    input:
-#        packet_files_from_molecule_files = [Path(f"library_prep_pipeline/sample{sample}/from_molecule_files/library_prep_pipeline_result_molecule_pkt{packet_num}.txt")
-#            for sample in samples.keys()
-#            for packet_num in range(num_packets_from_molecule_file_for_sample[sample])
-#        ],
-#        packet_files_from_distribution = [Path(f"library_prep_pipeline/sample{sample}/from_distribution/library_prep_pipeline_result_molecule_pkt{packet_num}.txt")
-#            for sample in samples.keys()
-#            # numbered starting where the molecule file ones left off - no repeated sample numbers
-#            for packet_num in range(num_packets_from_molecule_file_for_sample[sample], num_total_packets_for_sample[sample])
-#        ],
-#    output:
-#        cluster_packets = [Path(f"sequence_pipeline/sample{sample}/input_cluster_packets/cluster_packet_start_pkt{packet_num}.gzip")
-#                                for sample in samples.keys()
-#                                for packet_num in range(num_total_packets_for_sample[sample])]
-#    resources:
-#        mem_mb = 12_000
-#    params:
-#        outdir = "sequence_pipeline/",
-#        parameters = json.dumps(config['flowcell']),
-#    script:
-#        "scripts/create_cluster_packets.py"
 
 # Compute the log paths for the sequencing pipeline
 seq_step_names = [step['step_name'].rsplit('.')[1] for step in config['sequence_pipeline']['steps']]
