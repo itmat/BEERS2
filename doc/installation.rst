@@ -28,7 +28,7 @@ We first download the example data and config file::
 
 Now we are ready to run BEERS2 using this dataset::
 
-    run_beers --configfile baby.config.yaml --jobs 1
+    beers --configfile baby.config.yaml --jobs 1
 
 Verify that the run has been successful by examing :code:`results/` which should contain output FASTQ and SAM files.
 To confirm that the expected results were produced, compare md5 hashes to this reference::
@@ -44,4 +44,4 @@ To confirm that the expected results were produced, compare md5 hashes to this r
     d1124ed6d0149d977e52aafd862a0f6a  results/S2_unidentified_L2.sam
 
 The :code:`--jobs 1` option sets to run this on a single-core locally.
-Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the :code:`run_beers` command from.
+Increasing this number will allow Snakemake to run multiple processes simultaneously on the machine your execute the :code:`beers` command from.

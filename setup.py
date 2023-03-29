@@ -10,7 +10,7 @@ setup(
     package_dir={"": "src"},
     entry_points={
         'console_scripts': [
-            'run_beers=beers.scripts.run_beers:main',
+            'beers=beers.scripts.run_beers:main',
         ],
     },
     ext_modules = cythonize(["src/beers/sequence/sequence_by_synthesis_helper.pyx"], language_level=3),

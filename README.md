@@ -60,7 +60,7 @@ Now we are ready to run BEERS2 using this dataset:
 
 ```bash
 cd baby_mouse_example
-run_beers --configfile baby.config.yaml --jobs 1
+beers --configfile baby.config.yaml --jobs 1
 ```
 
 Verify that the run has been successful by examining `results` directory which should contain output FASTQ and SAM files.
@@ -84,7 +84,7 @@ bef563a2384e92961bd9701e5f5e2720  results/S2_unidentifiedL2.sam
 BEERS2 uses Snakemake to run its pipeline, which facilitates distribution of the workload across multiple CPU cores or cluster nodes. To run BEERS2 in your cluster environment, please go [here](https://github.com/Snakemake-Profiles/doc) to locate the Snakemake profile for your environment (Slurm, LSF, SGE..) and then install the corresponding profile by following the provided installation instructions. Then you can use the installed profile by passing it via `profile` argument:
 
 ```bash
-run_beers --configfile baby.config.yaml --jobs 4 --profile PROFILE
+beers --configfile baby.config.yaml --jobs 4 --profile PROFILE
 ```
 
 `PROFILE` should be replaced with the name of the profile chosen during profile configuration.
@@ -97,7 +97,7 @@ Open the bucket by clicking on its name. Inside you will find an HTML file which
 
 ### Execution arguments
 
-Execution arguments can be passed to `run_beers` command if executing locally or on a cluster, or given in the input JSON if executing in the cloud. Ultimately, these arguments will be passed down to `snakemake` command which orchestrates the pipeline execution. The full list of arguments can be found [here](https://snakemake.readthedocs.io/en/stable/executing/cli.html), below we list some of the more useful ones.
+Execution arguments can be passed to `beers` command if executing locally or on a cluster, or given in the input JSON if executing in the cloud. Ultimately, these arguments will be passed down to `snakemake` command which orchestrates the pipeline execution. The full list of arguments can be found [here](https://snakemake.readthedocs.io/en/stable/executing/cli.html), below we list some of the more useful ones.
 
 The `jobs` argument specifies the maximum number of jobs which can be run simultaneously. BEERS2 workload distribution unit is molecule package, so increasing the number of `jobs` beyond the total number of molecule packets (4 in the example above) will not yield further parallelization.
 
@@ -111,7 +111,7 @@ Depending upon settings like the number of molecules in an input packet, BEERS2 
 This can be mitigated either by splitting the workload into more packets or by increasing memory limits for specific rules. To accomplish this use the `set-resources` argument which accepts (a sequence of) `RULE:RESOURCE=VALUE` declarations as its value. These declarations specify resource requirements for desired rules. For memory, use `mem_mb` as the `RESOURCE`. Here is an example for local and cluster executions:
 
 ```bash
-run_beers --configfile ... --set-resources sequence_cluster_packet:mem_mb=32000
+beers --configfile ... --set-resources sequence_cluster_packet:mem_mb=32000
 ```
 
 Analogous input JSON example for cloud execution:
