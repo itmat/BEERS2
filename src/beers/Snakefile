@@ -6,9 +6,6 @@ import json
 from beers.configuration import Configuration, Path
 from snakemake.utils import update_config
 
-if not config:
-    raise Exception("No config provided - must pass `--configfile path/to/config.yaml` to snakemake to run pipeline")
-
 # Parse and validate the configuration
 configuration = Configuration(**config)
 

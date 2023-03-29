@@ -1,42 +1,32 @@
 def main():
-    '''
-    This script runs the BEERS2 using Snakemake.
-    All arguments passed to this will be given to the `snakemake` command.
-    '''
+    """
+    Run the BEERS2 simulation pipeline.
+    Arguments will be passed down to the Snakemake orchestrator.
+    """
     import argparse
+    import beers
+    import importlib.resources
+    import snakemake
+    import sys
 
     parser = argparse.ArgumentParser(
-        description="BEERS2 RNA-seq Simulator",
+        description="BEERS2 RNA-Seq simulator",
         add_help=False,
     )
 
-    args, other_args = parser.parse_known_args()
+    parser.add_argument(
+        "--configfile",
+        help="Location of the simulation configuration YAML file",
+        required=True,
+    )
 
-    import beers
-    import importlib.resources
-    # Find the Snakefile relative to the beers module
-    snakemake_file = importlib.resources.files(beers) / "Snakefile"
+    args, rest = parser.parse_known_args()
 
-    # Start the snakemake
-    cmd = [
-        "snakemake",
-        "--snakefile",
-        snakemake_file,
-        *other_args
-    ]
-    import sys
-    if sys.stdout.isatty():
-        import pty
-        # We use pty.spawn not subprocess.run in order to
-        # get the nice colored output from Snakemake
-        pty.spawn(cmd)
-    else:
-        # Run Snakemake without tty
-        import subprocess
-        try:
-            subprocess.run(
-                cmd,
-                check=True
-            )
-        except subprocess.CalledProcessError:
-            exit(1) # Had an error, want to signal that the subprocess failed
+    snakefile = importlib.resources.files(beers) / "Snakefile"
+
+    arguments = ["--configfile", args.configfile]
+    arguments += ["--snakefile", str(snakefile)]
+    arguments += rest
+
+    sys.argv = ["snakemake"] + arguments
+    snakemake.main()
