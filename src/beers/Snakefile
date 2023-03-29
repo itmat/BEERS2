@@ -185,7 +185,7 @@ rule create_sequencer_outputs_sam_or_bam:
         # For demultiplexing failures:
         bad_file_paths = expand(Path("results/S{{sample}}_unidentifiedL{lane}.{{sequencer_output_filetype}}"), lane=lanes),
     resources:
-        mem_mb = 6_000
+        mem_mb = 10_000
     script:
         'scripts/create_sequencer_outputs.py'
 
@@ -202,6 +202,6 @@ rule create_sequencer_outputs_fastq:
         bad_file_paths_R1 = expand(Path("results/S{{sample}}_unidentified_L{lane}_R1.{{sequencer_output_filetype}}"), lane=lanes),
         bad_file_paths_R2 = expand(Path("results/S{{sample}}_unidentified_L{lane}_R2.{{sequencer_output_filetype}}"), lane=lanes),
     resources:
-        mem_mb = 6_000
+        mem_mb = 10_000
     script:
         'scripts/create_sequencer_outputs.py'
