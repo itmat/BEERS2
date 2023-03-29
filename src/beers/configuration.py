@@ -428,10 +428,8 @@ class Configuration(BaseModel):
 
     @root_validator()
     def check_all_samples_specified_in_global_configuration(cls, values):
-        for configuration in ("global_config", "library_prep_pipeline"):
-            assert (
-                configuration in values
-            ), f"ensure {configuration} is correctly specified"
+        if not {"library_prep_pipeline", "global_config"} <= set(values):
+            return values
 
         samples = values["global_config"].samples
         missing_samples = set(
