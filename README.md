@@ -11,12 +11,11 @@ BEERS2 can be installed locally, on an HPC cluster, or in the AWS cloud.
 Python version 3.11 is required to install and run the latest version of BEERS2 locally or on a cluster. It is strongly recommended to install BEERS2 inside of a virtual environment:
 
 ```bash
-python -m venv beers/.venv
-source beers/.venv/bin/activate
+python -m venv venv_beers
+source venv_beers/bin/activate
 ```
 
-Make sure the virtual environment is activated – the virtual environment name `(.venv)` has to precede
-your terminal prompt. Then install BEERS2:
+Make sure the virtual environment is activated – the virtual environment name has to precede your terminal prompt. Then install BEERS2:
 
 ```bash
 pip install git+https://github.com/itmat/BEERS2
@@ -54,13 +53,13 @@ We will run a simplified “baby” example, with a reduced mouse genome to test
 We first download the example input data and the configuration file:
 
 ```bash
-curl https://s3.amazonaws.com/itmat.data/BEERS2/examples/baby_mouse_example.tar.gz | tar -xzC beers
+curl https://s3.amazonaws.com/itmat.data/BEERS2/examples/baby_mouse_example.tar.gz | tar -xz
 ```
 
 Now we are ready to run BEERS2 using this dataset:
 
 ```bash
-cd beers/baby_mouse_example
+cd baby_mouse_example
 run_beers --configfile baby.config.yaml --jobs 1
 ```
 
@@ -111,13 +110,13 @@ To re-run a portion of the pipeline, use `force` argument, providing it with a r
 Depending upon settings like the number of molecules in an input packet, BEERS2 may run out of memory on some steps.
 This can be mitigated either by splitting the workload into more packets or by increasing memory limits for specific rules. To accomplish this use the `set-resources` argument which accepts (a sequence of) `RULE:RESOURCE=VALUE` declarations as its value. These declarations specify resource requirements for desired rules. For memory, use `mem_mb` as the `RESOURCE`. Here is an example for local and cluster executions:
 
-```
+```bash
 run_beers --configfile ... --set-resources sequence_cluster_packet:mem_mb=32000
 ```
 
 Analogous input JSON example for cloud execution:
 
-```
+```json
 {
     "configfile": "...",
     "set-resources": "sequence_cluster_packet:mem_mb=32000"
