@@ -105,7 +105,7 @@ The `directory` argument defines how relative paths in the configuration file ar
 
 To check that everything is in place, you can use `dry-run`, which will report all steps that will be run.
 
-To re-run a portion of the pipeline, use `force` argument, providing it with a rule name or output file. Rule name could be any of the names of rules in [Snakefile](src/beers/Snakefile), for example `run_library_prep_packet_from_molecule_file`, or you can pass any file produced by BEERS2 and the last rule used to create it will be rerun (as well as any downstream rules).
+To re-run a portion of the pipeline, use `forcerun` argument, providing it with a rule name or output file. Rule name could be any of the names of rules in [Snakefile](src/beers/Snakefile), for example `run_library_prep_packet_from_molecule_file`, or you can pass any file produced by BEERS2 and the last rule used to create it will be rerun (as well as any downstream rules).
 
 Depending upon settings like the number of molecules in an input packet, BEERS2 may run out of memory on some steps.
 This can be mitigated either by splitting the workload into more packets or by increasing memory limits for specific rules. To accomplish this use the `set-resources` argument which accepts (a sequence of) `RULE:RESOURCE=VALUE` declarations as its value. These declarations specify resource requirements for desired rules. For memory, use `mem_mb` as the `RESOURCE`. Here is an example for local and cluster executions:
