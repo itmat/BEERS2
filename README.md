@@ -195,8 +195,9 @@ The output of the library prep pipeline exactly corresponds one-to-one with the 
 
 ### Logs
 
-Logs store partially-completed information about the BEERS2 run and may be useful for diagnosing where in the pipeline various sequencing artefacts arise.
-For example, the `library_prep_pipeline/sample1/logs/FragmentStep` directory contains one log per molecule packet that was processed by the Fragment Step (which simulates fragmentation of transcripts).
+Full logging can enabled to store partially-completed information about the BEERS2 run and may be useful for diagnosing where in the pipeline various sequencing artefacts arise.
+To do this, set the `full_logs` option to `true` in the `output` section of your config file.
+After setting it, you will see, for example, that the `library_prep_pipeline/sample1/logs/FragmentStep` directory contains one log per molecule packet that was processed by the Fragment Step (which simulates fragmentation of transcripts).
 The log files contain the output molecules from the step, sometimes with additional “notes” on the molecule about what happened in the step, in a tab-separated file.
 
 ## Development
