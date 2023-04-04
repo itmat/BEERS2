@@ -6,7 +6,7 @@ This config is commented to guide you through selecting or changing values.
 Values required to be set are marked with a TODO comment.
 
 Configuration files are recommended to use absolute file paths to input files.
-Otherwise, paths are interpreted relative to the set :code:`--directory` output directory or relative to the BEERS2 directory.
+Otherwise, paths are interpreted relative to the set :code:`--directory` output directory.
 
 Cluster Execution
 -----------------
@@ -28,7 +28,7 @@ Useful Snakemake commands
 The :code:`beers` command is a thin wrapper around :code:`snakemake` command, pointing it to the correct :code:`Snakefile` to run, so any commands passed to :code:`beers` will be given to :code:`snakemake`.
 In addition to the already mentioned :code:`--profile`, :code:`--jobs` and :code:`--directory` values, the following are useful to run BEERS.
 To check that everything is in place, use :code:`--dry-run`, which will report all steps that will be run.
-To re-run a portion of the pipeline, use :code:`--force-rerun {rule name or output file}` where :code:`rule name` could be any of the names of rules in :code:`Snakefile`, for example :code:`run_library_prep_packet_from_molecule_file`,
+To re-run a portion of the pipeline, use :code:`--forcerun {rule name or output file}` where :code:`rule name` could be any of the names of rules in :code:`Snakefile`, for example :code:`run_library_prep_packet_from_molecule_file`,
 or you can pass any file produced by BEERS2 and the last rule used to create it will be rerun (as well as any downstream rules).
 
 Depending upon settings like the number of molecules in an input packet, BEERS2 may run out of memory on some steps.
