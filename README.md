@@ -214,6 +214,11 @@ Alternatively, you can execute the first three lines of the [setup script](.devc
 
 With this setup, any edits made to BEERS2 will be reflected when running it. If you wish to deploy your changes in the cloud, please follow the instructions [here](https://github.com/itmat/cask).
 
+## Generated Samples
+
+We have simulated 8 mouse liver samples under varying sequencing conditions using BEERS2 and CAMPAREE, which we used for demo applications of BEERS2.
+We provide these outputs for use in future benchmarking studies or tests, see [download links here](http://bioinf.itmat.upenn.edu/BEERS2/paper/index.html).
+
 ## Funding
 
 Work on the BEERS2 project is supported by R21-LM012763-01A1: “The Next Generation of RNA-Seq Simulators for Benchmarking Analyses” (PI: Gregory R. Grant).
