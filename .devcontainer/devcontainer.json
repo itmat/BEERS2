@@ -1,0 +1,14 @@
+{
+    "name": "Beers",
+    "dockerFile": "Dockerfile",
+    "extensions": [
+      "eamodio.gitlens",
+      "esbenp.prettier-vscode",
+      "ms-python.python",
+      "Snakemake.snakemake-lang",
+      "streetsidesoftware.code-spell-checker",
+      "tfehlmann.snakefmt"
+    ],
+    "containerUser": "vscode",
+    "postCreateCommand": "bash ~/setup.sh"
+  }

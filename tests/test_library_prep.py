@@ -206,7 +206,7 @@ def test_FragmentStep(tmp_path):
     step = FragmentStep(
         parameters = {
             "method": "uniform",
-            "lambda": 0.005,
+            "rate": 0.005,
             "runtime": 1,
             "min_frag_size": 20,
         },

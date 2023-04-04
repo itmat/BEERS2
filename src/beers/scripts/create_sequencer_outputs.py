@@ -17,7 +17,7 @@ flowcell = beers.flowcell.Flowcell(
         rng = None, # We don't use any of the rng features here, that's only coordinate assignment
 )
 
-barcode = (config['global']['samples'][sample]['barcodes']['i5'] + "+" + config['global']['samples'][sample]['barcodes']['i7'])
+barcode = (config['global_config']['samples'][sample]['barcodes']['i5'] + "+" + config['global_config']['samples'][sample]['barcodes']['i7'])
 
 if filetype in ['sam', 'bam']:
     SAM = beers.sam.SAM(
