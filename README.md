@@ -2,6 +2,8 @@
 
 **BEERS2** is an RNA-seq simulator that combines a flexible and [highly configurable](#development) design with detailed simulation of the entire library preparation and sequencing pipeline.
 
+See our [Biorxiv pre-print](https://www.biorxiv.org/content/10.1101/2023.04.21.537847v1) for a full description and example use cases.
+
 ## Installation
 
 BEERS2 can be installed locally, on an HPC cluster, or in the AWS cloud.
