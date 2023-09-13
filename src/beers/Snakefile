@@ -25,7 +25,11 @@ def input_molecule_files(sample):
         return []
 
     molecule_files_directory = Path(f"{directory}/sample{sample}")
-    molecule_files = sorted(molecule_files_directory.glob("molecule_*.txt"))
+    print(f"Looking for molecule files of sample {sample} in {molecule_files_directory}")
+
+    molecule_txt = sorted(molecule_files_directory.glob("molecule_*.txt"))
+    molecule_pickles  = sorted(molecule_files_directory.glob("molecule_*.pickle"))
+    molecule_files = molecule_txt + molecule_pickles
 
     print(f"Molecule files for sample {sample}:", molecule_files)
     return molecule_files

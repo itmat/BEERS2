@@ -8,6 +8,7 @@ import sys
 import resource
 import json
 import math
+import pickle
 from typing import Optional
 
 import numpy as np
@@ -246,7 +247,13 @@ class LibraryPrepPipeline():
         rng = np.random.default_rng(seed_list) # type: ignore
 
         if molecule_packet_filename:
-            molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id_num)
+            if molecule_packet_filename.endswith(".txt"):
+                molecule_packet = MoleculePacket.from_CAMPAREE_molecule_file(molecule_packet_filename, packet_id_num)
+            elif molecule_packet_filename.endswith(".pickle"):
+                with open(molecule_packet_filename, "rb") as pickle_file:
+                    molecule_packet = pickle.load(pickle_file)
+                # Make sure we use BEERS's packet ids so that they all are distinct
+                molecule_packet.molecule_packet_id = packet_id_num
         elif distribution_directory:
             distribution_dir = pathlib.Path(distribution_directory)
             sample = Sample(
