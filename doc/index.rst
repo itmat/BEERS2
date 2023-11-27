@@ -6,8 +6,7 @@
 Welcome to the BEERS 2 documentation
 ====================================
 
-.. include:: ../README.md
-   :parser: myst_parser.sphinx_
+Please refer to the `README.md https://github.com/itmat/BEERS2/blob/main/README.md` file for introductory usage instructions.
 
 .. toctree::
    :maxdepth: 2
