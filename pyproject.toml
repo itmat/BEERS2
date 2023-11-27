@@ -11,6 +11,7 @@ requires = [
 [project]
 name = "BEERS2"
 version = "2.0"
+requires-python=">=3.11"
 dependencies = [
     # "boto3",
     # "cloudpathlib",
@@ -98,6 +99,9 @@ dependencies = [
     "wrapt==1.15.0",
     "yte==1.5.1"
 ]
+
+[project.scripts]
+beers = "beers.scripts.run_beers:main"
 
 [project.optional-dependencies]
 dev = [
