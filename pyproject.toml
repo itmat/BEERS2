@@ -107,7 +107,7 @@ beers = "beers.scripts.run_beers:main"
 dev = [
     "black",
     "pytest",
-    "Sphinx",
+    "Sphinx~=6.2.1",
     "sphinx-rtd-theme",
     "mypy",
 ]
