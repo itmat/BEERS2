@@ -101,7 +101,7 @@ dependencies = [
 ]
 
 [project.scripts]
-beers = "beers.scripts.run_beers:main"
+run_beers = "beers.scripts.run_beers:main"
 
 [project.optional-dependencies]
 dev = [
