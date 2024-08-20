@@ -2,7 +2,7 @@
 
 **BEERS2** is an RNA-seq simulator that combines a flexible and [highly configurable](#development) design with detailed simulation of the entire library preparation and sequencing pipeline.
 
-See our [Biorxiv pre-print](https://www.biorxiv.org/content/10.1101/2023.04.21.537847v1) for a full description and example use cases.
+See our [article in Briefings in Bioinformatics](https://academic.oup.com/bib/article/25/3/bbae164/7644138) for a full description and example use cases.
 
 ## Installation
 
