@@ -1,17 +1,12 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = [
-    "setuptools",
-    "wheel",
-    "numpy==1.24.2",
-    "Cython==0.29.33",
-]
+requires = ["setuptools", "wheel", "numpy==1.24.2", "Cython==0.29.33"]
 
 
 [project]
 name = "BEERS2"
 version = "2.0"
-requires-python=">=3.11"
+requires-python = ">=3.11"
 dependencies = [
     # "boto3",
     # "cloudpathlib",
@@ -30,8 +25,8 @@ dependencies = [
     # "pyyaml",
 
     # These must be updated whenever the submodules are updated
-    "beers_utils @ git+https://github.com/itmat/BEERS_UTILS@88a021358567e8f64a4bc6ad7cbdfdaf30ae6fe8",
-    "camparee @ git+https://github.com/itmat/CAMPAREE@f99f6c2cec78148dedc5c7c3624b6bfd16c2d34a",
+    "beers_utils @ git+https://github.com/itmat/BEERS_UTILS@52e1a00057d2939651ab587a4ad1a6873dc8d49e",
+    "camparee @ git+https://github.com/itmat/CAMPAREE@1bb79db71ea8d74495334f1af74025624a4668c7",
 
     "appdirs==1.4.4",
     "attrs==22.2.0",
@@ -97,17 +92,11 @@ dependencies = [
     "urllib3==1.26.14",
     "wcwidth==0.2.6",
     "wrapt==1.15.0",
-    "yte==1.5.1"
+    "yte==1.5.1",
 ]
 
 [project.scripts]
 beers = "beers.scripts.run_beers:main"
 
 [project.optional-dependencies]
-dev = [
-    "black",
-    "pytest",
-    "Sphinx~=6.2.1",
-    "sphinx-rtd-theme",
-    "mypy",
-]
+dev = ["black", "pytest", "Sphinx~=6.2.1", "sphinx-rtd-theme", "mypy"]
