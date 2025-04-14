@@ -73,7 +73,7 @@ dependencies = [
     "python-dateutil==2.8.2",
     "pytz==2022.7.1",
     "PyYAML==6.0",
-    "requests==2.28.2",
+    "requests==2.31.0",
     "reretry==0.11.8",
     "roman==4.0",
     "s3transfer==0.6.0",
